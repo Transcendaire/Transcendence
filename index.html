@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pong</title>
+    <link rel="icon" type="image/png" href="./assets/Transcendaire.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sonpi16-orange': '#ff6000',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @font-face {
+            font-family: 'QuencyPixel-Regular';
+            src: url('./assets/fonts/QuencyPixel-Regular.otf') format('opentype');
+        }
+    </style>
+</head>
+<body class="bg-sonpi16-orange flex justify-center items-center h-screen m-0 p-0">
+    <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mr-8">
+    <canvas id="pong" width="800" height="800" class="border-2 border-black"></canvas>
+    <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs ml-8 scale-x-[-1]">
+    <script type="module" src="dist/main.js"></script>
+</body>
+</html>

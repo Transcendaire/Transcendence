@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "dev": "tsc src/main.ts --outDir dist --target es2020 --module es2020 --watch",
+    "build": "tsc src/main.ts --outDir dist --target es2020 --module es2020"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

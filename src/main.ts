@@ -86,7 +86,7 @@ function isTouchingPaddle(paddle: Paddle, ball: Ball, antiDoubleTap: boolean): b
     );
 }
 
-// Si le paddle va dans la direction inverse en Y de la balle, bounceVertical
+// If the paddle is moving in the opposite Y direction to the ball, bounce vertically
 function needsReverseEffect(paddle: Paddle, ball: Ball) : boolean
 {
     return (paddle.dir && ball.velocityY > 0) || (!paddle.dir && ball.velocityY < 0);

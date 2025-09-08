@@ -1,4 +1,5 @@
 import { Player } from "./Player.js";
+import { Paddle } from "./Paddle.js";
 import { Ball } from "./Ball.js";
 import { COLORS, FONTS } from "./constants.js";
 
@@ -75,24 +76,41 @@ function update(deltaTime: number): void
     checkCollisions();
 }
 
+function isTouchingPaddle(paddle: Paddle, ball: Ball, antiDoubleTap: boolean): boolean
+{
+    return (
+        ball.positionX < paddle.positionX + paddle.width &&
+        ball.positionX + ball.size > paddle.positionX &&
+        ball.positionY < paddle.positionY + paddle.height &&
+        ball.positionY + ball.size > paddle.positionY && antiDoubleTap
+    );
+}
+
+// Si le paddle va dans la direction inverse en Y de la balle, bounceVertical
+function needsReverseEffect(paddle: Paddle, ball: Ball) : boolean
+{
+    return (paddle.dir && ball.velocityY > 0) || (!paddle.dir && ball.velocityY < 0);
+}
+
 function checkCollisions(): void
 {
     if (ball.positionY <= 0 || ball.positionY >= canvas.height - ball.size)
         ball.bounceVertical();
 
-    if (ball.positionX <= player1.paddle.positionX + player1.paddle.width &&
-        ball.positionX + ball.size >= player1.paddle.positionX &&
-        ball.positionY <= player1.paddle.positionY + player1.paddle.height &&
-        ball.positionY + ball.size >= player1.paddle.positionY &&
-        ball.velocityX < 0)
+    if (isTouchingPaddle(player1.paddle, ball, ball.velocityX < 0))
+    {
         ball.bounceHorizontal();
+        if (needsReverseEffect(player1.paddle, ball))
+            ball.bounceVertical();
+    }    
 
-    if (ball.positionX <= player2.paddle.positionX + player2.paddle.width &&
-        ball.positionX + ball.size >= player2.paddle.positionX &&
-        ball.positionY <= player2.paddle.positionY + player2.paddle.height &&
-        ball.positionY + ball.size >= player2.paddle.positionY &&
-        ball.velocityX > 0)
+    if (isTouchingPaddle(player2.paddle, ball, ball.velocityX > 0))
+    {
         ball.bounceHorizontal();
+        if (needsReverseEffect(player2.paddle, ball))
+            ball.bounceVertical();
+    }
+
 
     if (ball.positionX < 0) {
         player2.incrementScore();

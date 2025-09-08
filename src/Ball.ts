@@ -8,15 +8,29 @@ export class Ball
     public readonly size: number;
     public readonly speedIncrement: number;
 
-    constructor(positionX: number, positionY: number, velocityX: number = 300, velocityY: number = 200)
+
+    public ballStart(start: boolean)
+    {
+        const seed = Date.now() % 1000;
+        const randomY = (Math.sin(seed) * 10000) % 1;
+        this.velocityY = (Math.abs(randomY) - 0.5) * 400;
+        if (start)
+        {
+            const randomX = (Math.sin(seed + 1) * 10000) % 1;
+            if (Math.abs(randomX) > 0.5)
+                this.velocityX = -this.velocityX;
+        }
+    }
+
+    constructor(positionX: number, positionY: number, velocityX: number = 300)
     {
         this.positionX = positionX;
         this.positionY = positionY;
         this.velocityX = velocityX;
-        this.velocityY = velocityY;
         this.rotation = 0;
         this.size = 12;
         this.speedIncrement = 1.1;
+        this.ballStart(true);
     }
 
     public render(ctx: CanvasRenderingContext2D, color: string): void
@@ -65,6 +79,6 @@ export class Ball
         this.positionX = canvasWidth / 2;
         this.positionY = canvasHeight / 2;
         this.velocityX = this.velocityX > 0 ? -300 : 300;
-        this.velocityY = (Math.random() - 0.5) * 400;
+        this.ballStart(false);
     }
 }

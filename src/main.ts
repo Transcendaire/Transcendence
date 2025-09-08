@@ -76,50 +76,57 @@ function update(deltaTime: number): void
     checkCollisions();
 }
 
-function isTouchingPaddle(paddle: Paddle, ball: Ball, antiDoubleTap: boolean): boolean
+function isTouchingPaddle(paddle: Paddle, ball: Ball): boolean
 {
     return (
         ball.positionX < paddle.positionX + paddle.width &&
         ball.positionX + ball.size > paddle.positionX &&
         ball.positionY < paddle.positionY + paddle.height &&
-        ball.positionY + ball.size > paddle.positionY && antiDoubleTap
+        ball.positionY + ball.size > paddle.positionY
     );
 }
 
-// If the paddle is moving in the opposite Y direction to the ball, bounce vertically
 function needsReverseEffect(paddle: Paddle, ball: Ball) : boolean
 {
     return (paddle.dir && ball.velocityY > 0) || (!paddle.dir && ball.velocityY < 0);
 }
 
-function checkCollisions(): void
+function checkPaddleTouch(player: Player, ball: Ball, antiDoubleTap: boolean): void
 {
-    if (ball.positionY <= 0 || ball.positionY >= canvas.height - ball.size)
-        ball.bounceVertical();
-
-    if (isTouchingPaddle(player1.paddle, ball, ball.velocityX < 0))
+    if (antiDoubleTap && isTouchingPaddle(player.paddle, ball))
     {
         ball.bounceHorizontal();
-        if (needsReverseEffect(player1.paddle, ball))
-            ball.bounceVertical();
-    }    
-
-    if (isTouchingPaddle(player2.paddle, ball, ball.velocityX > 0))
-    {
-        ball.bounceHorizontal();
-        if (needsReverseEffect(player2.paddle, ball))
+        if (needsReverseEffect(player.paddle, ball))
             ball.bounceVertical();
     }
+}
 
-
-    if (ball.positionX < 0) {
+function checkScoring(player1: Player, player2: Player, ball: Ball): void
+{
+    if (ball.positionX < 0)
+    {
         player2.incrementScore();
         ball.reset(canvas.width, canvas.height);
     }
-    if (ball.positionX > canvas.width) {
+    if (ball.positionX > canvas.width)
+    {
         player1.incrementScore();
         ball.reset(canvas.width, canvas.height);
     }
+}
+
+function checkYCollisions(ball: Ball): void
+{
+    if (ball.positionY <= 0 || ball.positionY >= canvas.height - ball.size)
+        ball.bounceVertical();
+}
+
+function checkCollisions(): void
+{
+    checkYCollisions(ball);
+    checkPaddleTouch(player1, ball, ball.velocityX < 0);
+    checkPaddleTouch(player2, ball, ball.velocityX > 0);
+    checkScoring(player1, player2, ball);
 }
 
 function render(): void

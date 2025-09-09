@@ -101,18 +101,20 @@ function checkPaddleTouch(player: Player, ball: Ball, antiDoubleTap: boolean): v
     }
 }
 
+
+function checkSide(player: Player, ball: Ball, cond: boolean): void
+{
+    if (cond)
+    {
+        player.incrementScore();
+        ball.reset(canvas.width, canvas.height);
+    }
+}
+
 function checkScoring(player1: Player, player2: Player, ball: Ball): void
 {
-    if (ball.positionX < 0)
-    {
-        player2.incrementScore();
-        ball.reset(canvas.width, canvas.height);
-    }
-    if (ball.positionX > canvas.width)
-    {
-        player1.incrementScore();
-        ball.reset(canvas.width, canvas.height);
-    }
+    checkSide(player2, ball, ball.positionX < 0);
+    checkSide(player1, ball, ball.positionX > canvas.width);
 }
 
 function checkYCollisions(ball: Ball): void

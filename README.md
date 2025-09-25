@@ -1,4 +1,12 @@
 # Transcendence
+## How to
+```bash
+npm install
+npm run dev       # Pour lancer le serveur en mode dev (avec reload auto, via ts-node-dev)
+# ou
+npm run build     # Pour compiler le TS en JS (dans dist/)
+npm start         # Pour lancer le serveur compilé (après un npm run build)
+```
 ## Brief
 Branche pour faciliter le merge avec la branche Game, en évitant les conflits et prevoyant cette future architecture de fichiers:
 ```bash

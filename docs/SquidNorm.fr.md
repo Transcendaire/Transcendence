@@ -10,8 +10,7 @@ et améliorer la lisibilité du code.
 - Limitez les lignes à 80 caractères.
 
 ### 2. Commentaires
-- Absolument aucun commentaire à l'intérieur des fonctions, sauf exceptionnellement très très rarement des 
-  commentaires brefs de fin de ligne (à ne pas mettre sur une ligne vide) pour expliquer des détails complexes.
+- Absolument aucun commentaire à l'intérieur des fonctions
 - Tous les commentaires doivent être écrits en anglais.
 - **Placement des commentaires**:
   - Documentez les classes avec un bloc de commentaire Doxygen avant la 
@@ -36,15 +35,17 @@ et améliorer la lisibilité du code.
 - Les déclarations de variables doivent être regroupées au début de la fonction.
 - Les itérateurs ou variables temporaires peuvent être déclarés là où ils sont nécessaires.
 - Une fonction doit idéalement accomplir une seule tâche clairement définie.
-- Si une instruction (boucle ou condition) contient une seule ligne, on peut omettre 
-  les accolades {} et placer l'instruction sur la même ligne.
+- Si une instruction (boucle ou condition) contient une seule ligne, on peut omettre les accolades {} et placer l'instruction sur la même ligne.
+- Mettre les accolads { et } seuls avec un retour a la ligne avant (exemple en dessous)
   
 
 ### 5. Nommage
-- Les noms de variables et de fonctions doivent être en camelCase et en anglais.
-- Les noms doivent être descriptifs et refléter clairement leur usage.
+- Les noms de variables et de fonctions doivent être en camelCase, ceux des Classes en UpperCamelCase et en 
+- Les noms doivent toujours être en anglais, et descriptifs et refléter clairement leur usage.
 
 ## Exemple
+#### Dans ces exemples il peut y avoir des commentaires a linterieur des fonctions, mais c'est pour t'expliquer.
+#### Toi, tu ne dois mettre aucun commentaire a l'interieur des fonctions et classes, seulement en entete comme explique plus haut
 
 ### Fichier d'en-tête (.hpp)
 
@@ -54,7 +55,8 @@ et améliorer la lisibilité du code.
  * 
  * This class provides various mathematical operations.
  */
-class MathUtils {
+class MathUtils
+{
 private:
     double precision;
     
@@ -77,7 +79,8 @@ public:
  * 
  * @param precision The precision value for approximate comparisons
  */
-MathUtils::MathUtils(double precision) {
+MathUtils::MathUtils(double precision)
+{
     this->precision = precision;
 }
 

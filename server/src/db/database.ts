@@ -36,8 +36,8 @@ CREATE TABLE IF NOT EXISTS matches (
  * @throws Error if alias is invalid (empty, too long, or contains invalid characters)
  */
 function checkAliasValidity(alias: string): void {
-	if (!alias || alias.trim().length === 0)
-		throw new Error("Alias cannot be empty");
+	if (!alias || alias.trim().length < 3)
+		throw new Error("Alias cannot be less than 3 characters");
 	if (alias.length > 20)
 		throw new Error("Alias too long (max 20 characters");
 	if (!/^[a-zA-Z0-9_-]+$/.test(alias))
@@ -187,8 +187,8 @@ export function getColumnsBy(type: string): any[] {
 
 //*for dev
 function	printPlayers(): void {
-	const dbPlayers = db.prepare("SELECT * FROM players").all(); //*all allows to get ALL ROWS from the query result
-	dbPlayers.forEach(p =>  console.log("player :", p));
+	const dbPlayers = db.prepare("SELECT * FROM players").all() as Player[]; //*all allows to get ALL ROWS from the query result
+	dbPlayers.forEach((p: Player) =>  console.log("player :", p));
 }
 
 
@@ -222,7 +222,7 @@ printPlayers();
 
 let arr: any[] = [];
 try {
-	arr = getColumnsBy("ide");
+	arr = getColumnsBy("id");
 } catch(e) {
 	console.error(e);
 }

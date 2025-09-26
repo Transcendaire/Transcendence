@@ -1,6 +1,6 @@
 export const COLORS = {
     SONPI16_ORANGE: "#ff6000",
-    BLACK: "#000000"
+    SONPI16_BLACK: "#0d0600"
 } as const;
 
 export const FONTS = {

@@ -12,7 +12,7 @@ export class Ball
     public ballStart(start: boolean)
     {
         const randomY = Math.random();
-        this.velocityY = (randomY - 0.5) * 400;
+        this.velocityY = (randomY - 0.5) * 500;
         if (start)
         {
             const randomX = Math.random();
@@ -26,6 +26,7 @@ export class Ball
         this.positionX = positionX;
         this.positionY = positionY;
         this.velocityX = velocityX;
+        this.velocityY = 0;
         this.rotation = 0;
         this.size = 12;
         this.speedIncrement = 1.1;

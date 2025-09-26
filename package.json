@@ -4,6 +4,7 @@
   "description": "Transcendence Game Project",
   "type": "module",
   "scripts": {
+    "postinstall": "cd client && npm install && cd ../server && npm install",
     "dev": "concurrently --names \"SERVER,CLIENT\" --prefix-colors \"blue,green\" \"npm run dev:server\" \"npm run dev:client\"",
     "dev:client": "cd client && npm run dev",
     "dev:server": "cd server && npm run dev",
@@ -13,7 +14,7 @@
     "clean": "npm run clean:client && npm run clean:server",
     "clean:client": "cd client && npm run clean",
     "clean:server": "cd server && npm run clean",
-    "install:all": "npm install && cd client && npm install && cd server && npm install"
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

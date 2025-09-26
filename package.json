@@ -1,7 +1,19 @@
 {
+  "name": "transcendence-game",
+  "version": "1.0.0",
+  "description": "Transcendence Game Project",
+  "type": "module",
   "scripts": {
-    "dev": "tsc src/main.ts --outDir dist --target es2020 --module es2020 --watch",
-    "build": "tsc src/main.ts --outDir dist --target es2020 --module es2020"
+    "dev": "npm run dev:client",
+    "dev:client": "cd client && npm run dev",
+    "dev:server": "cd server && npm run dev",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "cd client && npm run build",
+    "build:server": "cd server && npm run build",
+    "clean": "npm run clean:client && npm run clean:server",
+    "clean:client": "cd client && npm run clean",
+    "clean:server": "cd server && npm run clean",
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
   },
   "devDependencies": {
     "typescript": "^5.9.2"

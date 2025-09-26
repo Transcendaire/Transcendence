@@ -21,7 +21,7 @@ export class Ball
         }
     }
 
-    constructor(positionX: number, positionY: number, velocityX: number = 300)
+    constructor(positionX: number, positionY: number, velocityX: number = 200)
     {
         this.positionX = positionX;
         this.positionY = positionY;
@@ -60,7 +60,7 @@ export class Ball
     {
         this.positionX = canvasWidth / 2;
         this.positionY = canvasHeight / 2;
-        this.velocityX = this.velocityX > 0 ? -300 : 300;
+        this.velocityX = this.velocityX > 0 ? -200 : 200;
         this.ballStart(false);
     }
 }

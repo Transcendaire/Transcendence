@@ -36,23 +36,21 @@ export class GameService
         };
     }
 
-    public updateGame(deltaTime: number, input: any): void
-    {
-        if (input.KeyQ || input.KeyW || input.KeyZ || input.KeyA) 
-            this.player1.paddle.moveUp(deltaTime, this.canvasHeight);
-        if (input.KeyD || input.KeyS)
-            this.player1.paddle.moveDown(deltaTime, this.canvasHeight);
+	public updateGame(deltaTime: number, player1Input: { up: boolean; down: boolean }, player2Input: { up: boolean; down: boolean }): void
+	{
+		if (player1Input.up)
+			this.player1.paddle.moveUp(deltaTime, this.canvasHeight);
+		if (player1Input.down)
+			this.player1.paddle.moveDown(deltaTime, this.canvasHeight);
 
-        if (input.ArrowUp || input.ArrowRight)
-            this.player2.paddle.moveUp(deltaTime, this.canvasHeight);
-        if (input.ArrowDown || input.ArrowLeft)
-            this.player2.paddle.moveDown(deltaTime, this.canvasHeight);
+		if (player2Input.up)
+			this.player2.paddle.moveUp(deltaTime, this.canvasHeight);
+		if (player2Input.down)
+			this.player2.paddle.moveDown(deltaTime, this.canvasHeight);
 
-        this.ball.update(deltaTime);
-        this.checkCollisions();
-    }
-
-    private isTouchingPaddle(paddle: Paddle, ball: Ball): boolean
+		this.ball.update(deltaTime);
+		this.checkCollisions();
+	}    private isTouchingPaddle(paddle: Paddle, ball: Ball): boolean
     {
         return (
             ball.positionX < paddle.positionX + paddle.width &&
@@ -81,7 +79,10 @@ export class GameService
     {
         if (cond)
         {
+            const oldScore = player.score;
             player.incrementScore();
+            console.log(`[SERVER] POINT MARQUE! ${player.name}: ${oldScore} -> ${player.score}`);
+            console.log(`[SERVER] Score actuel: ${this.player1.name} ${this.player1.score} - ${this.player2.score} ${this.player2.name}`);
             ball.reset(this.canvasWidth, this.canvasHeight);
         }
     }

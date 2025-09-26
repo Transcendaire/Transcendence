@@ -1,7 +1,14 @@
 import fastify, { HookHandlerDoneFunction } from 'fastify'
-import { FastifyRequest, FastifyReply, preValidationHookHandler } from 'fastify';
+import { FastifyRequest, FastifyReply, preValidationHookHandler } from 'fastify'
+import websocket from '@fastify/websocket'
+import { MatchmakingService } from './services/matchmaking.js'
+import { GameInput, WebSocketMessage } from './types.js'
+
 
 const server = fastify()
+const matchmaking = new MatchmakingService()
+
+server.register(websocket)
 
 //!							NOT USEFUL FOR NOW
 
@@ -58,6 +65,23 @@ async (request, reply) =>
 	reply.code(404).send({ error: "Not found" });
 	return { success: true }
 })
+
+server.register(async function (fastify) {
+	fastify.get('/game', { websocket: true }, (connection, req) => {
+		connection.on('message', (message: any) => {
+			try {
+				const data = JSON.parse(message.toString()) as WebSocketMessage;
+				matchmaking.handleMessage(connection, data);
+			} catch (error) {
+				console.error('Error parsing message:', error);
+			}
+		});
+		
+		connection.on('close', () => {
+			matchmaking.removePlayer(connection);
+		});
+	});
+});
 
 server.listen({ port: 8080 }, (err, address) => {
   if (err) {

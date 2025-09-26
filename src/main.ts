@@ -133,7 +133,7 @@ function checkCollisions(): void
 
 function render(): void
 {
-    ctx.fillStyle = COLORS.BLACK;
+    ctx.fillStyle = COLORS.SONPI16_BLACK;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     player1.paddle.render(ctx, COLORS.SONPI16_ORANGE);

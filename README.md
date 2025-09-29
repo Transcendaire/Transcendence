@@ -3,21 +3,18 @@
 ## Installation rapide
 
 ```bash
-# Cloner le repo et installer toutes les dépendances
-git clone <repo-url>
-cd Transcendence/Game
+nvm use 22
 npm install  # Installe automatiquement les dépendances client + serveur
-
-# Ou manuellement si problème
-npm run install:all
 ```
 
 ## Commandes disponibles
 
 ```bash
-npm run dev       # Lance client + serveur en mode développement
 npm run build     # Compile tout le projet (client + serveur)
-npm run clean     # Nettoie les fichiers générés (dist/, etc.)
+npm start 		  # Lance le serveur
+
+npm run dev       # Lance client + serveur en mode développement
+npm run clean     # Nettoie les fichiers générés (similaire à make fclean)
 
 # Commandes spécifiques
 npm run dev:client    # Lance uniquement le client en mode watch
@@ -28,19 +25,13 @@ npm run build:server  # Compile uniquement le serveur
 
 ## Accès au jeu
 
-Une fois `npm run dev` lancé :
-- **Jeu** : Ouvrir `client/public/index.html` dans le navigateur
-- **WebSocket** : `ws://localhost:8080/game`
+Une fois `npm start` lancé :
+- **Jeu** : Ouvrir `http://localhost:8080/` dans le navigateur
 
-## Résolution des problèmes
-
-**Erreur `Cannot find type definition file for 'node'` :**
-```bash
-cd server && npm install @types/node
-```
 
 **Le serveur ne démarre pas (port 8080 occupé) :**
 ```bash
+# En général un serveur est deja lancé sur un terminal, le fermer avec CTRL+C
 lsof -i:8080        # Voir qui utilise le port
 pkill -f "node"     # Tuer les processus Node.js
 ```

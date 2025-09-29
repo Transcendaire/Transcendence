@@ -20,24 +20,30 @@ interface GameRoom
 	player2Input: { up: boolean; down: boolean };
 }
 
+/**
+ * @brief Service handling player matchmaking and game room management
+ */
 export class MatchmakingService
 {
 	private waitingPlayers: Player[] = [];
 	private activeGames: Map<string, GameRoom> = new Map();
 	private playerSockets: Map<WebSocket, Player> = new Map();
 
+	/**
+	 * @brief Handle incoming WebSocket messages
+	 * @param socket WebSocket connection that sent the message
+	 * @param message Parsed WebSocket message
+	 */
 	public handleMessage(socket: WebSocket, message: WebSocketMessage): void
 	{
 		switch (message.type) {
 			case 'join':
-				if (message.playerName) {
+				if (message.playerName)
 					this.addPlayer(socket, message.playerName);
-				}
 				break;
 			case 'input':
-				if (message.data) {
+				if (message.data)
 					this.handleInput(socket, message.data);
-				}
 				break;
 			case 'ping':
 				this.sendMessage(socket, { type: 'pong' });
@@ -45,6 +51,11 @@ export class MatchmakingService
 		}
 	}
 
+	/**
+	 * @brief Add player to matchmaking queue
+	 * @param socket Player's WebSocket connection
+	 * @param playerName Player's display name
+	 */
 	private addPlayer(socket: WebSocket, playerName: string): void
 	{
 		const player: Player = {
@@ -54,14 +65,11 @@ export class MatchmakingService
 		};
 
 		this.playerSockets.set(socket, player);
-
-		if (this.waitingPlayers.length >= 1)
-		{
+		if (this.waitingPlayers.length >= 1) {
 			const player1 = this.waitingPlayers.pop()!;
+			
 			this.createGame(player1, player);
-		}
-		else
-		{
+		} else {
 			this.waitingPlayers.push(player);
 			this.sendMessage(socket, {
 				type: "waiting"
@@ -73,44 +81,51 @@ export class MatchmakingService
 		}
 	}
 
+	/**
+	 * @brief Remove player from matchmaking and end any active games
+	 * @param socket Player's WebSocket connection to remove
+	 */
 	public removePlayer(socket: WebSocket): void
 	{
 		const player = this.playerSockets.get(socket);
-		if (!player) return;
-
 		const index = this.waitingPlayers.findIndex(p => p.socket === socket);
+		
+		if (!player)
+			return;
 		if (index > -1)
 			this.waitingPlayers.splice(index, 1);
-
-		for (const [gameId, room] of this.activeGames.entries())
-		{
-			if (room.player1.socket === socket || room.player2.socket === socket)
-			{
+		for (const [gameId, room] of this.activeGames.entries()) {
+			if (room.player1.socket === socket || room.player2.socket === socket) {
 				this.endGame(gameId);
 				break;
 			}
 		}
-
 		this.playerSockets.delete(socket);
 	}
 
+	/**
+	 * @brief Handle player input for active games
+	 * @param socket Player's WebSocket connection
+	 * @param input Player's input state
+	 */
 	private handleInput(socket: WebSocket, input: GameInput): void
 	{
-		for (const room of this.activeGames.values())
-		{
-			if (room.player1.socket === socket)
-			{
+		for (const room of this.activeGames.values()) {
+			if (room.player1.socket === socket) {
 				room.player1Input = input.keys;
 				break;
-			}
-			else if (room.player2.socket === socket)
-			{
+			} else if (room.player2.socket === socket) {
 				room.player2Input = input.keys;
 				break;
 			}
 		}
 	}
 
+	/**
+	 * @brief Create new game room for two players
+	 * @param player1 First player
+	 * @param player2 Second player
+	 */
 	private createGame(player1: Player, player2: Player): void
 	{
 		const gameId = Math.random().toString(36).substr(2, 9);
@@ -118,7 +133,6 @@ export class MatchmakingService
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId);
 		}, 16);
-
 		const room: GameRoom = {
 			id: gameId,
 			player1,
@@ -134,45 +148,58 @@ export class MatchmakingService
 		this.sendMessage(player2.socket, { type: "gameStart", playerRole: "player2" });
 	}
 
+	/**
+	 * @brief Update game state and broadcast to players
+	 * @param gameId ID of the game room to update
+	 */
 	private updateGame(gameId: string): void
 	{
 		const room = this.activeGames.get(gameId);
-		if (!room) return;
-
-		room.gameService.updateGame(16, room.player1Input, room.player2Input);
-
-		const gameState = room.gameService.getGameState();
+		const gameState = room?.gameService.getGameState();
 		const stateMessage: GameState = {
 			player1: {
-				paddle: { y: gameState.player1.paddle.positionY },
-				score: gameState.player1.score
+				paddle: { y: gameState!.player1.paddle.positionY },
+				score: gameState!.player1.score
 			},
 			player2: {
-				paddle: { y: gameState.player2.paddle.positionY },
-				score: gameState.player2.score
+				paddle: { y: gameState!.player2.paddle.positionY },
+				score: gameState!.player2.score
 			},
 			ball: {
-				x: gameState.ball.positionX,
-				y: gameState.ball.positionY,
-				vx: gameState.ball.velocityX,
-				vy: gameState.ball.velocityY
+				x: gameState!.ball.positionX,
+				y: gameState!.ball.positionY,
+				vx: gameState!.ball.velocityX,
+				vy: gameState!.ball.velocityY
 			}
 		};
 
+		if (!room)
+			return;
+		room.gameService.updateGame(16, room.player1Input, room.player2Input);
 		this.sendMessage(room.player1.socket, { type: "gameState", data: stateMessage });
 		this.sendMessage(room.player2.socket, { type: "gameState", data: stateMessage });
 	}
 
+	/**
+	 * @brief End game and cleanup resources
+	 * @param gameId ID of the game room to end
+	 */
 	private endGame(gameId: string): void
 	{
 		const room = this.activeGames.get(gameId);
-		if (!room) return;
-
+		
+		if (!room)
+			return;
 		if (room.gameLoop)
 			clearInterval(room.gameLoop);
 		this.activeGames.delete(gameId);
 	}
 
+	/**
+	 * @brief Send message to WebSocket client
+	 * @param socket Target WebSocket connection
+	 * @param message Message to send
+	 */
 	private sendMessage(socket: WebSocket, message: WebSocketMessage): void
 	{
 		socket.send(JSON.stringify(message));

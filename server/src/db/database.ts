@@ -31,11 +31,12 @@ CREATE TABLE IF NOT EXISTS matches (
 `);
 
 /**
- * Validates alias format and constraints
- * @param alias - The alias string to validate
- * @throws Error if alias is invalid (empty, too long, or contains invalid characters)
+ * @brief Validates alias format and constraints
+ * @param alias The alias string to validate
+ * @throws Error if alias is invalid
  */
-function checkAliasValidity(alias: string): void {
+function checkAliasValidity(alias: string): void
+{
 	if (!alias || alias.trim().length < 3)
 		throw new Error("Alias cannot be less than 3 characters");
 	if (alias.length > 20)
@@ -47,8 +48,8 @@ function checkAliasValidity(alias: string): void {
 //*PRINT
 
 /**
- * Creates a new player in the database
- * @param alias - Unique player alias (3-20 characters, alphanumeric + underscore/dash)
+ * @brief Creates a new player in the database
+ * @param alias Unique player alias
  * @returns Generated UUID for the created player
  * @throws Error if alias is invalid or already exists
  */
@@ -63,29 +64,31 @@ export function createPlayer(alias: string): string
 
 
 /**
- * Retrieves a player by their alias
- * @param alias - The player's alias to search for
+ * @brief Retrieves a player by their alias
+ * @param alias The player's alias to search for
  * @returns Player object if found, undefined otherwise
  */
-export function getPlayer(alias: string): (Player | undefined) {
+export function getPlayer(alias: string): (Player | undefined)
+{
 	return db.prepare("SELECT * FROM players WHERE alias= ?").get(alias) as (Player | undefined);
 }
 
 /**
- * Checks if a player with given alias exists
- * @param alias - The alias to check
+ * @brief Checks if a player with given alias exists
+ * @param alias The alias to check
  * @returns True if player exists, false otherwise
  */
-export function playerExists(alias: string): boolean {
+export function playerExists(alias: string): boolean
+{
 	if (!alias)
 		return false;
 	return (db.prepare("SELECT 1 FROM players WHERE alias= ?").get(alias)) !== undefined
 }
 
 /**
- * Updates a player's alias
- * @param id - Player's UUID
- * @param newAlias - New alias to set (must be unique and valid)
+ * @brief Updates a player's alias
+ * @param id Player's UUID
+ * @param newAlias New alias to set
  * @returns True if update successful, false otherwise
  * @throws Error if player not found, alias invalid, or alias already taken
  */
@@ -105,19 +108,20 @@ export function updatePlayerAlias(id: string, newAlias: string): boolean
 }
 
 /**
- * Gets total number of players in database
+ * @brief Gets total number of players in database
  * @returns Count of players
  */
-export function getPlayerCount(): number {
-
+export function getPlayerCount(): number
+{
 	const result = db.prepare("SELECT COUNT(*) as count FROM players").get() as { count: number };
+	
 	return result.count;
 }
 
 /**
- * Retrieves a player by specified column and value
- * @param type - Column name to search by ("id", "alias", "created_at")
- * @param value - Value to search for
+ * @brief Retrieves a player by specified column and value
+ * @param type Column name to search by
+ * @param value Value to search for
  * @returns Player object if found, undefined otherwise
  * @throws Error if invalid search type
  */
@@ -140,30 +144,32 @@ export function getPlayerBy(type: string, value: string): (Player | undefined)
 //*all for select query
 
 /**
- * Removes a player from the database
- * @param id - Player's UUID to remove
+ * @brief Removes a player from the database
+ * @param id Player's UUID to remove
  * @returns True if deletion successful, false if player not found
  * @throws Error if ID is invalid
  */
-export function removePlayer(id: string): boolean {
+export function removePlayer(id: string): boolean
+{
+	const result = db.prepare("DELETE FROM players WHERE id= ?").run(id);
 
 	if (!id || id.trim().length < 3)
-			throw new Error("Player ID cannot be less than 3 characters");
-	const result = db.prepare("DELETE FROM players WHERE id= ?").run(id);
+		throw new Error("Player ID cannot be less than 3 characters");
 	return result.changes > 0;
 }
 
 /**
- * Retrieves all players from database
+ * @brief Retrieves all players from database
  * @returns Array of all player objects
  */
-export function listAllPlayers(): Player[] {
+export function listAllPlayers(): Player[]
+{
 	return db.prepare("SELECT * FROM players").all() as Player[];
 }
 
 /**
- * Gets specific column data from all players
- * @param type - Column name ("id", "alias", "created_at", "all")
+ * @brief Gets specific column data from all players
+ * @param type Column name to retrieve
  * @returns Array of column values or full player objects
  * @throws Error if invalid column type
  */
@@ -182,14 +188,17 @@ export function getColumnsBy(type: string): any[]
 	return db.prepare(query).all();
 }
 
-//*for dev
-function	printPlayers(): void {
-	const dbPlayers = db.prepare("SELECT * FROM players").all() as Player[]; //*all allows to get ALL ROWS from the query result
+/**
+ * @brief Print all players to console (development only)
+ */
+function printPlayers(): void
+{
+	const dbPlayers = db.prepare("SELECT * FROM players").all() as Player[];
+	
 	dbPlayers.forEach((p: Player) =>  console.log("player :", p));
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////!
 createPlayer("SONER")
 createPlayer("PIERRE")
 createPlayer("PAUL")
@@ -206,10 +215,9 @@ dbPlayers.forEach(currentElement => {
         });
     }
 });
-for (let i = 0; i < 3; i++)
-{
+for (let i = 0; i < 3; i++) {
 	if (players[i])
-			console.log("Players: ", players[i])
+		console.log("Players: ", players[i])
 }
 
 if (players[0])

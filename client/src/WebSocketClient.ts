@@ -1,5 +1,8 @@
 import { GameState, GameInput, WebSocketMessage } from "../../server/src/types.js";
 
+/**
+ * @brief WebSocket client for real-time game communication
+ */
 export class WebSocketClient
 {
     private ws?: WebSocket;
@@ -16,6 +19,11 @@ export class WebSocketClient
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
 
+    /**
+     * @brief Connect to WebSocket server
+     * @param serverUrl WebSocket server URL
+     * @returns Promise that resolves when connected
+     */
     public connect(serverUrl: string): Promise<void>
     {
         return new Promise((resolve, reject) => {
@@ -27,28 +35,25 @@ export class WebSocketClient
                     this.reconnectAttempts = 0;
                     resolve();
                 };
-
                 this.ws.onmessage = (event) => {
                     try {
                         const message: WebSocketMessage = JSON.parse(event.data);
+                        
                         this.handleMessage(message);
                     } catch (error) {
                         console.error('Erreur parsing message WebSocket:', error);
                     }
                 };
-
                 this.ws.onclose = () => {
                     console.log('WebSocket fermé');
                     this.onDisconnected?.();
                     this.attemptReconnect();
                 };
-
                 this.ws.onerror = (error) => {
                     console.error('Erreur WebSocket:', error);
                     this.onError?.('Erreur de connexion WebSocket');
                     reject(error);
                 };
-
             } catch (error) {
                 reject(error);
             }
@@ -92,6 +97,10 @@ export class WebSocketClient
         }
     }
 
+    /**
+     * @brief Join game with player name
+     * @param playerName Player's display name
+     */
     public joinGame(playerName: string): void
     {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -99,10 +108,15 @@ export class WebSocketClient
                 type: 'join',
                 playerName
             };
+            
             this.ws.send(JSON.stringify(message));
         }
     }
 
+    /**
+     * @brief Send player input to server
+     * @param input Player's input state
+     */
     public sendInput(input: GameInput): void
     {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
@@ -110,6 +124,7 @@ export class WebSocketClient
                 type: 'input',
                 data: input
             };
+            
             this.ws.send(JSON.stringify(message));
         }
     }
@@ -137,7 +152,8 @@ export class WebSocketClient
 
     private attemptReconnect(): void
     {
-        if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        if (this.reconnectAttempts >= this.maxReconnectAttempts)
+		{
             this.onError?.('Impossible de se reconnecter au serveur');
             return;
         }
@@ -146,7 +162,7 @@ export class WebSocketClient
         console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
-            this.connect('ws://localhost:8080/game').catch(console.error);
+            this.connect(`ws://${window.location.host}/game`).catch(console.error);
         }, this.reconnectDelay * this.reconnectAttempts);
     }
 

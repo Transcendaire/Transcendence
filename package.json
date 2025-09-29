@@ -14,7 +14,8 @@
     "clean": "npm run clean:client && npm run clean:server",
     "clean:client": "cd client && npm run clean",
     "clean:server": "cd server && npm run clean",
-    "install:all": "npm install && cd client && npm install && cd ../server && npm install"
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "start": "cd server && npm start"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

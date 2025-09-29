@@ -1,122 +1,103 @@
-import fastify, { HookHandlerDoneFunction } from 'fastify'
-import { FastifyRequest, FastifyReply, preValidationHookHandler } from 'fastify'
+import fastify from 'fastify'
 import websocket from '@fastify/websocket'
+import fastifyStatic from '@fastify/static'
+import path from 'path'
+import { fileURLToPath } from 'url'
 import { MatchmakingService } from './services/matchmaking.js'
-import { GameInput, WebSocketMessage } from './types.js'
+import fs from 'fs'
 
-
-const server = fastify()
-const matchmaking = new MatchmakingService()
-
-server.register(websocket)
-
-//!							NOT USEFUL FOR NOW
-
-/*
-BY using hooks, we can intercept a request before they reach route handlers and 
-modify the request body by adding a new property
-There are global and route-level hooks (like in this file)
-Pre validation can be used to check permissions, enforce constraints, short-circuit invalid request
-and so on (before they even reach the handler)
-*/
-interface IQuerystring {
-	username: string;
-	password: string;
-  }
+(async () => {
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const server = fastify({
+    logger: true // Enable logging
+  })
+  const matchmaking = new MatchmakingService()
+  const publicPath = path.join(__dirname, '../../client/public')
+  const distPath = path.join(__dirname, '../../client/dist')
+  const indexPath = path.join(publicPath, 'index.html')
   
-  interface IHeaders {
-	'h-Custom': string;
-  }
+  // Debug the correct paths
+  console.log('Current directory:', process.cwd())
+  console.log('__dirname:', __dirname)
+  console.log('Public path:', publicPath)
+  console.log('Index path:', indexPath)
   
-  interface IReply {
-	200: { success: boolean };
-	302: { url: string };
-	'4xx': { error: string };
-  }
-
-server.get('/ping', async (request, reply) => {
-  return 'pong\n'
-})
-
-
-
-//* server.get(path, options object, handler)
-server.get<{
-	Querystring: IQuerystring,
-	Headers: IHeaders,
-	Reply: IReply
-}>('/auth', {
-preValidation: (request, reply, done) => {
-	const {username, password } = request.query
-	done (username !== 'admin' ? new Error("Must be admin") : undefined)
-}
-},
-async (request, reply) =>
-{
-	console.log('hello from handler function')
-	const { username, password } = request.query
-	if (username === undefined || password === undefined)
-			reply.code(400).send({error: "No credentials"})
-	const customerHeader = request.headers['h-Customs']
-	console.log(username, password)
-	console.log(customerHeader)
-
-	reply.code(200).send({ success: true })
-	reply.code(404).send({ error: "Not found" });
-	return { success: true }
-})
-
-server.register(async function (fastify) {
-	fastify.get('/game', { websocket: true }, (connection, req) => {
-		connection.on('message', (message: any) => {
-			try {
-				const data = JSON.parse(message.toString()) as WebSocketMessage;
-				matchmaking.handleMessage(connection, data);
-			} catch (error) {
-				console.error('Error parsing message:', error);
-			}
-		});
-		
-		connection.on('close', () => {
-			matchmaking.removePlayer(connection);
-		});
-	});
-});
-
-server.listen({ port: 8080 }, (err, address) => {
-  if (err) {
-    console.error(err)
+  // Register WebSocket plugin
+  await server.register(websocket)
+  
+  // Plugin pour que le serveur puisse serve des fichiers statics
+  await server.register(fastifyStatic, {
+    root: publicPath,
+    prefix: '/',
+    index: false
+  })
+  
+  await server.register(fastifyStatic, {
+    root: distPath,
+    prefix: '/dist',
+    decorateReply: false
+  })
+  
+  // WebSocket endpoint for the game
+  server.register(async function (fastify) {
+    fastify.get('/game', { websocket: true }, (connection, req) => {
+      const ws = connection.socket
+      ws.on('message', (message) => {
+        try {
+          const data = JSON.parse(message.toString())
+          matchmaking.handleMessage(ws, data)
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error)
+        }
+      })
+      ws.on('close', () => {
+        matchmaking.removePlayer(ws)
+      })
+    })
+  })
+  
+  // Serve index.html for the root path
+  server.get('/', async (request, reply) => {
+    console.log('Serving root path')
+    try {
+      const content = await fs.promises.readFile(indexPath, 'utf8')
+      return reply.type('text/html').send(content)
+    } catch (err) {
+      console.error(`Error reading index.html: ${err}`)
+      return reply.code(500).send('Internal Server Error')
+    }
+  })
+  
+  server.setNotFoundHandler((request, reply) => {
+    console.log(`NotFound handler for: ${request.url}`)
+    
+    // Skip API routes
+    if (request.url.startsWith('/api/')) {
+      return reply.code(404).send({ error: 'API endpoint not found' })
+    }
+    
+    // Skip WebSocket route
+    if (request.url === '/game') {
+      return reply.code(404).send({ error: 'WebSocket endpoint not found' })
+    }
+    
+    // For all other routes, serve the index.html file
+    return fs.promises.readFile(indexPath, 'utf8')
+      .then(content => {
+        return reply.type('text/html').send(content)
+      })
+      .catch(err => {
+        console.error(`Error reading index.html: ${err}`)
+        return reply.code(500).send('Internal Server Error')
+      })
+  })
+  
+  // Start the server
+  try {
+    await server.listen({ port: 8080, host: '0.0.0.0' })
+    console.log('Server listening on port 8080')
+  } catch (err) {
+    console.error('Server error:', err)
     process.exit(1)
-}
-console.log(`Server listening at ${address}`)
-})
-
-
-/*
-function preValidation(request: FastifyRequest<AuthRoute>,
-	 reply: FastifyReply,
-	 done: HookHandlerDoneFunction) {
-	const {username, password} = request.query
-	if (username !== 'admin')
-			done(new Error('Must be admin'))
-	else
-		done()
-}
-
-server.get<{
-	Querystring: IQuerystring,
-	Headers: IHeaders,
-	Reply: IReply
-}>('/auth', { preValidation }, async (request, reply) => {
-	const { username, password } = request.query
-	if (username === undefined || password === undefined)
-			reply.code(400).send({error: "No credentials"})
-	const customerHeader = request.headers['h-Customs']
-	console.log(username, password)
-	console.log(customerHeader)
-
-	reply.code(200).send({ success: true })
-	reply.code(404).send({ error: "Not found" });
-	return { success: true }
-})
-*/
+  }
+})()

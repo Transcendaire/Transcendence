@@ -28,6 +28,9 @@ const keys = {
     ArrowRight: false
 };
 
+/**
+ * @brief Initialize lobby screen and WebSocket client
+ */
 function initLobby(): void
 {
     const lobbyScreen = document.getElementById("lobby")!;
@@ -41,6 +44,9 @@ function initLobby(): void
     setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen);
 }
 
+/**
+ * @brief Initialize game objects and event listeners
+ */
 function initGame(): void
 {
     const paddleOffset = 30;
@@ -49,89 +55,96 @@ function initGame(): void
     player1 = new Player("Player 1", paddleOffset, paddleY);
     player2 = new Player("Player 2", canvas.width - paddleOffset - 10, paddleY);
     ball = new Ball(canvas.width / 2, canvas.height / 2);
-
     setupGameEventListeners();
 }
 
+/**
+ * @brief Setup WebSocket event handlers
+ */
 function setupWebSocketHandlers(): void
 {
     wsClient.onWaitingForPlayer = () => {
         showWaitingScreen();
     };
-
     wsClient.onPlayerJoined = (playerCount: number) => {
         updatePlayerCount(playerCount);
     };
-
     wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
         currentPlayerRole = playerRole;
         startGame(playerRole);
     };
-
     wsClient.onGameState = (gameState: GameState) => {
         updateGameState(gameState);
     };
-
     wsClient.onDisconnected = () => {
         showError("Connexion perdue avec le serveur");
         returnToLobby();
     };
-
     wsClient.onError = (error: string) => {
         showError(error);
     };
 }
 
+/**
+ * @brief Setup lobby event listeners
+ * @param joinButton Join game button
+ * @param playerNameInput Player name input field
+ * @param cancelButton Cancel waiting button
+ * @param lobbyScreen Lobby screen element
+ * @param gameScreen Game screen element
+ */
 function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput: HTMLInputElement, 
                                  cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement): void
 {
     joinButton.addEventListener('click', async () => {
         const playerName = playerNameInput.value.trim();
+        
         if (!playerName) {
             showError("Veuillez entrer votre nom");
             return;
         }
-
         try {
-            await wsClient.connect('ws://localhost:8080/game');
+            await wsClient.connect(`ws://${window.location.host}/game`);
             wsClient.joinGame(playerName);
         } catch (error) {
             showError("Impossible de se connecter au serveur");
         }
     });
-
     cancelButton.addEventListener('click', () => {
         wsClient.disconnect();
         returnToLobby();
     });
 }
 
+/**
+ * @brief Setup keyboard event listeners for game controls
+ */
 function setupGameEventListeners(): void
 {
     document.addEventListener('keydown', (event) => {
-        if (event.code in keys) {
+        if (event.code in keys)
             keys[event.code as keyof typeof keys] = true;
-        }
     });
-
     document.addEventListener('keyup', (event) => {
-        if (event.code in keys) {
+        if (event.code in keys)
             keys[event.code as keyof typeof keys] = false;
-        }
     });
 }
 
+/**
+ * @brief Main game loop
+ * @param currentTime Current timestamp
+ */
 function gameLoop(currentTime: number): void
 {
-    if (!gameRunning) return;
-    
     const deltaTime = currentTime - lastTime;
+    
+    if (!gameRunning)
+        return;
     lastTime = currentTime;
-
     sendInputToServer();
     render();
     updatePing();
-
     requestAnimationFrame(gameLoop);
 }
 

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pong</title>
+    <link rel="icon" type="image/png" href="../assets/Transcendaire.png">
+    <link href="../config/tools.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="../config/config-tailwind.js"></script>
+</head>
+
+<body class="bg-sonpi16-orange h-screen m-0 p-0">
+    <header class="w-full h-22 bg-sonpi16-black border-sonpi16-black flex items-center justify-between fixed top-0 left-0 z-50">
+        <div class="flex items-center relative h-20 z-30">
+            <img  src="../assets/Transcendaire.png" class="flex-1 w-32 h-32 z-10 left-0" alt="Transcendaire">
+            <h1  class="hidden md:block text-sonpi16-orange text-4xl font-bold flex-2 relative z-20 font-quency md:border-sonpi16-black">Transcendaire</h1>
+        </div>
+        <div class="mr-10 flex">
+            <div id="sign-up"class="flex-1  mr-2 border-sonpi16-orange bg-sonpi16-balck text-sonpi16-orange border-2 px-3 pt-0.5 pb-1 transition duration-300 hover:scale-105 hover:bg-sonpi16-orange hover:text-sonpi16-black">
+                <h2 class="text-xl font-bold">sign-up</h2>
+            </div>
+            <div id="sign-in" class="flex-2 border-sonpi16-orange bg-sonpi16-black text-sonpi16-orange border-2 px-3 pt-0.5 pb-1 transition duration-300 hover:scale-105 hover:bg-sonpi16-orange hover:text-sonpi16-black"> 
+                <h2 class="text-xl font-bold">sign-in</h2>
+            </div>
+        </div>
+    </header>
+    
+    <main class="mt-32">
+        <div class="grid grid-cols-1 md:grid-cols-3 mx-auto gap-12 mt-24 ">
+            <div class="bg-sonpi16-orange rounded  md:h-32  w-3/4 mx-auto col-span-3">
+                <h1 class="text-6xl text-sonpi16-black font-quency text-center pt-5">Welcome to Transcendaire</h1>
+            </div>
+            <div class="bg-green-700 rounded h-64 ml-4"></div>
+            <div class="bg-blue-300 rounded h-64"></div>
+            <div class="bg-yellow-600 rounded h-64 mr-4"></div>
+        </div>
+    </main>
+
+</body>
+
+</html>

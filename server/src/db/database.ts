@@ -1,6 +1,6 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
-import { Player } from "../types"
+import { Player } from "../types.js"
 
 const db = new Database("transcendaire.db")
 
@@ -52,12 +52,12 @@ function checkAliasValidity(alias: string): void {
  * @returns Generated UUID for the created player
  * @throws Error if alias is invalid or already exists
  */
-export function createPlayer(alias: string): string {
+export function createPlayer(alias: string): string 
+{
+	const id = randomUUID();
 
 	checkAliasValidity(alias);
-	const id = randomUUID();
-	db.prepare(
-		"INSERT INTO players (id, alias, created_at) VALUES (?, ?, ?)").run(id, alias.trim(), Date.now());
+	db.prepare("INSERT INTO players (id, alias, created_at) VALUES (?, ?, ?)").run(id, alias.trim(), Date.now());
 	return id;
 }
 
@@ -89,23 +89,19 @@ export function playerExists(alias: string): boolean {
  * @returns True if update successful, false otherwise
  * @throws Error if player not found, alias invalid, or alias already taken
  */
-export function updatePlayerAlias(id: string, newAlias: string): boolean {
+export function updatePlayerAlias(id: string, newAlias: string): boolean 
+{
+	const existingPlayer = db.prepare("SELECT id FROM players WHERE alias = ?").get(newAlias.trim()) as { id: string } | undefined;
+	const result = db.prepare("UPDATE players SET alias = ? WHERE id = ?").run(newAlias.trim(), id);
 
 	if (!newAlias || newAlias.trim().length < 3)
 		throw new Error("New alias cannot be less than 3 characters");
-
 	checkAliasValidity(newAlias);
-
 	if (!db.prepare("SELECT 1 FROM players WHERE id = ?").get(id))
-        throw new Error("Player not found");
-    
-    const existingPlayer = db.prepare("SELECT id FROM players WHERE alias = ?").get(newAlias.trim()) as { id: string } | undefined;
-    if (existingPlayer && existingPlayer.id !== id) 
-        throw new Error("Alias already taken by another player");
-    
-    const result = db.prepare("UPDATE players SET alias = ? WHERE id = ?").run(newAlias.trim(), id);
-    return result.changes > 0;
-
+		throw new Error("Player not found");
+	if (existingPlayer && existingPlayer.id !== id) 
+		throw new Error("Alias already taken by another player");
+	return result.changes > 0;
 }
 
 /**
@@ -125,18 +121,18 @@ export function getPlayerCount(): number {
  * @returns Player object if found, undefined otherwise
  * @throws Error if invalid search type
  */
-export function getPlayerBy(type: string, value: string): (Player | undefined) {
-
+export function getPlayerBy(type: string, value: string): (Player | undefined) 
+{
 	const columnMap: Record<string,string> = {
 		"id": "SELECT * FROM players WHERE id= ?",
 		"alias": "SELECT * FROM players WHERE alias= ?",
 		"created_at": "SELECT * FROM players WHERE created_at= ?",
 		"all": "SELECT * FROM players"
 	};
+	const query: string | undefined = columnMap[type];
 
-	const query = columnMap[type];
-	if (!type)
-			throw new Error(`Invalid data request in ${type}`);
+	if (!query)
+		throw new Error(`Invalid data request in ${type}`);
 	return db.prepare(query).get(value) as (Player | undefined);
 }
 
@@ -171,17 +167,18 @@ export function listAllPlayers(): Player[] {
  * @returns Array of column values or full player objects
  * @throws Error if invalid column type
  */
-export function getColumnsBy(type: string): any[] {
+export function getColumnsBy(type: string): any[] 
+{
 	const columnMap: Record<string, string> = {
 		"id": "SELECT id FROM players",
 		"alias": "SELECT alias FROM players",
 		"created_at": "SELECT created_at FROM players",
 		"all": "SELECT * FROM players"
 	};
+	const query: string | undefined = columnMap[type];
 
-	if (!(type in columnMap))
+	if (!query)
 		throw new Error(`Invalid data request in ${type}`);
-	const query: string = columnMap[type];
 	return db.prepare(query).all();
 }
 
@@ -215,7 +212,8 @@ for (let i = 0; i < 3; i++)
 			console.log("Players: ", players[i])
 }
 
-removePlayer(players[0].id);
+if (players[0])
+	removePlayer(players[0].id);
 console.log("\t\t\t\t\t REMOVED ONE \t\t\t\t")
 
 printPlayers();

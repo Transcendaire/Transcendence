@@ -1,0 +1,1 @@
+async = asynchronous calls and allow to use await inside that block. Asynchronous calls = not blocking 

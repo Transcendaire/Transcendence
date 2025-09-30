@@ -38,10 +38,11 @@ function initLobby(): void
     const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
     const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
+	const joinTournamentButton = document.getElementById("joinTournament") as HTMLButtonElement;
 
     wsClient = new WebSocketClient();
     setupWebSocketHandlers();
-    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen);
+    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen, joinTournamentButton);
 }
 
 /**
@@ -94,7 +95,8 @@ function setupWebSocketHandlers(): void
  * @param gameScreen Game screen element
  */
 function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput: HTMLInputElement, 
-                                 cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement): void
+                                 cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement,
+								 joinTournamentButton: HTMLButtonElement): void
 {
     joinButton.addEventListener('click', async () => {
         const playerName = playerNameInput.value.trim();
@@ -114,6 +116,11 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
         wsClient.disconnect();
         returnToLobby();
     });
+	joinTournamentButton.addEventListener('click', async () => {
+		let n = 0;
+		n++
+		console.log("Button join was clicked: ", n);
+	});
 }
 
 /**

@@ -63,7 +63,7 @@ export class WebSocketClient
                     this.onGameState?.(message.data);
                 }
                 break;
-                
+
             case 'waiting':
                 console.log('[WEBSOCKET] En attente d\'un autre joueur...');
                 this.onWaitingForPlayer?.();
@@ -146,7 +146,7 @@ export class WebSocketClient
         console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
-            this.connect('ws://localhost:8080/game').catch(console.error);
+            this.connect('ws://localhost:8080+').catch(console.error);
         }, this.reconnectDelay * this.reconnectAttempts);
     }
 

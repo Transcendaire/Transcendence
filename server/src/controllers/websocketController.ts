@@ -1,7 +1,7 @@
 import { FastifyRequest } from 'fastify';
 import { WebSocket } from 'ws';
 // import { processPlayerInput } from "../services/gameService";
-import { Message, OutgoingMessage } from "../types";
+import { Message, WebSocketMessage } from "../types";
 
 // interface WebSocketConnection {
 //   socket: WebSocket;
@@ -15,19 +15,18 @@ export function websocketController(socket: WebSocket, log: any) {
       const msg: Message = JSON.parse(raw.toString());
 
       // Player joins (optional if game assigns them)
-      if (msg.type === "join") {
-        playerId = msg.playerId; // Provided by frontend or assigned earlier
+      if (msg.type === "join_tournament") {
+        playerId = msg.alias; // Provided by frontend or assigned earlier
         log.info(`Player joined with id ${playerId}`);
         socket.send(JSON.stringify({ type: "joined", playerId }));
       }
 
       // Player sends input (up/down/stop/etc.)
-      if (msg.type === "input" && playerId) {
+      if (msg.type === "player_input" && playerId) {
         // const updatedState = processPlayerInput(playerId, msg.input);
 
-        const response: OutgoingMessage = {
-          type: "state_update",
-          state: "test",
+        const response: WebSocketMessage = { //! just for testing purposes
+          type: "pong"
         };
         socket.send(JSON.stringify(response));
       }

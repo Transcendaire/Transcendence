@@ -33,7 +33,7 @@ function initLobby(): void
     const lobbyScreen = document.getElementById("lobby")!;
     const gameScreen = document.getElementById("gameScreen")!;
     const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
-    const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
+    const playerNameInput = document.getElementById("playerName") as HTMLInputElement; 
     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
 
     wsClient = new WebSocketClient();

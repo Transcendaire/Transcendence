@@ -3,7 +3,7 @@ import { FastifyRequest, FastifyReply, preValidationHookHandler } from 'fastify'
 import websocket from '@fastify/websocket'
 import { MatchmakingService } from './services/matchmaking.js'
 import { GameInput, WebSocketMessage } from './types.js'
-
+import { websocketController } from './controllers/websocketController.js'
 
 const server = fastify()
 const matchmaking = new MatchmakingService()
@@ -11,7 +11,7 @@ const matchmaking = new MatchmakingService()
 server.register(websocket)
 
 async function startServer() {
-	await server.register(websocketPlugin);
+	// await server.register(websocketPlugin);
 
 	server.get('/ping', async (request, reply) => {
 		return 'pong\n';

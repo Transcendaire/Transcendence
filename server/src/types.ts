@@ -49,6 +49,37 @@ export type TournamentPlayer = {
 	alias: string;
 	status: 'playing' | 'waiting' | 'eliminated'
 }
+
+export type TournamentGame = {
+	game: GameState;
+	bracket: string;
+}
+
+export interface TournamentHTMLElements {
+	tournamentSetupScreen: HTMLButtonElement;
+	joinTournamentButton: HTMLButtonElement;
+	createTournamentButton: HTMLButtonElement;
+	cancelTournamentButton: HTMLButtonElement;
+	tournamentNameInput: HTMLInputElement;
+	playerCountInput: HTMLInputElement;
+}
+
+export type WebSocketMessage = 
+| { type: "join"; playerName: string }
+| { type: "waiting"; message?: string }
+| { type: "playerJoined"; playerCount: number }
+| { type: "gameStart"; playerRole: 'player1' | 'player2' }
+| { type: "input"; data: GameInput }
+| { type: "gameState"; data: GameState }
+| { type: "ping" }
+| { type: "pong" }
+// | { type: "createTournament"; name: string, maxPlayers: number }
+// | { type: "joinTournament"; tournamentId: string, player: string}
+// | { type: "tournamentUpdate"; tournament: Tournament}
+// | { type: "endTournament"; name:string }
+ //? not necessary anymore?
+
+//*RANDOM
 /*
 -> NV WEBSOCKET POUR LES TOURNOIS
 -> /tournament as endpoint
@@ -61,22 +92,3 @@ export type TournamentPlayer = {
 -> using w3ebclass as base class for websockettournament and modify handleMessage
 -> websocket is served because the client is sent to it according to its actions on a given button
 */
-export type TournamentGame = {
-	game: GameState;
-	bracket: string;
-}
-
-export type WebSocketMessage = 
-| { type: "join"; playerName: string }
-| { type: "waiting"; message?: string }
-| { type: "playerJoined"; playerCount: number }
-| { type: "gameStart"; playerRole: 'player1' | 'player2' }
-| { type: "input"; data: GameInput }
-| { type: "gameState"; data: GameState }
-| { type: "ping" }
-| { type: "pong" }
-| { type: "createTournament"; name: string, maxPlayers: number }
-| { type: "joinTournament"; tournamentId: string, player: string}
-| { type: "tournamentUpdate"; tournament: Tournament}
-| { type: "endTournament"; name:string }
- 

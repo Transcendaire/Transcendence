@@ -3,9 +3,11 @@ import { Ball } from "./Ball.js";
 import { COLORS, FONTS } from "./constants.js";
 import { WebSocketClient } from "./WebSocketClient.js";
 import { GameState, GameInput } from "../../server/src/types.js";
-
+import { TournamentHTMLElements } from "../../server/src/types.js"
+import { inputParserClass } from "./inputParser.js"
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
+const inputParser = new inputParserClass();
 
 let lastTime = 0;
 let player1: Player;
@@ -38,11 +40,23 @@ function initLobby(): void
     const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
     const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
-	const joinTournamentButton = document.getElementById("joinTournament") as HTMLButtonElement;
+
+	const tournamentButtons: TournamentHTMLElements = getTournamentElementsAsHTML();
 
     wsClient = new WebSocketClient();
     setupWebSocketHandlers();
-    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen, joinTournamentButton);
+    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen, tournamentButtons);
+}
+
+function getTournamentElementsAsHTML(): TournamentHTMLElements {
+	return {
+			tournamentSetupScreen: document.getElementById("tournamentSetup") as HTMLButtonElement,
+			joinTournamentButton: document.getElementById("joinTournament") as HTMLButtonElement,
+			createTournamentButton: document.getElementById("createTournament") as HTMLButtonElement,
+			cancelTournamentButton: document.getElementById("cancelTournament") as HTMLButtonElement,
+			tournamentNameInput: document.getElementById("tournamentName") as HTMLInputElement,
+			playerCountInput: document.getElementById("playerCount") as HTMLInputElement
+	};
 }
 
 /**
@@ -96,15 +110,13 @@ function setupWebSocketHandlers(): void
  */
 function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput: HTMLInputElement, 
                                  cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement,
-								 joinTournamentButton: HTMLButtonElement): void
+								 tournamentButtons: TournamentHTMLElements): void
 {
     joinButton.addEventListener('click', async () => {
         const playerName = playerNameInput.value.trim();
         
-        if (!playerName) {
-            showError("Veuillez entrer votre nom");
-            return;
-        }
+		if (inputParser.parsePlayerName(playerName) === false)
+			return;
         try {
             await wsClient.connect(`ws://${window.location.host}/game`);
             wsClient.joinGame(playerName);
@@ -112,15 +124,29 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
             showError("Impossible de se connecter au serveur");
         }
     });
+
     cancelButton.addEventListener('click', () => {
         wsClient.disconnect();
         returnToLobby();
     });
-	joinTournamentButton.addEventListener('click', async () => {
-		let n = 0;
-		n++
-		console.log("Button join was clicked: ", n);
+
+	tournamentButtons.joinTournamentButton.addEventListener('click', async () => {
+		lobbyScreen.classList.add("hidden");
+		tournamentButtons.tournamentSetupScreen.classList.remove("hidden");
 	});
+	tournamentButtons.createTournamentButton.addEventListener('click', async () => {
+		const tournamentName = tournamentButtons.tournamentNameInput.value.trim();
+		const nbPlayers = Number(tournamentButtons.playerCountInput.value.trim());
+	
+		if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
+			return;
+		//*store in db
+		//*launch tournament
+	})
+
+	tournamentButtons.cancelTournamentButton.addEventListener('click', async () => { //?Should I just use returnToLobby()?
+		returnToLobby();
+	})
 }
 
 /**

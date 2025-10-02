@@ -8,32 +8,19 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="./config/config-tailwind.js"></script>
 </head>
-<div class="min-h-screen grid grid-rows-[80px_1fr_60px] bg-gray-900 text-white">
-  <!-- Header -->
-  <header class="flex items-center justify-between px-6 bg-gray-800 shadow-md">
-    <h1 class="text-2xl font-bold">Pong Dashboard</h1>
-    <nav class="flex gap-4">
-      <a href="#" class="hover:text-yellow-400">Accueil</a>
-      <a href="#" class="hover:text-yellow-400">Profil</a>
-      <a href="#" class="hover:text-yellow-400">Classement</a>
-    </nav>
-  </header>
-
-  <!-- Main content -->
-  <main class="grid place-items-center">
-    <div class="grid gap-6 w-full max-w-md">
-      <button class="bg-yellow-500 hover:bg-yellow-600 text-black font-semibold py-4 rounded-2xl shadow-lg transition">
-        🎮 Partie rapide
-      </button>
-      <button class="bg-purple-500 hover:bg-purple-600 text-white font-semibold py-4 rounded-2xl shadow-lg transition">
-        🏆 Tournoi
-      </button>
+  <main class="h-screen bg-sonpi16-orange ">
+    <div id="lobby" class="flex sm:flex-row flex-col justify-center items-center">
+      <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-md">
+      <div class="grid-2 m-0 p-0">
+        <h1 class="text-sonpi16-black font-semibold text-4xl font-quency">Transcendaire</h1>
+        <p class="text-sonpi16-black font-semibold text-2xl font-quency">la quintessence du pong</p>
+            <div id="sign-up"class="flex-1  mr-2 border-sonpi16-black bg-sonpi16-balck text-sonpi16-black border-2 px-3 pt-0.5 pb-1 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
+                <h2 class="text-2xl font-bold">sign-up</h2>
+            </div>
+            <div id="sign-in" class="flex-2 border-sonpi16-black bg-sonpi16-orange text-sonpi16-black border-2 px-3 pt-0.5 pb-1 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange"> 
+                <h2 class="text-2xl font-bold">sign-in</h2>
+            </div>
+      </div>
     </div>
   </main>
-
-  <!-- Footer -->
-  <footer class="flex items-center justify-center bg-gray-800 text-sm">
-    © 2025 Pong Game
-  </footer>
-</div>
 </html>

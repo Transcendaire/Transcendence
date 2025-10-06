@@ -1,5 +1,3 @@
-// import { showError } from "./main.js"
-
 function showError(message: string): void
 {
     alert(message);
@@ -29,8 +27,8 @@ export class inputParserClass {
 			return false;
 		}
 
-		if (nbPlayers < 0 || nbPlayers > 64) {
-			showError("Le tournoi doit comporter entre 0 et 64 joueurs");
+		if (nbPlayers < 2 || nbPlayers > 64) {
+			showError("Le tournoi doit comporter entre 2 et 64 joueurs");
 			return false;
 		}
 		return true;
@@ -38,7 +36,7 @@ export class inputParserClass {
 
 	public parsePlayerName(name: string): boolean {
 
-		if (!name) //? simple check here but need to parse the input just like user creation?
+		if (!name)
 		{
 			showError("Veuillez entrer votre nom")
 			return false;

@@ -1,7 +1,8 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player } from "../types.js"
-
+import { getDatabase } from "./databaseSingleton.js";
+// import { create } from "domain";
 
 /**
  * @brief Validates alias format and constraints
@@ -28,7 +29,7 @@ export class DatabaseService {
 	}
 
 	/**
-	 * @brief Initializes the database schema by creating the necessary tables if they do not exist.
+	 * @brief Initializes the database schema by creating the  necessary tables if they do not exist.
 	 *
 	 * This method sets up tables for players, tournaments, and matches, including their relationships and constraints.
 	 */
@@ -38,13 +39,24 @@ export class DatabaseService {
 			id TEXT PRIMARY KEY,
 			alias TEXT UNIQUE NOT NULL,
 			created_at INTEGER NOT NULL,
-			situation TEXT PRIMARY KEY
+			status TEXT PRIMARY KEY
 			);
 			CREATE TABLE IF NOT EXISTS tournaments (
 			  id TEXT PRIMARY KEY,
 			  name TEXT NOT NULL,
+			  curr_nb_players INTEGER NOT NULL,
+			  max_players INTEGER NOT NULL,
+			  status TEXT NOT NULL,
 			  created_at INTEGER NOT NULL
 			);
+			CREATE TABLE IF NOT EXISTS tournament_players (
+			tournament_id TEXT NOT NULL,
+			player_id TEXT NOT NULL,
+			joined_at INTEGER NOT NULL,
+			PRIMARY KEY (tournament_id, player_id),
+			FOREIGN KEY(tournament_id) REFERENCES tournaments(id),
+			FOREIGN KEY(player_id) REFERENCES players(id)
+			)
 			CREATE TABLE IF NOT EXISTS matches (
 			  id TEXT PRIMARY KEY,
 			  tournament_id TEXT NOT NULL,
@@ -69,9 +81,9 @@ export class DatabaseService {
 	 */
 	public createPlayer(alias: string): string 
 	{
-		const id = randomUUID();
-
 		checkAliasValidity(alias);
+		
+		const id = randomUUID();
 		this.db.prepare("INSERT INTO players (id, alias, created_at) VALUES (?, ?, ?)").run(id, alias.trim(), Date.now());
 		return id;
 	}
@@ -87,7 +99,7 @@ export class DatabaseService {
 	}
 
 	/**
-	 * @brief Checks if a player with given alias exists
+	 * @brief Checks if a player with a given alias exists
 	 * @param alias The alias to check
 	 * @returns True if player exists, false otherwise
 	 */
@@ -132,7 +144,7 @@ export class DatabaseService {
 	}
 
 	/**
-	 * @brief Retrieves a player by specified column and value
+	 * @brief Retrieves a player by specified column and value in the players table
 	 * @param type Column name to search by
 	 * @param value Value to search for
 	 * @returns Player object if found, undefined otherwise
@@ -175,7 +187,7 @@ export class DatabaseService {
 	 * @brief Retrieves all players from database
 	 * @returns Array of all player objects
 	 */
-	public listAllPlayers(): Player[]
+	public getAllPlayers(): Player[]
 	{
 		return this.db.prepare("SELECT * FROM players").all() as Player[];
 	}
@@ -209,11 +221,159 @@ export class DatabaseService {
 		const dbPlayers = this.db.prepare("SELECT * FROM players").all() as Player[];
 
 		dbPlayers.forEach((p: Player) =>  console.log("player :", p));
-	}	
+	}
+
+																//* TOURNAMENT FUNCTIONS
+
+	/**
+	 * @brief Retrieves a tournament by ID or name
+	 * @param id Optional tournament UUID to search by
+	 * @param name Optional tournament name to search by
+	 * @returns Tournament object if found, undefined otherwise
+	 * @throws Error if neither id nor name is provided
+	 */
+	public getTournament(id?: string, name?: string)
+	{
+		if (!id && !name)
+			throw new Error("getTournament: at least one of id or name is needed")
+		
+		let query: string = "SELECT * FROM tournament WHERE"
+		if (id) {
+			query += " id= ?";
+			return this.db.prepare(query).get(id);
+		}
+		if (name) {
+			query += " name= ?";
+			return this.db.prepare(query).get(name);
+		}
+	}
+
+	public getTournamentsByStatus(status: string): any[] 
+	{
+		return this.db.prepare("SELECT * FROM tournaments WHERE status = ?").all(status);
+	}
+
+	/**
+	 * @brief Creates a new tournament in the database
+	 * @param name Unique name for the tournament
+	 * @param maxPlayers Maximum number of players allowed in the tournament
+	 * @returns Generated UUID for the created tournament
+	 * @throws Error if tournament name already exists or database operation fails
+	 */
+	public createTournament(name:string, maxPlayers:number)
+	{
+		if (this.getTournament(undefined, name))
+			throw new Error(`createTournament: tournament ${name} already exists and cannot be created`);
+
+		if (maxPlayers % 2)
+			throw new Error("createTournament: Number of players inside a tournament must be even")
+		if (maxPlayers < 2 || maxPlayers > 64)
+			throw new Error("createTournament: Number of players must be between 2 and 64")
+	
+		const id = randomUUID();
+		this.db.prepare("INSERT INTO tournaments (id, name, curr_nb_players, max_players, status, created_at) VALUES (?, ?, ?, ?, ?"
+		).run(id, name, 0, maxPlayers, 'created', Date.now());
+
+		return id;
+	}
+
+	/**
+	 * @brief Adds a player to a tournament, creating the player if they don't exist
+	 * @param alias Player's alias to add to the tournament
+	 * @param tournamentId UUID of the tournament to join
+	 * @param tournamentName Name of the tournament (used for error messages)
+	 * @throws Error if alias is invalid, tournament doesn't exist, tournament is full, or player is already registered
+	 */
+	public addPlayerToTournament(alias: string, tournamentId: string, tournamentName: string): void
+	{
+		checkAliasValidity(alias);
+
+		const tournament = this.getTournament(tournamentId);
+		if (!tournament)
+			throw new Error(`addPlayerToTournament: Tournament ${tournamentName} not found`);
+		
+		if (tournament.curr_nb_players === tournament.max_players)
+			throw new Error(`addPlayerToTournament: cannot add ${alias}: Tournament ${tournamentName} is already full`)
+
+		let player = this.getPlayer(alias);
+		if (!player)
+		{
+			const playerId = this.createPlayer(alias);
+			player = { id: playerId, alias, createdAt: Date.now()};
+		}
+
+		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
+		).run(tournamentId, player.id);
+		if (playerAlreadyInTournament)
+			throw new Error(`addPlayerToTournament: player with alias ${alias} alreadyb exists in tournament ${tournamentName}`)
+
+		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, joined_at) VALUES (?, ?, ?"
+		).run(tournamentId, player.id, Date.now());
+
+		this.db.prepare("UPDATE tournaments SET curr_nb_players = curr_nb_players + 1 WHERE id = ?").run(tournamentId);
+	}
+
+	/**
+	 * @brief Updates the statudatabase.createPlayer("Pierre");
+s of a tournament
+	 * @param status New status value to set
+	 * @param tournamentId UUID of the tournament to update
+	 * @throws Error if tournament not found or database operation fails
+	 */
+	public setTournamentStatus(status: string, tournamentId: string): void 
+	{
+		this.db.prepare("UPDATE tournaments SET status = ? WHERE id = ?").run(status, tournamentId);
+	}
+
+	/**
+	 * @brief Records the result of a match between two players in a tournament
+	 * @param tournamentId UUID of the tournament where the match took place
+	 * @param tournamentName Name of the tournament (used for error messages)
+	 * @param winnerId UUID of the winning player
+	 * @param loserId UUID of the losing player
+	 * @param scoreWinner Score achieved by the winner
+	 * @param scoreLoser Score achieved by the loser
+	 * @throws Error if required parameters are missing, players are the same, tournament doesn't exist, or players are not registered in the tournament
+	 */
+	public recordMatchResult(tournamentId: string, tournamentName: string, winnerId: string, loserId: string, scoreWinner: number, scoreLoser: number): void 
+	{
+		if (!tournamentId || !winnerId || !loserId)
+			throw new Error("recordMatchResult: tournamentId, winnerId and loserId needed");
+		
+		if (winnerId === loserId)
+			throw new Error("recordMatchResult: winnerId and loserId cannot be the same");
+
+		const tournament = this.getTournament(tournamentId);
+		if (!tournament)
+			throw new Error(`recordMatchResult: ${tournamentName} tournament doesn't exist`)
+
+		let winnerExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, winnerId);
+		let loserExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, loserId);
+
+    	if (!winnerExists)
+      		throw new Error(`recordMatchResult: Winner not found in tournament ${tournamentId}`);
+    	if (!loserExists)
+        	throw new Error(`recordMatchResult: Loser not found in tournament ${tournamentId}`);
+
+		const matchId = randomUUID();
+		this.db.prepare(`INSERT INTO matches (
+			id, tournament_id, player_a, player_b,
+			score_a, score_b, state, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+			).run(matchId, tournamentId, winnerId, loserId, scoreWinner, scoreLoser, "completed", Date.now());
+		
+	}
 }
 
 
 
 
 
+//*preparing the tests
+const database = getDatabase();
 
+database.createPlayer("SonAIR");
+database.createPlayer("PiAIR");
+database.createPlayer("16R");
+
+database.createTournament("les R", 4);

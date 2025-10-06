@@ -5,6 +5,8 @@ import { WebSocketClient } from "./WebSocketClient.js";
 import { GameState, GameInput } from "../../server/src/types.js";
 import { TournamentHTMLElements } from "../../server/src/types.js"
 import { inputParserClass } from "./inputParser.js"
+import { getDatabase } from "../../server/src/db/databaseSingleton.js"
+
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
 const inputParser = new inputParserClass();
@@ -112,14 +114,15 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
                                  cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement,
 								 tournamentButtons: TournamentHTMLElements): void
 {
-    joinButton.addEventListener('click', async () => {
-        const playerName = playerNameInput.value.trim();
-        
-		if (inputParser.parsePlayerName(playerName) === false)
+	const getPlayerName = () => playerNameInput.value.trim() ; 
+
+	joinButton.addEventListener('click', async () => {
+
+		if (inputParser.parsePlayerName(getPlayerName()) === false)
 			return;
         try {
             await wsClient.connect(`ws://${window.location.host}/game`);
-            wsClient.joinGame(playerName);
+            wsClient.joinGame(getPlayerName());
         } catch (error) {
             showError("Impossible de se connecter au serveur");
         }
@@ -131,15 +134,18 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
     });
 
 	tournamentButtons.joinTournamentButton.addEventListener('click', async () => {
-		lobbyScreen.classList.add("hidden");
-		tournamentButtons.tournamentSetupScreen.classList.remove("hidden");
+		if (inputParser.parsePlayerName(getPlayerName()) === false)
+			return;
+		showTournamentScreen(lobbyScreen, tournamentButtons.tournamentSetupScreen);	
 	});
+
 	tournamentButtons.createTournamentButton.addEventListener('click', async () => {
 		const tournamentName = tournamentButtons.tournamentNameInput.value.trim();
 		const nbPlayers = Number(tournamentButtons.playerCountInput.value.trim());
-	
 		if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
 			return;
+		//* get all informations
+		//*call tournamentService to create a tournament
 		//*store in db
 		//*launch tournament
 	})
@@ -247,6 +253,12 @@ function showWaitingScreen(): void
     
     lobbyContent.classList.add("hidden");
     waitingDiv.classList.remove("hidden");
+}
+
+function showTournamentScreen( lobbyScreen: HTMLElement, tournamentSetupScreen: HTMLButtonElement): void 
+{
+	lobbyScreen.classList.add("hidden");
+	tournamentSetupScreen.classList.remove("hidden");
 }
 
 function updatePlayerCount(playerCount: number): void

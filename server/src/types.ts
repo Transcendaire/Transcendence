@@ -40,7 +40,7 @@ export type Tournament = {
 	currentPlayers: number;
 	players: Player[]; //? shouldn't they be stored inside the database?
 	round: number;
-	status: 'pending' | 'active' | 'completed';
+	status: 'created' | 'active' | 'completed';
 	createdAt: number;
 }
 

@@ -23,8 +23,8 @@ export class DatabaseService {
 	
 	private db: any;
 
-	constructor(public name: string) {
-		this.db = new Database(name);
+	constructor() {
+		this.db = new Database('transcendaire.db');
 		this.setDatabase();
 	}
 
@@ -39,7 +39,7 @@ export class DatabaseService {
 			id TEXT PRIMARY KEY,
 			alias TEXT UNIQUE NOT NULL,
 			created_at INTEGER NOT NULL,
-			status TEXT PRIMARY KEY
+			status TEXT NOT NULL
 			);
 			CREATE TABLE IF NOT EXISTS tournaments (
 			  id TEXT PRIMARY KEY,
@@ -56,7 +56,7 @@ export class DatabaseService {
 			PRIMARY KEY (tournament_id, player_id),
 			FOREIGN KEY(tournament_id) REFERENCES tournaments(id),
 			FOREIGN KEY(player_id) REFERENCES players(id)
-			)
+			);
 			CREATE TABLE IF NOT EXISTS matches (
 			  id TEXT PRIMARY KEY,
 			  tournament_id TEXT NOT NULL,
@@ -84,7 +84,7 @@ export class DatabaseService {
 		checkAliasValidity(alias);
 		
 		const id = randomUUID();
-		this.db.prepare("INSERT INTO players (id, alias, created_at) VALUES (?, ?, ?)").run(id, alias.trim(), Date.now());
+		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), Date.now(), 'created');
 		return id;
 	}
 
@@ -125,6 +125,7 @@ export class DatabaseService {
 		if (!newAlias || newAlias.trim().length < 3)
 			throw new Error("New alias cannot be less than 3 characters");
 		checkAliasValidity(newAlias);
+
 		if (!this.db.prepare("SELECT 1 FROM players WHERE id = ?").get(id))
 			throw new Error("Player not found");
 		if (existingPlayer && existingPlayer.id !== id) 
@@ -176,13 +177,14 @@ export class DatabaseService {
 	 */
 	public removePlayer(id: string): boolean
 	{
-		const result = this.db.prepare("DELETE FROM players WHERE id= ?").run(id);
-
 		if (!id || id.trim().length < 3)
 			throw new Error("Player ID cannot be less than 3 characters");
+
+		const result = this.db.prepare("DELETE FROM players WHERE id= ?").run(id);
 		return result.changes > 0;
 	}
 
+	//! use a rest api to broadcast info to players of  a tournament based on events (end of game, tournament...)
 	/**
 	 * @brief Retrieves all players from database
 	 * @returns Array of all player objects
@@ -223,6 +225,35 @@ export class DatabaseService {
 		dbPlayers.forEach((p: Player) =>  console.log("player :", p));
 	}
 
+
+
+	public getMatches(tournamentId?: string, matchId?: string) 
+	{
+		if (!tournamentId && !matchId)
+			throw new Error("getMatchById: at least one of tournamentId or matchId is needed");
+		
+		let query: string = "SELECT * FROM matches WHERE ";
+		if (tournamentId)
+		{
+			query += "tournament_id = ?";
+			return this.db.prepare(query).all(tournamentId);
+		}
+		if (matchId)
+		{
+			query += "id = ?";
+			return this.db.prepare(query).all(matchId);
+		}
+		return;
+	}
+
+	public deleteAll()
+	{
+		this.db.prepare("DELETE FROM players").run()
+		this.db.prepare("DELETE FROM tournament_players").run()
+		this.db.prepare("DELETE FROM tournaments").run()
+		this.db.prepare("DELETE FROM matches").run()
+	}
+
 																//* TOURNAMENT FUNCTIONS
 
 	/**
@@ -237,17 +268,31 @@ export class DatabaseService {
 		if (!id && !name)
 			throw new Error("getTournament: at least one of id or name is needed")
 		
-		let query: string = "SELECT * FROM tournament WHERE"
-		if (id) {
+		let query: string = "SELECT * FROM tournaments WHERE"
+		if (id)
+		{
 			query += " id= ?";
 			return this.db.prepare(query).get(id);
 		}
-		if (name) {
+		if (name)
+		{
 			query += " name= ?";
 			return this.db.prepare(query).get(name);
 		}
 	}
 
+	/**
+	 * @brief Retrieves all tournaments from the database that match the specified status.
+	 * 
+	 * @description
+	 * Queries the tournaments table and returns all tournament records where the status
+	 * column matches the provided status parameter. This method performs a simple
+	 * SELECT query with a WHERE clause filtering by tournament status.
+	 * 
+	 * @param string status - The status value to filter tournaments by (e.g., 'active', 'completed', 'pending')
+	 * @returns An array of tournament objects matching the specified status. Returns an empty array if no matches are found.
+	 * 
+	 */
 	public getTournamentsByStatus(status: string): any[] 
 	{
 		return this.db.prepare("SELECT * FROM tournaments WHERE status = ?").all(status);
@@ -268,10 +313,10 @@ export class DatabaseService {
 		if (maxPlayers % 2)
 			throw new Error("createTournament: Number of players inside a tournament must be even")
 		if (maxPlayers < 2 || maxPlayers > 64)
-			throw new Error("createTournament: Number of players must be between 2 and 64")
+			throw new Error("createTournament: Number of players inside a tournament must be between 2 and 64")
 	
 		const id = randomUUID();
-		this.db.prepare("INSERT INTO tournaments (id, name, curr_nb_players, max_players, status, created_at) VALUES (?, ?, ?, ?, ?"
+		this.db.prepare("INSERT INTO tournaments (id, name, curr_nb_players, max_players, status, created_at) VALUES (?, ?, ?, ?, ?, ?)"
 		).run(id, name, 0, maxPlayers, 'created', Date.now());
 
 		return id;
@@ -303,25 +348,26 @@ export class DatabaseService {
 		}
 
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
-		).run(tournamentId, player.id);
+		).get(tournamentId, player.id);
 		if (playerAlreadyInTournament)
-			throw new Error(`addPlayerToTournament: player with alias ${alias} alreadyb exists in tournament ${tournamentName}`)
+			throw new Error(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
 
-		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, joined_at) VALUES (?, ?, ?"
+		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, joined_at) VALUES (?, ?, ?)"
 		).run(tournamentId, player.id, Date.now());
 
 		this.db.prepare("UPDATE tournaments SET curr_nb_players = curr_nb_players + 1 WHERE id = ?").run(tournamentId);
 	}
 
 	/**
-	 * @brief Updates the statudatabase.createPlayer("Pierre");
-s of a tournament
+	 * @brief Updates the status of a tournament
 	 * @param status New status value to set
 	 * @param tournamentId UUID of the tournament to update
 	 * @throws Error if tournament not found or database operation fails
 	 */
 	public setTournamentStatus(status: string, tournamentId: string): void 
 	{
+		if (status != 'created' && status != 'running' && status != 'completed')
+			throw new Error("setTournamentStatus: status can only be 'created', 'running' or 'completed'");
 		this.db.prepare("UPDATE tournaments SET status = ? WHERE id = ?").run(status, tournamentId);
 	}
 
@@ -335,7 +381,7 @@ s of a tournament
 	 * @param scoreLoser Score achieved by the loser
 	 * @throws Error if required parameters are missing, players are the same, tournament doesn't exist, or players are not registered in the tournament
 	 */
-	public recordMatchResult(tournamentId: string, tournamentName: string, winnerId: string, loserId: string, scoreWinner: number, scoreLoser: number): void 
+	public recordMatchResult(tournamentId: string, tournamentName: string, winnerId: string, loserId: string, scoreWinner: number, scoreLoser: number): string 
 	{
 		if (!tournamentId || !winnerId || !loserId)
 			throw new Error("recordMatchResult: tournamentId, winnerId and loserId needed");
@@ -361,7 +407,33 @@ s of a tournament
 			score_a, score_b, state, created_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 			).run(matchId, tournamentId, winnerId, loserId, scoreWinner, scoreLoser, "completed", Date.now());
+		return matchId;
 		
+	}
+
+	public deleteTournament(tournamentId?: string, tournamentName?: string)
+	{
+		if (!tournamentId && !tournamentName)
+			throw new Error("deleteTournament: at least one of tournamentId or tournamentName is needed");
+		
+		if (tournamentId)
+		{
+			this.db.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournamentId);
+    	    this.db.prepare("DELETE FROM tournament_players WHERE tournament_id = ?").run(tournamentId);
+    	    this.db.prepare("DELETE FROM tournaments WHERE id = ?").run(tournamentId);
+			return ;
+		}
+		if (tournamentName)
+		{
+			const tournament = this.getTournament(undefined, tournamentName);
+		 	if (!tournament)
+				throw new Error(`deleteTournament: tournament ${tournamentName} doesn't exist`);
+
+			this.db.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournament.id);
+			this.db.prepare("DELETE FROM tournament_players WHERE tournament_id = ?").run(tournament.id);
+			this.db.prepare("DELETE FROM tournaments WHERE id = ?").run(tournament.id);
+
+		}
 	}
 }
 
@@ -369,11 +441,5 @@ s of a tournament
 
 
 
-//*preparing the tests
-const database = getDatabase();
-
-database.createPlayer("SonAIR");
-database.createPlayer("PiAIR");
-database.createPlayer("16R");
-
-database.createTournament("les R", 4);
+//* get() returns first row. all() returns all rows. run() executes without returning data
+//! should be careful when re running the program multiple time : databse already exists and some operations need to be done only once?

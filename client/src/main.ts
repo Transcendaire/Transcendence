@@ -98,7 +98,6 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
 {
     joinButton.addEventListener('click', async () => {
         const playerName = playerNameInput.value.trim();
-        
         if (!playerName) {
             showError("Veuillez entrer votre nom");
             return;
@@ -110,6 +109,23 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
             showError("Impossible de se connecter au serveur");
         }
     });
+
+    const joinAIButton = document.getElementById("joinAI") as HTMLButtonElement;
+    if (joinAIButton) {
+        joinAIButton.addEventListener('click', async () => {
+            const playerName = playerNameInput.value.trim();
+            if (!playerName) {
+                showError("Veuillez entrer votre nom");
+                return;
+            }
+            try {
+                await wsClient.connect(`ws://${window.location.host}/game`);
+                wsClient.joinAIGame(playerName);
+            } catch (error) {
+                showError("Impossible de se connecter au serveur");
+            }
+        });
+    }
     cancelButton.addEventListener('click', () => {
         wsClient.disconnect();
         returnToLobby();

@@ -32,6 +32,18 @@ export class AIPlayer
         }, 1000)
     }
 
+    // Fonction GoMiddle:
+        // On est au milieu (en Y)?
+            // up et down = false :
+            // up ou down en direction du milieu
+
+    // qu'un input?
+        // Si oui GoMiddle :
+        // Sinon Si la balle vient vers nous (velocite +x car le bot est a droite) ?
+            // Si oui alors calculer le Y de la balle quand elle sera a X = this.canvasWidth(800) - paddleOffset(30) - 10, on y est?
+                // Si oui up et down = false :
+                // Sinon (up ou down) vers ce point:
+            // Sinon GoMiddle
     decide(gameState: { player1: Player; player2: Player; ball: Ball })
     {
         return { up: true, down: false }

@@ -2,6 +2,7 @@ import { WebSocket } from 'ws'
 import { GameService } from './main.js'
 import { GameState, GameInput, WebSocketMessage } from '../types.js'
 import { AIPlayer } from './AIPlayer.js'
+import { canvasWidth, canvasHeight } from '../consts.js'
 
 interface Player
 {
@@ -70,7 +71,7 @@ export class MatchmakingService
 	private createAIGame(player1: Player): void
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
-		const gameService = new GameService(800, 800)
+		const gameService = new GameService(canvasWidth, canvasHeight)
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId)
 		}, 16)
@@ -167,7 +168,7 @@ export class MatchmakingService
 	private createGame(player1: Player, player2: Player): void
 	{
 		const gameId = Math.random().toString(36).substr(2, 9);
-		const gameService = new GameService(800, 800);
+		const gameService = new GameService(canvasWidth, canvasHeight);
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId);
 		}, 16);

@@ -35,6 +35,7 @@ export type GameState = {
 
 export type WebSocketMessage = 
 | { type: "join"; playerName: string }
+| { type: "joinAI"; playerName: string }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
 | { type: "gameStart"; playerRole: 'player1' | 'player2' }

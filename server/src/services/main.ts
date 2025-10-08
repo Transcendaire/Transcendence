@@ -1,6 +1,7 @@
 import { Player } from "../models/Player.js";
 import { Paddle } from "../models/Paddle.js";
 import { Ball } from "../models/Ball.js";
+import { paddleSize, paddleOffset } from "../consts.js";
 
 /**
  * @brief Game logic service handling gameplay mechanics
@@ -31,11 +32,9 @@ export class GameService
      */
     private initGame(): void
     {
-        const paddleOffset = 30;
-        const paddleY = this.canvasHeight / 2 - 50;
 
-        this.player1 = new Player("Player 1", paddleOffset, paddleY);
-        this.player2 = new Player("Player 2", this.canvasWidth - paddleOffset - 10, paddleY);
+        this.player1 = new Player("Player 1", paddleOffset);
+        this.player2 = new Player("Player 2", this.canvasWidth - paddleOffset - 10);
         this.ball = new Ball(this.canvasWidth / 2, this.canvasHeight / 2);
     }
 
@@ -128,6 +127,8 @@ export class GameService
             console.log(`[SERVER] POINT MARQUE! ${player.name}: ${oldScore} -> ${player.score}`);
             console.log(`[SERVER] Score actuel: ${this.player1.name} ${this.player1.score} - ${this.player2.score} ${this.player2.name}`);
             ball.reset(this.canvasWidth, this.canvasHeight);
+            this.player1.paddle.positionY = this.canvasHeight / 2 - paddleSize / 2;
+            this.player2.paddle.positionY = this.canvasHeight / 2 - paddleSize / 2;
         }
     }
 

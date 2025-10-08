@@ -4,6 +4,14 @@ import { Player } from "../types.js"
 import { getDatabase } from "./databaseSingleton.js";
 // import { create } from "domain";
 
+
+	//ToDo use a rest api to broadcast info to players of  a tournament based on events (end of game, tournament...)
+	//! If tournament is launched a dn the number of players is even, fill the remaining with ai opponents
+	//ToDo loadFromDatabase() to retrieve tournament when server restarts
+	//ToDo savreBracketToDatabase() to store each match with initial state
+	//ToDo updateMAtchInDatabase() after the match
+	//ToDo check that the bracket's tournament doesnt already exists in the database before creating a bracket
+ 
 /**
  * @brief Validates alias format and constraints
  * @param alias The alias string to validate
@@ -52,6 +60,7 @@ export class DatabaseService {
 			CREATE TABLE IF NOT EXISTS tournament_players (
 			tournament_id TEXT NOT NULL,
 			player_id TEXT NOT NULL,
+			alias TEXT NOT NULL,
 			joined_at INTEGER NOT NULL,
 			PRIMARY KEY (tournament_id, player_id),
 			FOREIGN KEY(tournament_id) REFERENCES tournaments(id),
@@ -184,7 +193,6 @@ export class DatabaseService {
 		return result.changes > 0;
 	}
 
-	//! use a rest api to broadcast info to players of  a tournament based on events (end of game, tournament...)
 	/**
 	 * @brief Retrieves all players from database
 	 * @returns Array of all player objects
@@ -298,6 +306,13 @@ export class DatabaseService {
 		return this.db.prepare("SELECT * FROM tournaments WHERE status = ?").all(status);
 	}
 
+	public getTournamentPlayers(tournamentId: string)
+	{
+		if (!tournamentId)
+			throw new Error("getTournamentPlayers: tournament ID cannot be empty");
+		return this.db.prepare("SELECT * FROM tournament_players WHERE tournament_id = ?").all(tournamentId);
+	}
+
 	/**
 	 * @brief Creates a new tournament in the database
 	 * @param name Unique name for the tournament
@@ -352,8 +367,8 @@ export class DatabaseService {
 		if (playerAlreadyInTournament)
 			throw new Error(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
 
-		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, joined_at) VALUES (?, ?, ?)"
-		).run(tournamentId, player.id, Date.now());
+		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, alias, joined_at) VALUES (?, ?, ?, ?)"
+		).run(tournamentId, player.id, alias, Date.now());
 
 		this.db.prepare("UPDATE tournaments SET curr_nb_players = curr_nb_players + 1 WHERE id = ?").run(tournamentId);
 	}
@@ -375,38 +390,38 @@ export class DatabaseService {
 	 * @brief Records the result of a match between two players in a tournament
 	 * @param tournamentId UUID of the tournament where the match took place
 	 * @param tournamentName Name of the tournament (used for error messages)
-	 * @param winnerId UUID of the winning player
-	 * @param loserId UUID of the losing player
-	 * @param scoreWinner Score achieved by the winner
-	 * @param scoreLoser Score achieved by the loser
+	 * @param player1Id UUID of the first player
+	 * @param player2ID UUID of the second player
+	 * @param scorePlayer1 Score achieved by the first player
+	 * @param scorePlayer2 Score achieved by the second player
 	 * @throws Error if required parameters are missing, players are the same, tournament doesn't exist, or players are not registered in the tournament
 	 */
-	public recordMatchResult(tournamentId: string, tournamentName: string, winnerId: string, loserId: string, scoreWinner: number, scoreLoser: number): string 
+	public recordMatch(tournamentId: string, tournamentName: string, player1ID: string, player2ID: string, scorePlayer1: number, scorePlayer2: number, status: string): string 
 	{
-		if (!tournamentId || !winnerId || !loserId)
-			throw new Error("recordMatchResult: tournamentId, winnerId and loserId needed");
+		if (!tournamentId || !player1ID || !player2ID)
+			throw new Error("recordMatch: tournamentId, player1ID and player2ID needed");
 		
-		if (winnerId === loserId)
-			throw new Error("recordMatchResult: winnerId and loserId cannot be the same");
+		if (player1ID === player2ID)
+			throw new Error("recordMatch: player1ID and player2ID cannot be the same");
 
 		const tournament = this.getTournament(tournamentId);
 		if (!tournament)
-			throw new Error(`recordMatchResult: ${tournamentName} tournament doesn't exist`)
+			throw new Error(`recordMatch: ${tournamentName} tournament doesn't exist`)
 
-		let winnerExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, winnerId);
-		let loserExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, loserId);
+		let playerAExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player1ID);
+		let playerBExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player2ID);
 
-    	if (!winnerExists)
-      		throw new Error(`recordMatchResult: Winner not found in tournament ${tournamentId}`);
-    	if (!loserExists)
-        	throw new Error(`recordMatchResult: Loser not found in tournament ${tournamentId}`);
+    	if (!playerAExists)
+      		throw new Error(`recordMatch: first player not found in tournament ${tournamentId}`);
+    	if (!playerBExists)
+        	throw new Error(`recordMatch: second player not found in tournament ${tournamentId}`);
 
 		const matchId = randomUUID();
 		this.db.prepare(`INSERT INTO matches (
 			id, tournament_id, player_a, player_b,
 			score_a, score_b, state, created_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-			).run(matchId, tournamentId, winnerId, loserId, scoreWinner, scoreLoser, "completed", Date.now());
+			).run(matchId, tournamentId, player1ID, player2ID, scorePlayer1, scorePlayer2, status, Date.now());
 		return matchId;
 		
 	}

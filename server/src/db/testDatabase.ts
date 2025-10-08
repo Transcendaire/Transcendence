@@ -41,9 +41,9 @@ try {
     tournamentInfo = database.getTournament(tournament);
     console.log("Tournament info:", tournamentInfo);
 
-	database.recordMatchResult(tournament, "les R", s, p, 5, 2);
-	database.recordMatchResult(tournament, "les R", c, s, 5, 1);
-	database.recordMatchResult(tournament, "les R", p, c, 100, 0);
+	// database.recordMatchResult(tournament, "les R", s, p, 5, 2);
+	// database.recordMatchResult(tournament, "les R", c, s, 5, 1);
+	// database.recordMatchResult(tournament, "les R", p, c, 100, 0);
 	let matches = database.getMatches(tournament);
 	console.log("\t\t\t\t\tMATCHES\n", matches); 
 	// database.printPlayers();

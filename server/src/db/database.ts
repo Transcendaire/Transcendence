@@ -408,13 +408,16 @@ export class DatabaseService {
 		if (!tournament)
 			throw new Error(`recordMatch: ${tournamentName} tournament doesn't exist`)
 
-		let playerAExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player1ID);
-		let playerBExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player2ID);
-
-    	if (!playerAExists)
-      		throw new Error(`recordMatch: first player not found in tournament ${tournamentId}`);
-    	if (!playerBExists)
-        	throw new Error(`recordMatch: second player not found in tournament ${tournamentId}`);
+		if (status === "completed")
+		{
+			let playerAExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player1ID);
+			let playerBExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player2ID);
+			
+			if (!playerAExists)
+				throw new Error(`recordMatch: first player not found in tournament ${tournamentId}`);
+			if (!playerBExists)
+				throw new Error(`recordMatch: second player not found in tournament ${tournamentId}`);
+		}
 
 		const matchId = randomUUID();
 		this.db.prepare(`INSERT INTO matches (

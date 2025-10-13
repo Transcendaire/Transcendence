@@ -32,11 +32,12 @@ import fs from 'fs'
     index: false
   })
   
-  await server.register(fastifyStatic, {
-    root: distPath,
-    prefix: '/dist',
-    decorateReply: false
-  })
+  // await server.register(fastifyStatic, {
+  //   root: distPath,
+  //   prefix: '/dist',
+  //   decorateReply: false,
+  //   index: false
+  // })
   
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
@@ -79,6 +80,11 @@ import fs from 'fs'
     // Skip WebSocket route
     if (request.url === '/game') {
       return reply.code(404).send({ error: 'WebSocket endpoint not found' })
+    }
+
+    // Skip les fichiers statiques (JS, CSS, images, etc.)
+    if (request.url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf)$/)) {
+      return reply.code(404).send('File not found')
     }
     
     // For all other routes, serve the index.html file

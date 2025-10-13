@@ -4,11 +4,7 @@
         "module": "ES2020",
         "moduleResolution": "node",
         "outDir": "./public/dist",
-        "rootDir": "./src",
         "baseUrl": "./",
-        "paths": {
-            "../server/src/models/*": ["../server/src/models/*"]
-        },
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -29,6 +25,6 @@
         "exactOptionalPropertyTypes": true,
         "lib": ["DOM", "DOM.Iterable", "ES2020"]
     },
-    "include": ["src/**/*","../server/src/models/**/*", "../shared/src/constants.ts"],
+    "include": ["src/**/*"],
     "exclude": ["node_modules","dist"]
 }

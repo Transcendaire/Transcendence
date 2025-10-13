@@ -3,11 +3,15 @@ import { Ball } from "./Ball.js";
 import { COLORS, FONTS } from "./constants.js";
 import { WebSocketClient } from "./WebSocketClient.js";
 import { GameState, GameInput } from "../../server/src/types.js";
+import { TournamentHTMLElements } from "../../server/src/types.js"
+import { inputParserClass } from "./inputParser.js"
+import { getDatabase } from "../../server/src/db/databaseSingleton.js"
 import { paddleSize, paddleOffset } from "../../server/src/consts.js";
 
 
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
+const inputParser = new inputParserClass();
 
 let lastTime = 0;
 let player1: Player;
@@ -41,9 +45,22 @@ function initLobby(): void
     const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
 
+	const tournamentButtons: TournamentHTMLElements = getTournamentElementsAsHTML();
+
     wsClient = new WebSocketClient();
     setupWebSocketHandlers();
-    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen);
+    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen, tournamentButtons);
+}
+
+function getTournamentElementsAsHTML(): TournamentHTMLElements {
+	return {
+			tournamentSetupScreen: document.getElementById("tournamentSetup") as HTMLButtonElement,
+			joinTournamentButton: document.getElementById("joinTournament") as HTMLButtonElement,
+			createTournamentButton: document.getElementById("createTournament") as HTMLButtonElement,
+			cancelTournamentButton: document.getElementById("cancelTournament") as HTMLButtonElement,
+			tournamentNameInput: document.getElementById("tournamentName") as HTMLInputElement,
+			playerCountInput: document.getElementById("playerCount") as HTMLInputElement
+	};
 }
 
 /**
@@ -95,17 +112,18 @@ function setupWebSocketHandlers(): void
  * @param gameScreen Game screen element
  */
 function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput: HTMLInputElement, 
-                                 cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement): void
+                                 cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement,
+								 tournamentButtons: TournamentHTMLElements): void
 {
-    joinButton.addEventListener('click', async () => {
-        const playerName = playerNameInput.value.trim();
-        if (!playerName) {
-            showError("Veuillez entrer votre nom");
-            return;
-        }
+	const getPlayerName = () => playerNameInput.value.trim() ; 
+
+	joinButton.addEventListener('click', async () => {
+
+		if (inputParser.parsePlayerName(getPlayerName()) === false)
+			return;
         try {
             await wsClient.connect(`ws://${window.location.host}/game`);
-            wsClient.joinGame(playerName);
+            wsClient.joinGame(getPlayerName());
         } catch (error) {
             showError("Impossible de se connecter au serveur");
         }
@@ -131,6 +149,23 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
         wsClient.disconnect();
         returnToLobby();
     });
+
+	tournamentButtons.joinTournamentButton.addEventListener('click', async () => {
+		if (inputParser.parsePlayerName(getPlayerName()) === false)
+			return;
+		showTournamentScreen(lobbyScreen, tournamentButtons.tournamentSetupScreen);	
+	});
+
+	tournamentButtons.createTournamentButton.addEventListener('click', async () => {
+		const tournamentName = tournamentButtons.tournamentNameInput.value.trim();
+		const nbPlayers = Number(tournamentButtons.playerCountInput.value.trim());
+		if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
+			return;
+	})
+
+	tournamentButtons.cancelTournamentButton.addEventListener('click', async () => { //?Should I just use returnToLobby()?
+		returnToLobby();
+	})
 }
 
 /**
@@ -231,6 +266,12 @@ function showWaitingScreen(): void
     
     lobbyContent.classList.add("hidden");
     waitingDiv.classList.remove("hidden");
+}
+
+function showTournamentScreen( lobbyScreen: HTMLElement, tournamentSetupScreen: HTMLButtonElement): void 
+{
+	lobbyScreen.classList.add("hidden");
+	tournamentSetupScreen.classList.remove("hidden");
 }
 
 function updatePlayerCount(playerCount: number): void

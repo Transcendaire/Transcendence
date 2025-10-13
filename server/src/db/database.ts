@@ -7,6 +7,7 @@ import { getDatabase } from "./databaseSingleton.js";
 
 	//ToDo use a rest api to broadcast info to players of  a tournament based on events (end of game, tournament...)
 	//! If tournament is launched a dn the number of players is even, fill the remaining with ai opponents
+	//? Use status variable of players table if a player is AI or creating another variable 
 	//ToDo loadFromDatabase() to retrieve tournament when server restarts
 	//ToDo savreBracketToDatabase() to store each match with initial state
 	//ToDo updateMAtchInDatabase() after the match
@@ -69,15 +70,17 @@ export class DatabaseService {
 			CREATE TABLE IF NOT EXISTS matches (
 			  id TEXT PRIMARY KEY,
 			  tournament_id TEXT NOT NULL,
-			  player_a TEXT NOT NULL,
-			  player_b TEXT NOT NULL,
+			  player_a_id TEXT NOT NULL,
+			  player_b_id TEXT NOT NULL,
+			  alias_a TEXT NOT NULL,
+			  alias_b TEXT NOT NULL,
 			  score_a INTEGER DEFAULT 0,
 			  score_b INTEGER DEFAULT 0,
 			  state TEXT NOT NULL,
 			  created_at INTEGER NOT NULL,
 			  FOREIGN KEY(tournament_id) REFERENCES tournaments(id),
-			  FOREIGN KEY(player_a) REFERENCES players(id),
-			  FOREIGN KEY(player_b) REFERENCES players(id)
+			  FOREIGN KEY(player_a_id) REFERENCES players(id),
+			  FOREIGN KEY(player_b_id) REFERENCES players(id)
 			);
 		`);
 	}
@@ -92,6 +95,8 @@ export class DatabaseService {
 	{
 		checkAliasValidity(alias);
 		
+		if (this.db.getPlayerBy("alias", alias))
+			throw new Error("Alias already taken, please chose a new one."); //? Should throw
 		const id = randomUUID();
 		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), Date.now(), 'created');
 		return id;
@@ -208,7 +213,7 @@ export class DatabaseService {
 	 * @returns Array of column values or full player objects
 	 * @throws Error if invalid column type
 	 */
-	public getColumnsBy(type: string): any[] 
+	public getColumnsBy(type: 'id' | 'alias' | 'created_at' | 'all'): any[] 
 	{
 		const columnMap: Record<string, string> = {
 			"id": "SELECT id FROM players",
@@ -219,7 +224,7 @@ export class DatabaseService {
 		const query: string | undefined = columnMap[type];
 
 		if (!query)
-			throw new Error(`Invalid data request in ${type}`);
+			throw new Error(`Invalid data request in ${type}`); //? Is this check really necessary with user-defined type
 		return this.db.prepare(query).all();
 	}
 
@@ -262,7 +267,28 @@ export class DatabaseService {
 		this.db.prepare("DELETE FROM matches").run()
 	}
 
-																//* TOURNAMENT FUNCTIONS
+
+	public getNameById(id: string, table: 'players' | 'tournaments' | 'tournament_players' | 'matches')
+	{
+		let query: string = "";
+
+		switch (table)
+		{
+			case "players":
+				query = "SELECT alias FROM players WHERE id = ?";
+				break ;
+			case "tournaments":
+				query = "SELECT name FROM tournaments WHERE id = ?";
+				break ;
+			case "tournament_players":
+				query = "SELECT alias FROM tournament_players WHERE id = ?";
+				break ;
+			case "matches":
+				query = "SELECT alias_a, alias_b FROM matches WHERE id = ?";
+		}
+		return this.db.prepare(query).get(id);
+	}
+													//* TOURNAMENT FUNCTIONS
 
 	/**
 	 * @brief Retrieves a tournament by ID or name
@@ -313,6 +339,7 @@ export class DatabaseService {
 		return this.db.prepare("SELECT * FROM tournament_players WHERE tournament_id = ?").all(tournamentId);
 	}
 
+	//ToDo add a filler if players are even (with AI players);
 	/**
 	 * @brief Creates a new tournament in the database
 	 * @param name Unique name for the tournament
@@ -379,10 +406,8 @@ export class DatabaseService {
 	 * @param tournamentId UUID of the tournament to update
 	 * @throws Error if tournament not found or database operation fails
 	 */
-	public setTournamentStatus(status: string, tournamentId: string): void 
+	public setTournamentStatus(status: 'created' | 'running' | 'completed', tournamentId: string): void 
 	{
-		if (status != 'created' && status != 'running' && status != 'completed')
-			throw new Error("setTournamentStatus: status can only be 'created', 'running' or 'completed'");
 		this.db.prepare("UPDATE tournaments SET status = ? WHERE id = ?").run(status, tournamentId);
 	}
 
@@ -420,8 +445,9 @@ export class DatabaseService {
 		}
 
 		const matchId = randomUUID();
+		const aliases = this.db.getNameById()
 		this.db.prepare(`INSERT INTO matches (
-			id, tournament_id, player_a, player_b,
+			id, tournament_id, player_a_id, player_b_id,
 			score_a, score_b, state, created_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
 			).run(matchId, tournamentId, player1ID, player2ID, scorePlayer1, scorePlayer2, status, Date.now());

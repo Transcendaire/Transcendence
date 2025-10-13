@@ -117,7 +117,7 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
 {
 	const getPlayerName = () => playerNameInput.value.trim() ; 
 
-	joinButton.addEventListener('click', async () => {
+	joinButton.addEventListener('click', async () => { //! Didn't add a check to see if playerName already exists in database, since its a one match only situation
 
 		if (inputParser.parsePlayerName(getPlayerName()) === false)
 			return;

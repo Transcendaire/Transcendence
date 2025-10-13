@@ -2,6 +2,12 @@ import { getDatabase } from "../db/databaseSingleton.js";
 
 
 //! Big issue with numbers that are even but not multiple of 4 (some players just disappear)
+
+//ToDo add scoreA and scoreB in the match interface
+//ToDo Store the result of the match inside the database (see updateMAtchResult function)
+//ToDo fill bracket with AI when number of players in a round are odd
+//ToDo unit tests for brackets and database
+
 export interface Match {
     id: string;
     player1Id: string;
@@ -24,6 +30,8 @@ export class SingleEliminationBracket implements BracketService
 {
 	private db = getDatabase();
 	private	maxRound: number = 0;
+	private	tournamentId: string = "";
+	private	tournamentName: string = "";
 
 	public generateBracket(tournamentId: string, tournamentName: string): Match[][]
 	{
@@ -31,6 +39,8 @@ export class SingleEliminationBracket implements BracketService
 		let round = 0;
 		let players = this.db.getTournamentPlayers(tournamentId);
 	
+		this.tournamentId = tournamentId;
+		this.tournamentName = tournamentName;
 		while (players.length > 1)
 		{	
 			const matches: Match[] = [];
@@ -73,10 +83,12 @@ export class SingleEliminationBracket implements BracketService
 		if (round === undefined || match === undefined || !bracket[round] || !bracket[round][match])
 			throw new Error(`updateMatchResult: cannot find bracket information for round-${round}-match-${match}`) ;
 
-		bracket[round][match].winnerId = winnerId;
+		let currMatch = bracket[round][match];
+		currMatch.winnerId = winnerId;
 		let updatedWinnerAlias: string = this.db.getPlayerBy("id", winnerId)?.alias as string;
-		bracket[round][match].winnerAlias = updatedWinnerAlias;
-		bracket[round][match].status = "completed";
+		currMatch.winnerAlias = updatedWinnerAlias;
+		currMatch.status = "completed";
+		// this.db.recordMatch(this.tournamentId, this.tournamentName, currMatch.player1Id, currMatch.player2Id, )
 	}
 
 
@@ -96,7 +108,6 @@ export class SingleEliminationBracket implements BracketService
 
 		if (!bracket[round + 1])
 			throw new Error(`updateBracket: round ${round + 1} doesn't exist`)
-
 	}
 
 
@@ -126,14 +137,17 @@ export class SingleEliminationBracket implements BracketService
 			if (currMatch?.status === "completed" && currMatch.winnerId)
 			{
 				let nextMatch = bracket[round + 1]?.[j];
-				if (!nextMatch)
+				if (!nextMatch) //!potential error ? 
 				{
 					j++;
 					continue ;
 				}
 				this.advanceWinner(nextMatch, currMatch.winnerAlias as string, currMatch.winnerId as string, (i % 2));
 				if (i % 2)
+				{
 					j++; //* to update the match level of the next round;
+					this.db.recordMatch(this.tournamentId, this.tournamentName, nextMatch.player1Id, nextMatch.player2Id, 0, 0, 'pending');
+				}
 			}
 		}
 	}

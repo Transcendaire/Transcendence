@@ -16,7 +16,7 @@ export class Player extends ServerPlayer
      */
     constructor(name: string, paddleX: number, paddleY: number)
     {
-        super(name, paddleX, paddleY);
+        super(name, paddleX);
         
         this.paddle = new Paddle(paddleX, paddleY);
     }

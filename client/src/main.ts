@@ -144,10 +144,6 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
 		const nbPlayers = Number(tournamentButtons.playerCountInput.value.trim());
 		if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
 			return;
-		//* get all informations
-		//*call tournamentService to create a tournament
-		//*store in db
-		//*launch tournament
 	})
 
 	tournamentButtons.cancelTournamentButton.addEventListener('click', async () => { //?Should I just use returnToLobby()?

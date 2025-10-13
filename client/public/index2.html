@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Pong</title>
+    <link rel="icon" type="image/png" href="./assets/Transcendaire.png">
+    <link href="./config/tools.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./config/config-tailwind.js"></script>
+</head>
+<body class="min-h-screen bg-sonpi16-orange">
+  <main class="flex flex-col m-0 p-0">
+    <div class="flex flex-col md:flex-row items-center justify-center">
+      <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs md:max-w-md mb-4 sm:mb-0">
+      <div class="flex flex-col items-center md:items-start md:ml-8">
+        <h1 class="text-sonpi16-black font-semibold text-4xl font-quency">Transcendaire</h1>
+        <h2 class="text-sonpi16-black font-semibold text-2xl font-quency">la quintessence du pong</h2>
+        <div id="login" class="border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
+          <p class="text-2xl pb-1 font-bold">Se Connecter</p>
+        </div>
+        <div id="stats" class="hidden border-sonpi16-black rounded-xl bg-sonpi16-black w-fit text-sonpi16-orange border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 ">
+          <p class="text-2xl pb-1 font-bold font-quency">Profile</p>
+        </div>
+        </div>
+      </div>
+    </div>
+    <h3 class="font-quency text-3xl mt-20 md:mt-0 flex items-center justify-center">Pret pour l'experience ?</h3>
+    <div class="bg-sonpi16-black mt-10 rounded-xl flex flex-fit mx-auto py-2 px-6 transition duration-300 hover:scale-110">
+      <p class="text-sonpi16-orange font-quency font-bold text-2xl sm:text-4xl py-3">JOUER</p>
+    </div>
+  </main>
+</body>
+
+
+  <!-- loginn modal -->
+  <div id="login-modal" class="hidden fixed inset-0 bg-sonpi16-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-xl p-8 shadow-lg w-80 flex flex-col items-center">
+      <button class="flex flex-row border w-full py-2 rounded-md justify-center items-center hover:border-sonpi16-orange">
+        <img class="inline h-10 px-3 inline" src="./assets/g.webp" alt="glogo">
+        <p class="text-sonpi16-orange font-semibold">Google Connect</p>
+      </button>
+      <p class="my-3">ou</p>
+      <input type="text" placeholder="Nom d'utilisateur" class="border rounded px-3 py-2 mb-3 w-full hover:border-sonpi16-orange focus:border-sonpi16-orange focus:ring-0 focus:outline-none" />
+      <button class="bg-sonpi16-orange text-white px-4 py-2 rounded font-bold w-full hover:bg-orange-600 transition">jouer en tant qu'inviter</button>
+      <button onclick="closeModal()" class="mt-4 text-sonpi16-orange hover:underline">Annuler</button>
+    </div>
+  </div>
+
+<body>
+</html>

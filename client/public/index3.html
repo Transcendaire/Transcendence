@@ -1,17 +1,31 @@
 <!DOCTYPE html>
 <html>
-
 <head>
     <title>Pong</title>
     <link rel="icon" type="image/png" href="./assets/Transcendaire.png">
-    <link href="./config/tools.css" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="./config/config-tailwind.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'sonpi16-orange': '#ff6000',
+						'sonpi16-black' : '#0d0600',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @font-face {
+            font-family: 'QuencyPixel-Regular';
+            src: url('./assets/fonts/QuencyPixel-Regular.otf') format('opentype');
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
 </head>
-<!-- <body class="min-h-screen bg-sonpi16-orange">
-    <div id="app"></div>
-    <script src="/dist/app.js" type="module"></script>
-  </body> -->
 <body class="bg-sonpi16-orange h-screen m-0 p-0">
     <!-- Lobby Screen -->
     <div id="lobby" class="flex flex-col justify-center items-center h-screen">
@@ -23,12 +37,8 @@
                        class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded mb-4 text-center font-bold" 
                        style="font-family: QuencyPixel-Regular;" maxlength="20">
                 <br>
-                <div class="flex gap-4 justify-center">
-                    <button id="joinGame" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">REJOINDRE UNE PARTIE</button>
-                    <button id="joinAI" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">JOUER CONTRE IA</button>
-                </div>
+                <button id="joinGame" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
+                        style="font-family: QuencyPixel-Regular;">REJOINDRE UNE PARTIE</button>
             </div>
             <div id="waiting" class="hidden">
                 <p class="text-sonpi16-orange text-xl mb-4" style="font-family: QuencyPixel-Regular;">En attente d'un adversaire...</p>

@@ -5,6 +5,9 @@
         "moduleResolution": "node",
         "outDir": "./public/dist",
         "baseUrl": "./",
+        "paths": {
+            "@shared/*": ["../shared/src/*"]
+        },
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,

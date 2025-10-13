@@ -1,6 +1,8 @@
 import { WebSocket } from 'ws'
 import { GameService } from './main.js'
 import { GameState, GameInput, WebSocketMessage } from '../types.js'
+import { AIPlayer } from './AIPlayer.js'
+import { canvasWidth, canvasHeight } from '../consts.js'
 
 interface Player
 {
@@ -39,16 +41,53 @@ export class MatchmakingService
 		switch (message.type) {
 			case 'join':
 				if (message.playerName)
-					this.addPlayer(socket, message.playerName);
-				break;
+					this.addPlayer(socket, message.playerName)
+				break
+			case 'joinAI':
+				if (message.playerName)
+					this.addAIGame(socket, message.playerName)
+				break
 			case 'input':
 				if (message.data)
-					this.handleInput(socket, message.data);
-				break;
+					this.handleInput(socket, message.data)
+				break
 			case 'ping':
-				this.sendMessage(socket, { type: 'pong' });
-				break;
+				this.sendMessage(socket, { type: 'pong' })
+				break
 		}
+	}
+
+	private addAIGame(socket: WebSocket, playerName: string): void
+	{
+		const player: Player = {
+			socket,
+			name: playerName,
+			id: Math.random().toString(36).substr(2, 9)
+		}
+		this.playerSockets.set(socket, player)
+		this.createAIGame(player)
+	}
+
+	private createAIGame(player1: Player): void
+	{
+		const gameId = Math.random().toString(36).substr(2, 9)
+		const gameService = new GameService(canvasWidth, canvasHeight)
+		const gameLoop = setInterval(() => {
+			this.updateGame(gameId)
+		}, 16)
+		const room: GameRoom = {
+			id: gameId,
+			player1,
+			player2: { socket: null as any, name: 'AI', id: 'AI' },
+			gameService,
+			gameLoop,
+			player1Input: { up: false, down: false },
+			player2Input: { up: false, down: false }
+		}
+		const ai = new AIPlayer('player2', gameService, room.player2Input)
+		ai.start()
+		this.activeGames.set(gameId, room)
+		this.sendMessage(player1.socket, { type: "gameStart", playerRole: "player1" })
 	}
 
 	/**
@@ -129,7 +168,7 @@ export class MatchmakingService
 	private createGame(player1: Player, player2: Player): void
 	{
 		const gameId = Math.random().toString(36).substr(2, 9);
-		const gameService = new GameService(800, 800);
+		const gameService = new GameService(canvasWidth, canvasHeight);
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId);
 		}, 16);
@@ -176,8 +215,10 @@ export class MatchmakingService
 		if (!room)
 			return;
 		room.gameService.updateGame(16, room.player1Input, room.player2Input);
-		this.sendMessage(room.player1.socket, { type: "gameState", data: stateMessage });
-		this.sendMessage(room.player2.socket, { type: "gameState", data: stateMessage });
+		if (room.player1.socket)
+			this.sendMessage(room.player1.socket, { type: "gameState", data: stateMessage });
+		if (room.player2.socket)
+			this.sendMessage(room.player2.socket, { type: "gameState", data: stateMessage });
 	}
 
 	/**
@@ -202,6 +243,7 @@ export class MatchmakingService
 	 */
 	private sendMessage(socket: WebSocket, message: WebSocketMessage): void
 	{
-		socket.send(JSON.stringify(message));
+		if (socket && socket.readyState === socket.OPEN)
+			socket.send(JSON.stringify(message));
 	}
 }

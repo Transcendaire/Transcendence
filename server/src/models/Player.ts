@@ -1,5 +1,5 @@
 import { Paddle } from "./Paddle.js";
-
+import { canvasHeight, paddleSize } from "../consts.js"
 /**
  * @brief Player representation with score and paddle
  */
@@ -15,12 +15,12 @@ export class Player
      * @param paddleX X position for the player's paddle
      * @param paddleY Y position for the player's paddle
      */
-    constructor(name: string, paddleX: number, paddleY: number)
+    constructor(name: string, paddleX: number)
     {
         this.name = name;
         this.score = 0;
         
-        this.paddle = new Paddle(paddleX, paddleY);
+        this.paddle = new Paddle(paddleX, canvasHeight / 2 - paddleSize / 2);
     }
 
     /**

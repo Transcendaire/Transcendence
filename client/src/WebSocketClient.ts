@@ -112,6 +112,20 @@ export class WebSocketClient
             this.ws.send(JSON.stringify(message));
         }
     }
+    /**
+     * @brief Join game against AI
+     * @param playerName Player's display name
+     */
+    public joinAIGame(playerName: string): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinAI',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
 
     /**
      * @brief Send player input to server

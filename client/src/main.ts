@@ -6,6 +6,8 @@ import { GameState, GameInput } from "../../server/src/types.js";
 import { TournamentHTMLElements } from "../../server/src/types.js"
 import { inputParserClass } from "./inputParser.js"
 import { getDatabase } from "../../server/src/db/databaseSingleton.js"
+import { paddleSize, paddleOffset } from "../../server/src/consts.js";
+
 
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
 const ctx = canvas.getContext("2d")!;
@@ -66,8 +68,7 @@ function getTournamentElementsAsHTML(): TournamentHTMLElements {
  */
 function initGame(): void
 {
-    const paddleOffset = 30;
-    const paddleY = canvas.height / 2 - 50;
+    const paddleY = canvas.height / 2 - paddleSize / 2;
 
     player1 = new Player("Player 1", paddleOffset, paddleY);
     player2 = new Player("Player 2", canvas.width - paddleOffset - 10, paddleY);
@@ -128,6 +129,22 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
         }
     });
 
+    const joinAIButton = document.getElementById("joinAI") as HTMLButtonElement;
+    if (joinAIButton) {
+        joinAIButton.addEventListener('click', async () => {
+            const playerName = playerNameInput.value.trim();
+            if (!playerName) {
+                showError("Veuillez entrer votre nom");
+                return;
+            }
+            try {
+                await wsClient.connect(`ws://${window.location.host}/game`);
+                wsClient.joinAIGame(playerName);
+            } catch (error) {
+                showError("Impossible de se connecter au serveur");
+            }
+        });
+    }
     cancelButton.addEventListener('click', () => {
         wsClient.disconnect();
         returnToLobby();

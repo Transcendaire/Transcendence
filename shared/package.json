@@ -1,6 +1,15 @@
 {
-  "name": "@transcendence/shared",
-  "version": "1.0.0",
-  "type": "module",
-  "main": "./src/types.ts"
+    "name": "@transcendence/shared",
+    "version": "1.0.0",
+    "type": "module",
+    "main": "./dist/types.js",
+    "types": "./dist/types.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "clean": "rm -rf dist",
+        "dev": "tsc --watch"
+    },
+    "devDependencies": {
+        "typescript": "^5.0.0"
+    }
 }

@@ -29,16 +29,17 @@ import fs from 'fs'
   await server.register(fastifyStatic, {
     root: publicPath,
     prefix: '/',
-    index: false
-  })
-  
-  // await server.register(fastifyStatic, {
-  //   root: distPath,
-  //   prefix: '/dist',
-  //   decorateReply: false,
-  //   index: false
-  // })
-  
+    index: false,
+    setHeaders: (res, path) => {
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+      }
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+  });
+
   //* Because of websocket: true -> this route doesnt serve an html page anymore, but is a websocket endpoint.
   //* Fastify automatically creates server-side WebSocket when it receives the upgrade request
   //* ONE connexion but two websockets (client and server)

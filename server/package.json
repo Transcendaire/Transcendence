@@ -2,7 +2,7 @@
   "name": "transcendence-server",
   "version": "1.0.0",
   "description": "Backend for Transcendence Game",
-  "main": "dist/index.js",
+  "main": "dist/server/src/index.js",
   "type": "module",
   "scripts": {
     "build": "npm run build:client && npm run build:server",

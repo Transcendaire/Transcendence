@@ -1,4 +1,4 @@
-import { GameState, GameInput } from '@shared/types';
+import { GameState, GameInput } from "@shared/types"
 import { COLORS, FONTS, CANVAS_WIDTH, CANVAS_HEIGHT, PADDLE_WIDTH, PADDLE_HEIGHT, BALL_SIZE, PADDLE_OFFSET } from '@shared/constants';
 import { WebSocketClient } from '../components/WebSocketClient.js';
 import { inputParserClass } from '../components/inputParser.js';

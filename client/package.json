@@ -2,12 +2,12 @@
     "name": "transcendence-client",
     "version": "1.0.0",
     "description": "Frontend for Transcendence Game",
-    "main": "dist/main.js",
+    "main": "dist/app.js",
     "type": "module",
     "scripts": {
         "build": "tsc",
         "dev": "tsc --watch",
-        "clean": "rm -rf dist"
+        "clean": "rm -rf public/dist"
     },
     "devDependencies": {
         "typescript": "^5.0.0"

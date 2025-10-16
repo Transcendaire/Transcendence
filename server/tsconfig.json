@@ -7,7 +7,7 @@
     "rootDir": "./src",
     "baseUrl": "./",
     "paths": {
-      "@shared/*": ["../shared/src/*"]
+      "@shared/*": ["../shared/*"]
     },
     "strict": true,
     "esModuleInterop": true,
@@ -29,11 +29,6 @@
     "exactOptionalPropertyTypes": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*",],
+  "exclude": ["node_modules","dist", "shared"]
 }

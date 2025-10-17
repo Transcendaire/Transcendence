@@ -1,10 +1,10 @@
-import { Player as ServerPlayer } from "../../server/src/models/Player.js";
+import { Player as SharedPlayer } from "../../shared/models/Player.js";
 import { Paddle } from "./Paddle.js";
 
 /**
  * @brief Client-side player with rendering paddle
  */
-export class Player extends ServerPlayer
+export class Player extends SharedPlayer
 {
     public override paddle: Paddle;
 

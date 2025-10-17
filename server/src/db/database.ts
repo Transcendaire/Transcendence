@@ -95,7 +95,7 @@ export class DatabaseService {
 	{
 		checkAliasValidity(alias);
 		
-		if (this.db.getPlayerBy("alias", alias))
+		if (this.getPlayerBy("alias", alias))
 			throw new Error("Alias already taken, please chose a new one."); //? Should throw
 		const id = randomUUID();
 		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), Date.now(), 'created');
@@ -207,6 +207,7 @@ export class DatabaseService {
 		return this.db.prepare("SELECT * FROM players").all() as Player[];
 	}
 
+	//ToDo change this function so tha it can work with all tables and variables?
 	/**
 	 * @brief Gets specific column data from all players
 	 * @param type Column name to retrieve
@@ -261,12 +262,22 @@ export class DatabaseService {
 
 	public deleteAll()
 	{
+		this.db.pragma('foreign_keys = OFF');
 		this.db.prepare("DELETE FROM players").run()
 		this.db.prepare("DELETE FROM tournament_players").run()
 		this.db.prepare("DELETE FROM tournaments").run()
 		this.db.prepare("DELETE FROM matches").run()
+		this.db.pragma('foreign_keys = ON');
 	}
 
+	public deleteDatabase()
+	{
+		this.db.close();
+
+    	const fs = require('fs'); 
+    	if (fs.existsSync('transcendaire.db'))
+        	fs.unlinkSync('transcendaire.db');
+	}
 
 	public getNameById(id: string, table: 'players' | 'tournaments' | 'tournament_players' | 'matches')
 	{
@@ -445,12 +456,14 @@ export class DatabaseService {
 		}
 
 		const matchId = randomUUID();
-		const aliases = this.db.getNameById()
+		const aliasA = this.getPlayerBy("id", player1ID)?.alias as string;
+		const aliasB = this.getPlayerBy("id", player2ID)?.alias as string;
 		this.db.prepare(`INSERT INTO matches (
 			id, tournament_id, player_a_id, player_b_id,
-			score_a, score_b, state, created_at
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-			).run(matchId, tournamentId, player1ID, player2ID, scorePlayer1, scorePlayer2, status, Date.now());
+			alias_a, alias_b, score_a, score_b,
+			state, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+			).run(matchId, tournamentId, player1ID, player2ID, aliasA, aliasB, scorePlayer1, scorePlayer2, status, Date.now());
 		return matchId;
 		
 	}

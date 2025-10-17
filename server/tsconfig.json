@@ -23,7 +23,7 @@
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
     "exactOptionalPropertyTypes": true,
-    "types": ["node"]
+    "types": ["jest", "node"]
   },
   "include": [
     "src/**/*"

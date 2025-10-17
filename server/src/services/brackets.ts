@@ -1,12 +1,15 @@
+import { machine } from "os";
 import { getDatabase } from "../db/databaseSingleton.js";
+import { match } from "assert";
+import { randomInt } from "crypto";
 
 
-//! Big issue with numbers that are even but not multiple of 4 (some players just disappear)
+//ToDo fix bracket matches creation
+//ToDo unit tests for brackets 
 
-//ToDo add scoreA and scoreB in the match interface
-//ToDo Store the result of the match inside the database (see updateMAtchResult function)
-//ToDo fill bracket with AI when number of players in a round are odd
-//ToDo unit tests for brackets and database
+//* in tournament service
+
+//ToDo Store the result of the match inside the database (see updateMatchResult function)
 
 export interface Match {
     id: string;
@@ -22,63 +25,92 @@ export interface Match {
 
 interface BracketService {
     generateBracket(tournamentId: string, tournamentName: string): Match[][];
-    advanceWinner(match: Match, playerAlias: string, playerId: string, updatePlayer1: number): void;
+	updateMatchResult(bracket: Match[][], round: number, match: number, winnerId: string): void
     isRoundComplete(bracket: Match[][], round: number): boolean;
+	updateBracket(winners: Array<{id: string, alias: string}>, toUpdateRound: Match[], nextNextRound?: Match[]): void;
+    advanceWinner(match: Match, playerAlias: string, playerId: string, updatePlayer1: number): void;
+	declareTournamentWinner(): void;
 }
 
+/**
+ * @class SingleEliminationBracket
+ * @brief Implements a single elimination tournament bracket system
+ *
+ * This class manages bracket generation, match updates, and player advancement
+ * in a single elimination tournament format. It handles cases where the number
+ * of players is odd by automatically advancing players to the next round.
+ */
 export class SingleEliminationBracket implements BracketService 
 {
 	private db = getDatabase();
-	private	maxRound: number = 0;
 	private	tournamentId: string = "";
 	private	tournamentName: string = "";
+	private	maxRound: number = 0;
+	private movedPlayers = new Map<string, number>();
 
-	public generateBracket(tournamentId: string, tournamentName: string): Match[][]
+	/**
+	 * @brief Generates the complete bracket structure for a tournament
+	 * @param tournamentId ID of the tournament
+	 * @param tournamentName Name of the tournament
+	 * @return 2D array of matches representing the tournament bracket
+	 */
+	public	generateBracket(tournamentId: string, tournamentName: string): Match[][]
 	{
-		let bracket: Match[][] = [];
-		let round = 0;
+		let brackets: Match[][] = [];
+		let totalMatches: number = this.findTotalNumberOfMatches(this.db.getTournament(tournamentId, undefined));
 		let players = this.db.getTournamentPlayers(tournamentId);
-	
+		let playersCount = players.length;
+		let round = 0;
+
 		this.tournamentId = tournamentId;
 		this.tournamentName = tournamentName;
-		while (players.length > 1)
-		{	
+
+		while (totalMatches)
+		{
+			let roundMatches = this.getMatchesPerRound(playersCount);
 			const matches: Match[] = [];
 
-			for (let i = 0; i < players.length; i += 2)
+			let i = 0;
+			for (let matchNumber = 0; matchNumber < roundMatches; matchNumber++)
 			{
-				if (i + 1 < players.length)
+				if (round === 0)
+				{
+					let player1 = { id: players[i].player_id, alias: players[i].alias };
+					let player2 = { id: players[i + 1].player_id, alias: players[i + 1].alias };
+
+					this.storeFirstRoundMatch(player1, player2, matches, matchNumber);
+				}
+				else
 				{
 					matches.push({
-						id: `round-${round}-match-${Math.floor(i/2)}`,
-						player1Id: players[i].player_id,
-						player2Id: players[i + 1].player_id,
-						player1Alias: players[i].alias,
-						player2Alias:players[i + 1].alias,
+						id: `round-${round}-match-${matchNumber}`,
+						player1Id: '~TBD',
+						player2Id: '~TBD',
+						player1Alias: '~TBD',
+						player2Alias: '~TBD',
 						round,
 						status: 'pending'
 					});
-					if (round === 0)
-						this.db.recordMatch(tournamentId, tournamentName, players[i].player_id, players[i + 1].player_id, 0, 0, 'pending')
 				}
+				i += 2;
 			}
-			bracket.push(matches);
-
-			players = matches.map((match, index) => ({
-				player_id: `winner-of-${match.id}`,
-				alias: 'TBD'
-			}));
-
-			round++;
+			brackets.push(matches);
+			playersCount = Math.ceil(playersCount / 2); //* if carry over, math.ceil accounts for it
+			totalMatches -= roundMatches;
+			round++
 		}
-		this.maxRound = round;
-		return bracket;
+		return brackets;
 	}
 
-
-
-
-	public updateMatchResult(bracket: Match[][], round: number, match: number, winnerId: string)
+	/**
+	 * @brief Updates a match with the winner information
+	 * @param bracket The tournament bracket
+	 * @param round Round number (0-indexed)
+	 * @param match Match number within the round
+	 * @param winnerId ID of the winning player
+	 * @throws Error if the specified match cannot be found
+	 */
+	public updateMatchResult(bracket: Match[][], round: number, match: number, winnerId: string): void
 	{
 		if (round === undefined || match === undefined || !bracket[round] || !bracket[round][match])
 			throw new Error(`updateMatchResult: cannot find bracket information for round-${round}-match-${match}`) ;
@@ -88,71 +120,15 @@ export class SingleEliminationBracket implements BracketService
 		let updatedWinnerAlias: string = this.db.getPlayerBy("id", winnerId)?.alias as string;
 		currMatch.winnerAlias = updatedWinnerAlias;
 		currMatch.status = "completed";
-		// this.db.recordMatch(this.tournamentId, this.tournamentName, currMatch.player1Id, currMatch.player2Id, )
 	}
 
-
-	private checkBracket(bracket: Match[][], round: number)
-	{
-		if (!bracket || round === undefined || !bracket[round])
-			throw new Error(`updateBracket: cannot find bracket information for round ${round}`);
-
-		if (round === this.maxRound)
-		{
-			console.log("max round reached");
-			return ; //!announce the winner or make it so the updateBracket fnction never runs when there's just one match left
-		}
-
-		if (!bracket[round])
-			throw new Error(`updateBracket: cannot find bracket information for round ${round}`);
-
-		if (!bracket[round + 1])
-			throw new Error(`updateBracket: round ${round + 1} doesn't exist`)
-	}
-
-
-	public advanceWinner(nextMatch: Match, playerAlias: string, playerId: string, updatePlayer1: number)
-	{
-		if (updatePlayer1)
-		{
-			nextMatch.player1Alias = playerAlias;
-			nextMatch.player1Id = playerId;
-		}
-		else 
-		{
-			nextMatch.player2Alias = playerAlias;
-			nextMatch.player2Id = playerId;
-		}
-	}
-
-	public updateBracket(bracket: Match[][], round: number)
-	{
-		this.checkBracket(bracket, round);
-		if (!bracket[round])
-				return ;
-		for (let i = 0; i < bracket[round].length; i++)
-		{
-			let j = 0;
-			const currMatch = bracket[round][i];
-			if (currMatch?.status === "completed" && currMatch.winnerId)
-			{
-				let nextMatch = bracket[round + 1]?.[j];
-				if (!nextMatch) //!potential error ? 
-				{
-					j++;
-					continue ;
-				}
-				this.advanceWinner(nextMatch, currMatch.winnerAlias as string, currMatch.winnerId as string, (i % 2));
-				if (i % 2)
-				{
-					j++; //* to update the match level of the next round;
-					this.db.recordMatch(this.tournamentId, this.tournamentName, nextMatch.player1Id, nextMatch.player2Id, 0, 0, 'pending');
-				}
-			}
-		}
-	}
-
-
+	/**
+	 * @brief Checks if all matches in a round are completed
+	 * @param bracket The tournament bracket
+	 * @param round Round number to check
+	 * @return true if all matches in the round are completed, false otherwise
+	 * @throws Error if bracket or round information is invalid
+	 */
     public isRoundComplete(bracket: Match[][], round: number): boolean
 	{
 		if (!bracket || round === undefined)
@@ -168,11 +144,139 @@ export class SingleEliminationBracket implements BracketService
 		})
 		return isComplete;
 	}
-}
 
-/*
-tournament :
-generate brackets
-run match4es -> status is 'playing'
-recordResult
-*/
+//* This function MUST be called with the winners array already defined
+
+	/**
+	 * @brief Updates bracket with an array of players that won in the previous round.
+	 * @param winners Array of player objects with id and alias
+	 * @param toUpdateRound Array of matches to update with winners
+	 * @param nextNextRound Optional next round matches (for handling odd number of players)
+	 */
+	public updateBracket(winners: Array<{id: string, alias: string}>, toUpdateRound: Match[], nextNextRound?: Match[]): void
+	{
+		let i = 0;
+		if (nextNextRound != undefined) //* means there are an odd number of players in the current round
+			this.moveLeftoverPlayer(winners, nextNextRound[0]!);
+		for (let w = 0; w < winners.length;)
+		{
+			if (i === toUpdateRound.length)
+				break ;
+			let nextMatch = toUpdateRound[i]!;
+			const winner = winners[w]!;
+			if (nextMatch.player1Alias === '~TBD')
+				this.advanceWinner(nextMatch, winner.id, winner.alias, 1)
+			else if (nextMatch.player1Alias !== '~TBD' && nextMatch.player2Alias === '~TBD')
+			{
+				this.advanceWinner(nextMatch, winner.id, winner.alias, 0)
+				i++;
+			}
+			else
+				i++;
+			w++;
+		}
+	}
+
+	/**
+	 * @brief Handles moving a player to the next round when there's an odd number of players
+	 * @param winners Array of players who won in the current round
+	 * @param nextNextMatch Match where the moved player will be placed
+	 * @details Tries to select players who haven't been moved before to keep the tournament fair
+	 */
+	public advanceWinner(nextMatch: Match, playerId: string, playerAlias: string, updatePlayer1: number): void
+	{
+		if (updatePlayer1)
+		{
+			nextMatch.player1Alias = playerAlias;
+			nextMatch.player1Id = playerId;
+		}
+		else 
+		{
+			nextMatch.player2Alias = playerAlias;
+			nextMatch.player2Id = playerId;
+		}
+	}
+
+	public declareTournamentWinner(): void
+	{
+		
+	}
+	/**
+ 	* @brief Calculates total number of matches needed for a tournament
+ 	* @param tournament The tournament object containing player count
+ 	* @return Total number of matches (always player count - 1)
+ 	* @throws Error if tournament is undefined
+ 	*/
+	private findTotalNumberOfMatches(tournament: any): number
+	{
+		if (tournament === undefined)
+			throw new Error(`findMaxRound: Couldn't find tournament ${this.tournamentName} in database`);
+		
+		let nbPlayers: number = tournament.curr_nb_players;
+		return nbPlayers - 1;
+	}
+
+
+	/**
+	 * @brief Calculates how many matches are needed in a specific round
+	 * @return Number of matches for the round (half of player count)
+	 */
+	private getMatchesPerRound(nbPlayers: number): number
+	{
+		return Math.floor(nbPlayers / 2) 
+	}
+
+	/**
+ 	* @brief Creates and stores a match for the first round
+ 	* @param player1 First player object with id and alias
+ 	* @param player2 Second player object with id and alias
+ 	* @param matches Array to store the created match
+ 	* @param currMatchNb Current match number in the round
+ 	*/
+	private storeFirstRoundMatch(player1: any, player2: any, matches: Match[], currMatchNb: number): void
+	{
+		matches.push({
+			id: `round-0-match-${currMatchNb}`,
+			player1Id: player1.id,
+			player2Id: player2.id,
+			player1Alias: player1.alias,
+			player2Alias:player2.alias,
+			round: 0,
+			status: 'pending'
+		});
+		this.db.recordMatch(this.tournamentId, this.tournamentName, player1.id, player2.id, 0, 0, 'pending')
+	}
+
+	/**
+ 	* @brief Handles moving a player to the next round when there's an odd number of players
+ 	* @param winners Array of players who won in the current round
+ 	* @param nextNextMatch Match where the moved player will be placed
+ 	* @details Tries to select players who haven't been moved before to keep the tournament fair
+ 	*/
+	private moveLeftoverPlayer(winners: Array<{id: string, alias: string}>, nextNextMatch: Match): void
+	{
+		const unmovedPlayers = winners.filter((itr) => !this.movedPlayers.has(itr.id));
+		let toMovePlayer;
+		
+		if (unmovedPlayers.length === 0)
+		{
+			let random = (randomInt(0, this.movedPlayers.size)) % winners.length;
+			toMovePlayer = winners[random];
+			let oldValue = this.movedPlayers.get(toMovePlayer!.id);
+			this.movedPlayers.set(toMovePlayer!.id, oldValue! + 1);
+		}
+		else
+		{
+			toMovePlayer = unmovedPlayers[0];
+			this.movedPlayers.set(toMovePlayer!.id, 1);
+		}
+		this.advanceWinner(nextNextMatch, toMovePlayer!.id, toMovePlayer!.alias, 1);
+		let toDeleteIndex = winners.indexOf(toMovePlayer!);
+		winners.splice(toDeleteIndex, 1);
+	}
+
+	public hasPlayer(matches: Match[]): boolean
+	{
+		return matches.some(match => match.player1Id != '~TBD' || match.player2Id != '~TBD');
+	}
+}

@@ -2,11 +2,11 @@ import { Player } from "./Player.js";
 import { Ball } from "./Ball.js";
 import { COLORS, FONTS } from "./constants.js";
 import { WebSocketClient } from "./WebSocketClient.js";
-import { GameState, GameInput } from "../../server/src/types.js";
-import { TournamentHTMLElements } from "../../server/src/types.js"
+import { GameState, GameInput, TournamentHTMLElements } from "../../shared/types.js";
 import { inputParserClass } from "./inputParser.js"
-import { getDatabase } from "../../server/src/db/databaseSingleton.js"
-import { paddleSize, paddleOffset } from "../../server/src/consts.js";
+import { paddleSize, paddleOffset } from "../../shared/consts.js";
+
+
 
 
 const canvas = document.getElementById("pong") as HTMLCanvasElement;

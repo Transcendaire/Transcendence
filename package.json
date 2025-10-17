@@ -39,7 +39,6 @@
     "is-fullwidth-code-point": "^3.0.0",
     "require-directory": "^2.1.1",
     "rxjs": "^7.8.2",
-    "shared": "^0.2.0",
     "shell-quote": "^1.8.3",
     "string-width": "^4.2.3",
     "strip-ansi": "^6.0.1",
@@ -60,6 +59,5 @@
   "bugs": {
     "url": "https://github.com/Transcendaire/Transcendence/issues"
   },
-    "homepage": "https://github.com/Transcendaire/Transcendence#readme"
-  }
-
+  "homepage": "https://github.com/Transcendaire/Transcendence#readme"
+}

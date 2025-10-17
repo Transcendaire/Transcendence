@@ -1,9 +1,9 @@
-import { Paddle as ServerPaddle } from "../../server/src/models/Paddle.js";
+import { Paddle as SharedPaddle } from "../../shared/models/Paddle.js";
 
 /**
  * @brief Client-side paddle rendering extension
  */
-export class Paddle extends ServerPaddle
+export class Paddle extends SharedPaddle
 {
     /**
      * @brief Render paddle on canvas

@@ -1,7 +1,15 @@
 /**
  * @brief Game paddle for player control
  */
-export class Paddle {
+export class Paddle
+{
+    public positionY: number;
+    public dir: boolean;
+    public readonly positionX: number;
+    public readonly width: number;
+    public readonly height: number;
+    public readonly speed: number;
+
     /**
      * @brief Constructor
      * @param positionX Fixed X position of the paddle
@@ -10,7 +18,8 @@ export class Paddle {
      * @param height Paddle height
      * @param speed Movement speed
      */
-    constructor(positionX, positionY, width = 10, height = 100, speed = 400) {
+    constructor(positionX: number, positionY: number, width: number = 10, height: number = 100, speed: number = 400)
+    {
         this.positionX = positionX;
         this.positionY = positionY;
         this.width = width;
@@ -18,23 +27,28 @@ export class Paddle {
         this.speed = speed;
         this.dir = false;
     }
+
+
+
     /**
      * @brief Move paddle upward with bounds checking
      * @param deltaTime Time elapsed since last update in milliseconds
      * @param canvasHeight Height of the game canvas
      */
-    moveUp(deltaTime, canvasHeight) {
+    public moveUp(deltaTime: number, canvasHeight: number): void
+    {
         this.positionY = Math.max(0, this.positionY - this.speed * (deltaTime / 1000));
         this.dir = true;
     }
+
     /**
      * @brief Move paddle downward with bounds checking
      * @param deltaTime Time elapsed since last update in milliseconds
      * @param canvasHeight Height of the game canvas
      */
-    moveDown(deltaTime, canvasHeight) {
+    public moveDown(deltaTime: number, canvasHeight: number): void
+    {
         this.positionY = Math.min(canvasHeight - this.height, this.positionY + this.speed * (deltaTime / 1000));
         this.dir = false;
     }
 }
-//# sourceMappingURL=Paddle.js.map

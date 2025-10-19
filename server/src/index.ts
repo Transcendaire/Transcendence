@@ -12,8 +12,8 @@ import fs from 'fs'
     logger: true // Enable logging
   })
   const matchmaking = new MatchmakingService()
-  const publicPath = path.join(__dirname, '../../client/public')
-  const distPath = path.join(__dirname, '../../client/dist')
+  const publicPath = path.join(__dirname, '../../../../client/public')
+  const distPath = path.join(__dirname, '../../../../client/dist')
   const indexPath = path.join(publicPath, 'index.html')
   
   // Debug the correct paths

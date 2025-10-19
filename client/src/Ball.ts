@@ -1,9 +1,9 @@
-import { Ball as ServerBall } from "../../server/src/models/Ball.js";
+import { Ball as SharedBall } from "../../shared/models/Ball.js";
 
 /**
  * @brief Client-side ball rendering extension
  */
-export class Ball extends ServerBall
+export class Ball extends SharedBall
 {
     /**
      * @brief Render ball on canvas with rotation

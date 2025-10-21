@@ -4,7 +4,10 @@
     "module": "ES2020",
     "moduleResolution": "node",
     "outDir": "./dist",
+<<<<<<< HEAD
     "rootDir": "./src",
+=======
+>>>>>>> main
     "baseUrl": "./",
     "paths": {
       "@shared/*": ["../shared/*"]

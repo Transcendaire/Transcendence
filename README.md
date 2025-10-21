@@ -1,39 +1,104 @@
 # Transcendence
 
-## Installation rapide
+## Démarrage rapide avec Docker
+
+```bash
+make run              # Build et lance l'application
+```
+
+L'application sera accessible sur : **http://localhost**
+
+### Autres commandes Docker
+
+```bash
+make build            # Construire les images
+make up               # Démarrer les conteneurs
+make down             # Arrêter les conteneurs
+make restart          # Redémarrer
+make logs             # Voir les logs
+make clean            # Tout supprimer (images, volumes, conteneurs)
+make ps               # Voir les conteneurs actifs
+```
+
+## Développement local (sans Docker)
 
 ```bash
 nvm use 22
-npm install  # Installe automatiquement les dépendances client + serveur
+npm install           # Installe les dépendances client + serveur
+npm run dev           # Lance client + serveur en mode watch (se relance a chaque fois qu'un fichier est save)
 ```
 
-## Commandes disponibles
+Serveur accessible sur : **http://localhost:8080**
+
+### Commandes disponibles
 
 ```bash
-npm run build     # Compile tout le projet (client + serveur)
-npm start 		  # Lance le serveur
+npm run build         # Compile tout le projet
+npm start             # Lance le serveur
+npm run clean         # Nettoie les fichiers générés
 
-npm run dev       # Lance client + serveur en mode développement
-npm run clean     # Nettoie les fichiers générés (similaire à make fclean)
-
-# Commandes spécifiques
-npm run dev:client    # Lance uniquement le client en mode watch
-npm run dev:server    # Lance uniquement le serveur
+# Spécifiques
+npm run dev:client    # Client en mode watch
+npm run dev:server    # Serveur en mode watch
 npm run build:client  # Compile uniquement le client
 npm run build:server  # Compile uniquement le serveur
 ```
 
-## Accès au jeu
+## Architecture Docker
 
-Une fois `npm start` lancé :
-- **Jeu** : Ouvrir `http://localhost:8080/` dans le navigateur
+```
+┌─────────────────────────────────────┐
+│  http://localhost:8080              │
+│  ┌────────────────────────────────┐ │
+│  │         NGINX                  │ │
+│  │  - Sert les fichiers statiques │ │
+│  │  - Reverse proxy               │ │
+│  └──────────┬─────────────────────┘ │
+│             │ Proxy /game           │
+│             ▼                        │
+│  ┌────────────────────────────────┐ │
+│  │   SERVER (Port 8080 interne)   │ │
+│  │  - WebSocket /game             │ │
+│  │  - API endpoints               │ │
+│  └────────────────────────────────┘ │
+└─────────────────────────────────────┘
+       Docker Network: transcendence
+```
 
+### Services
 
-**Le serveur ne démarre pas (port 8080 occupé) :**
+- **nginx** : Reverse proxy sur port 8080, sert les fichiers statiques
+- **server** : Backend Node.js/Fastify sur port 8080 (interne uniquement)
+- **client** : Builder, compile TypeScript et génère les fichiers statiques
+
+## Debugging
+
 ```bash
-# En général un serveur est deja lancé sur un terminal, le fermer avec CTRL+C
-lsof -i:8080        # Voir qui utilise le port
-pkill -f "node"     # Tuer les processus Node.js
+# Logs d'un service spécifique
+docker compose logs -f nginx
+docker compose logs -f server
+
+# Accéder à un conteneur
+docker compose exec nginx sh
+docker compose exec server sh
+
+# Reconstruire un service
+docker compose build server
+docker compose up -d server
+```
+
+## Troubleshooting
+
+**Port 8080 déjà utilisé :**
+```bash
+sudo lsof -i:8080
+# Changer le port dans docker-compose.yml
+```
+
+**Le serveur redémarre en boucle :**
+```bash
+make logs             # Voir les erreurs
+make clean && make run # Rebuild complet
 ```
 
 ## Architecture des fichiers

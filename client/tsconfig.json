@@ -7,7 +7,7 @@
         "rootDir": "./src",
         "baseUrl": "./",
         "paths": {
-            "@shared/*": ["./shared/*"] 
+            "@shared/*": ["./dist/shared/*"] 
         },
         "strict": true,
         "esModuleInterop": true,
@@ -29,6 +29,6 @@
         "exactOptionalPropertyTypes": true,
         "lib": ["DOM", "DOM.Iterable", "ES2020"]
     },
-    "include": ["src/**/*" ],
-    "exclude": ["node_modules","public/dist", "shared"]
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist", "../server", "../shared"]
 }

@@ -33,22 +33,19 @@ export type GameState = {
 	};
 }
 
-export type Tournament = {
-	id: string;
-	name: string;
-	maxPlayers: number;
-	currentPlayers: number;
-	players: Player[]; //? shouldn't they be stored inside the database?
-	round: number;
-	status: 'created' | 'active' | 'completed';
-	createdAt: number;
-}
+//!commented Tournament type
+// export type Tournament = {
+// 	id: string;
+// 	name: string;
+// 	maxPlayers: number;
+// 	currentPlayers: number;
+// 	players: Player[]; //? shouldn't they be stored inside the database?
+// 	round: number;
+// 	status: 'created' | 'active' | 'completed';
+// 	createdAt: number;
+// }
 
-export type TournamentPlayer = {
-	id: string;
-	alias: string;
-	status: 'playing' | 'waiting' | 'eliminated'
-}
+
 
 export type TournamentGame = {
 	game: GameState;

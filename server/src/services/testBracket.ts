@@ -147,8 +147,8 @@ function runTournamentTest(playerCount: number) {
     });
     
     // Generate bracket
-    const bracketService = new SingleEliminationBracket();
-    const bracket = bracketService.generateBracket(tournamentId, tournamentName);
+    const bracketService = new SingleEliminationBracket(tournamentId, tournamentName);
+    const bracket = bracketService.generateBracket();
     
     console.log(chalk.cyan(`\nGenerated bracket with ${bracket.length} rounds`));
     
@@ -198,12 +198,12 @@ function runTournamentTest(playerCount: number) {
                 }
             }
             
+			console.log(`\t\t\t WINNERS ALIAS ARRAY\n${winners.map(w => w.alias).join(", ")}`)
             // Handle odd number of players case
-            if (winners.length % 2 !== 0 && round + 2 < bracket.length && !bracketService.hasPlayer(bracket![round + 1]!)) {
-                bracketService.updateBracket(winners, bracket![round + 1]!, bracket[round + 2]);
-            } else if (round + 1 < bracket.length){
-                bracketService.updateBracket(winners, bracket![round + 1]!, undefined);
-            }
+			if (round + 2 < bracket.length)
+				bracketService.updateBracket(winners, bracket![round + 1]!, bracket![round + 2]!)
+			else
+				bracketService.updateBracket(winners, bracket![round + 1]!, null);
             
             console.log(`Advanced ${winners.length} winners to round ${round + 1}`);
         }
@@ -218,9 +218,14 @@ function runTournamentTest(playerCount: number) {
     if (finalMatch && finalMatch.winnerId) {
         console.log(chalk.bold.green(`\n🏆 CHAMPION: ${finalMatch.winnerAlias} 🏆\n`));
     }
+	
+	let info = db.getMatches(bracketService.tournamentId);
+	console.log(info);
 }
 
-runTournamentTest(10)
+runTournamentTest(6)
+
+// const db = getDatabase();
 
 // printBracket(matches);
  

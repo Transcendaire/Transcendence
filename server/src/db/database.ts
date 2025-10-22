@@ -426,18 +426,19 @@ export class DatabaseService {
 	 * @brief Records the result of a match between two players in a tournament
 	 * @param tournamentId UUID of the tournament where the match took place
 	 * @param tournamentName Name of the tournament (used for error messages)
-	 * @param player1Id UUID of the first player
-	 * @param player2ID UUID of the second player
-	 * @param scorePlayer1 Score achieved by the first player
-	 * @param scorePlayer2 Score achieved by the second player
+	 * @param p1ID UUID of the first player
+	 * @param p2ID UUID of the second player
+	 * @param scoreA Score achieved by the first player
+	 * @param scoreB Score achieved by the second player
 	 * @throws Error if required parameters are missing, players are the same, tournament doesn't exist, or players are not registered in the tournament
 	 */
-	public recordMatch(tournamentId: string, tournamentName: string, player1ID: string, player2ID: string, scorePlayer1: number, scorePlayer2: number, status: string): string 
+	public recordMatch(tournamentId: string, tournamentName: string, p1ID: string, p2ID: string,
+		scoreA: number, scoreB: number, status: 'pending' | 'running' | 'completed'): string 
 	{
-		if (!tournamentId || !player1ID || !player2ID)
+		if (!tournamentId || !p1ID || !p2ID)
 			throw new Error("recordMatch: tournamentId, player1ID and player2ID needed");
 		
-		if (player1ID === player2ID)
+		if (p1ID === p2ID)
 			throw new Error("recordMatch: player1ID and player2ID cannot be the same");
 
 		const tournament = this.getTournament(tournamentId);
@@ -446,8 +447,8 @@ export class DatabaseService {
 
 		if (status === "completed")
 		{
-			let playerAExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player1ID);
-			let playerBExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, player2ID);
+			let playerAExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, p1ID);
+			let playerBExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, p2ID);
 			
 			if (!playerAExists)
 				throw new Error(`recordMatch: first player not found in tournament ${tournamentId}`);
@@ -456,14 +457,14 @@ export class DatabaseService {
 		}
 
 		const matchId = randomUUID();
-		const aliasA = this.getPlayerBy("id", player1ID)?.alias as string;
-		const aliasB = this.getPlayerBy("id", player2ID)?.alias as string;
+		const aliasA = this.getPlayerBy("id", p1ID)?.alias as string;
+		const aliasB = this.getPlayerBy("id", p2ID)?.alias as string;
 		this.db.prepare(`INSERT INTO matches (
 			id, tournament_id, player_a_id, player_b_id,
 			alias_a, alias_b, score_a, score_b,
 			state, created_at
 			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-			).run(matchId, tournamentId, player1ID, player2ID, aliasA, aliasB, scorePlayer1, scorePlayer2, status, Date.now());
+			).run(matchId, tournamentId, p1ID, p2ID, aliasA, aliasB, scoreA, scoreB, status, Date.now());
 		return matchId;
 		
 	}

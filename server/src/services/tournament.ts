@@ -15,7 +15,7 @@ export interface TournamentPlayer {
 	id: string;
 	alias: string;
 	status: 'waiting' | 'playing' | 'eliminated' | 'champion'
-	socket?: WebSocket
+	socket?: WebSocket | undefined
 }
 
 export class Tournament {
@@ -26,6 +26,7 @@ export class Tournament {
 
 	private bracket: Match[][] = [];
 	private currRound: number = 0;
+	private maxRound: number = 0;
 	private status: TournamentStatus = TournamentStatus.CREATED;
 	private players: Map<string, TournamentPlayer> = new Map();
 
@@ -45,45 +46,102 @@ export class Tournament {
 
 	public addPlayerToTournament(alias: string, socket?: WebSocket): void
 	{
-		if ()
-		//* chck if tournament is on the created status
-		//* check if size doesnt overflow
-		//*add player to the tournament (inside database)
-		//*get the player and store it inside the Tournament map
+		if (this.status !== TournamentStatus.CREATED)
+			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament already started or ended`);
+		
+		if (this.players.size + 1 > this.maxPlayers)
+			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament full`);
+		
+		try {
+			this.db.addPlayerToTournament(alias, this.id, this.name);
+			const player = this.db.getPlayer(alias);
+			if (!player)
+				throw new Error(`addPlayerToTournament: cannot find player with alias ${alias} in tournament ${this.name}`);
+			
+			this.players.set(player.alias, {id: player.id,
+				 alias,
+				 status: 'waiting',
+				 socket
+				});
+		} catch (error) {
+			console.error(`addPlayerToTournament: error while adding ${alias} to ${this.name}: `, error);
+			throw error;
+		}
 	}
 
 	public runTournament()
 	{
-		//*check status is not running or completed
-		//*update tournament status in db
-		//*generate bracket and startround()
+		if (this.status !== TournamentStatus.CREATED)
+			throw new Error(`runTournament: cannot run tournament ${this.name}: tournament already started or finished`);
+
+		this.db.setTournamentStatus(TournamentStatus.RUNNING, this.id);
+		try {
+			this.bracket = this.bracketService.generateBracket();
+		} catch (error) {
+			console.error(`runTournament: cannot start tournament ${this.name}: `, error);
+			throw error;
+		}
+		this.maxRound = this.bracket.length;
+		this.startRound()
+		//*then startMatch(). 
+		//*add an event monitoring for completeMatch
+		//*then run completeRound and start again
+		//*check if it is the last round before doing another turn, especially with completeRound()
 	}
 
 	private startRound()
 	{
+		if (this.currRound === this.maxRound)
+			this.endTournament();
+		for (let i = 0; i < this.bracket![this.currRound]!.length; i++)
+		{
+			const currMatch = this.bracket![this.currRound]![i];
+			console.log( "match ", i, ": ", currMatch?.player1Alias, " VERSUS ", currMatch?.player2Alias);
+			this.startMatch(currMatch!);
+		}
+		this.currRound++;
 		//*check if it is not the last round
 		//*iterates through the bracket and start all matches
 	}
 
-	private startMatch()
+	private startMatch(match: Match)
 	{
 		//*this is an issue for now. How to start match using matchmaking class?
 	}
 
-	private completeMatch()
-	{
+	private completeMatch(match: Match, scoreA: number, scoreB: number)
+	{//! this.currRound might be at round+1 (if func called too late)
+		const winnerId: string = (scoreA > scoreB ? match.player1Id : match.player2Id);
+
+		this.bracketService.updateMatchResult(match, winnerId);
+		this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, scoreA, scoreB, 'completed')
 		//*store result of the match inside the database
 		//*set the state of the match in the bracket class
 	}
 
-	private completeRound()
+	private completeRound(round: number): void
 	{
+		const winners: Array<{id: string, alias: string}> = [];
+		const roundMatches = this.bracket![round]!;
+
+		for (const match of roundMatches)
+			winners.push({ id: match.winnerId!, alias: match.winnerAlias! });
+
+		if (this.currRound + 2 < this.bracket.length)
+			this.bracketService.updateBracket(winners, this.bracket[round + 1]!, this.bracket[round + 2]!)
+		else
+			this.bracketService.updateBracket(winners, this.bracket[round + 1]!, null);
+		this.currRound++;
 		//*generate the winners array
 		//*run updateBracket() from bracketclass by checking if there is still at least two rounds left 
 		//*(for the nextNextRound parameter)
 		//*update value of round
 	}
 
+	private prepareRound()
+	{
+		
+	}
 	private endTournament()
 	{
 		//*chang status in database
@@ -91,10 +149,9 @@ export class Tournament {
 
 	private notifyEndOfTournament()
 	{
-
+		//*send message to all players through websockets?
 	}
 
-	public start
 
 
 

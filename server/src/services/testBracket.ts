@@ -175,7 +175,7 @@ function runTournamentTest(playerCount: number) {
             
             // Choose winner randomly
             const randomWinner = Math.random() < 0.5 ? match.player1Id : match.player2Id;
-            bracketService.updateMatchResult(bracket, round, matchIdx, randomWinner);
+            bracketService.updateMatchResult(bracket![round]![matchIdx]!, randomWinner);
             
             const winnerAlias = match.winnerId === match.player1Id ? match.player1Alias : match.player2Alias;
             console.log(`Match ${matchIdx + 1}: ${match.player1Alias} vs ${match.player2Alias} -> ${winnerAlias} wins!`);

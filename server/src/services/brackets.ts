@@ -21,11 +21,10 @@ export interface Match {
 
 interface BracketService {
     generateBracket(): Match[][];
-	updateMatchResult(bracket: Match[][], round: number, match: number, winnerId: string): void
+	updateMatchResult(match: Match, winnerId: string): void
     isRoundComplete(bracket: Match[][], round: number): boolean;
 	updateBracket(winners: Array<{id: string, alias: string}>, toUpdateRound: Match[], nextNextRound: Match[] | null): void;
     advanceWinner(match: Match, playerAlias: string, playerId: string, updatePlayer1: number): void;
-	declareTournamentWinner(): void;
 }
 
 /**
@@ -102,22 +101,16 @@ export class SingleEliminationBracket implements BracketService
 
 	/**
 	 * @brief Updates a match with the winner information
-	 * @param bracket The tournament bracket
-	 * @param round Round number (0-indexed)
-	 * @param match Match number within the round
+	 * @param match Match object
 	 * @param winnerId ID of the winning player
 	 * @throws Error if the specified match cannot be found
 	 */
-	public updateMatchResult(bracket: Match[][], round: number, match: number, winnerId: string): void
+	public updateMatchResult(match: Match, winnerId: string): void
 	{
-		if (round === undefined || match === undefined || !bracket[round] || !bracket[round][match])
-			throw new Error(`updateMatchResult: cannot find bracket information for round-${round}-match-${match}`) ;
-
-		let currMatch = bracket[round][match];
-		currMatch.winnerId = winnerId;
+		match.winnerId = winnerId;
 		let updatedWinnerAlias: string = this.db.getPlayerBy("id", winnerId)?.alias as string;
-		currMatch.winnerAlias = updatedWinnerAlias;
-		currMatch.status = "completed";
+		match.winnerAlias = updatedWinnerAlias;
+		match.status = "completed";
 	}
 
 	/**

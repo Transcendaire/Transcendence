@@ -5,6 +5,7 @@ import { Player } from '../types.js';
 import { Match, SingleEliminationBracket } from './brackets.js';
 import { WebsocketHandler } from '@fastify/websocket';
 import { sign } from 'crypto';
+
 export enum TournamentStatus {
 	CREATED = 'created',
 	RUNNING = 'running',
@@ -87,6 +88,16 @@ export class Tournament {
 		//*add an event monitoring for completeMatch
 		//*then run completeRound and start again
 		//*check if it is the last round before doing another turn, especially with completeRound()
+	}
+
+	public getPlayerCount(): number
+	{
+		return this.players.size;
+	}
+
+	public getStatus(): string
+	{
+		return this.status;
 	}
 
 	private startRound()

@@ -57,8 +57,8 @@ export interface TournamentHTMLElements {
 	joinTournamentButton: HTMLButtonElement;
 	createTournamentButton: HTMLButtonElement;
 	cancelTournamentButton: HTMLButtonElement;
-	tournamentNameInput: HTMLInputElement;
-	playerCountInput: HTMLInputElement;
+	tournamentNameInput: HTMLInputElement | null;
+	playerCountInput: HTMLInputElement | null;
 }
 
 export type WebSocketMessage = 

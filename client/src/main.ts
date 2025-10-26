@@ -39,29 +39,13 @@ const keys = {
  */
 function initLobby(): void
 {
-    const lobbyScreen = document.getElementById("lobby")!;
-    const gameScreen = document.getElementById("gameScreen")!;
-    const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
-    const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
-    const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
-
-	const tournamentButtons: TournamentHTMLElements = getTournamentElementsAsHTML();
-
     wsClient = new WebSocketClient();
     setupWebSocketHandlers();
-    setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen, tournamentButtons);
+    setupLobbyEventListeners();
+	setupTournamentListEventListeners();
+	setupTournamentSetupEventListeners();
 }
 
-function getTournamentElementsAsHTML(): TournamentHTMLElements {
-	return {
-			tournamentSetupScreen: document.getElementById("tournamentSetup") as HTMLButtonElement,
-			joinTournamentButton: document.getElementById("joinTournament") as HTMLButtonElement,
-			createTournamentButton: document.getElementById("createTournament") as HTMLButtonElement,
-			cancelTournamentButton: document.getElementById("cancelTournament") as HTMLButtonElement,
-			tournamentNameInput: document.getElementById("tournamentName") as HTMLInputElement,
-			playerCountInput: document.getElementById("playerCount") as HTMLInputElement
-	};
-}
 
 /**
  * @brief Initialize game objects and event listeners
@@ -111,13 +95,14 @@ function setupWebSocketHandlers(): void
  * @param lobbyScreen Lobby screen element
  * @param gameScreen Game screen element
  */
-function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput: HTMLInputElement, 
-                                 cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement,
-								 tournamentButtons: TournamentHTMLElements): void
+function setupLobbyEventListeners(): void
 {
+    const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
+
 	const getPlayerName = () => playerNameInput.value.trim() ; 
 
-	joinButton.addEventListener('click', async () => { //! Didn't add a check to see if playerName already exists in database, since its a one match only situation
+    const joinGameButton = document.getElementById("lobbyJoinGameButton") as HTMLButtonElement;
+	joinGameButton.addEventListener('click', async () => { //! Didn't add a check to see if playerName already exists in database, since its a one match only situation
 
 		if (inputParser.parsePlayerName(getPlayerName()) === false)
 			return;
@@ -129,12 +114,11 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
         }
     });
 
-    const joinAIButton = document.getElementById("joinAI") as HTMLButtonElement;
+    const joinAIButton = document.getElementById("lobbyJoinAIButton") as HTMLButtonElement;
     if (joinAIButton) {
         joinAIButton.addEventListener('click', async () => {
             const playerName = playerNameInput.value.trim();
-            if (!playerName) {
-                showError("Veuillez entrer votre nom");
+            if (inputParser.parsePlayerName(getPlayerName()) === false) {
                 return;
             }
             try {
@@ -145,27 +129,105 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
             }
         });
     }
+
+	const showTournamentListButton = document.getElementById("lobbyShowTournamentListButton") as HTMLButtonElement;
+    showTournamentListButton.addEventListener('click', () => {
+        if (inputParser.parsePlayerName(getPlayerName()) === false)
+            return;
+        showTournamentListScreen();
+    });
+
+	const showCreateTournamentButton = document.getElementById("lobbyShowCreateTournamentButton") as HTMLButtonElement;
+    showCreateTournamentButton?.addEventListener('click', () => {
+        if (inputParser.parsePlayerName(getPlayerName()) === false)
+            return;
+        showTournamentSetupScreen();
+    });
+
+    const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
     cancelButton.addEventListener('click', () => {
         wsClient.disconnect();
         returnToLobby();
     });
+}
 
-	tournamentButtons.joinTournamentButton.addEventListener('click', async () => {
-		if (inputParser.parsePlayerName(getPlayerName()) === false)
-			return;
-		showTournamentScreen(lobbyScreen, tournamentButtons.tournamentSetupScreen);	
+
+/**
+ * @brief Setup tournament list screen event listeners
+ */
+function setupTournamentListEventListeners(): void
+{
+	const createTournamentButton = document.getElementById('tournamentListCreateButton') as HTMLButtonElement;
+	createTournamentButton.addEventListener('click', () => {
+		showTournamentSetupScreen();
 	});
 
-	tournamentButtons.createTournamentButton.addEventListener('click', async () => {
-		const tournamentName = tournamentButtons.tournamentNameInput.value.trim();
-		const nbPlayers = Number(tournamentButtons.playerCountInput.value.trim());
-		if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
-			return;
-	})
+	const refreshButton = document.getElementById('tournamentListRefreshButton') as HTMLButtonElement;
+    refreshButton.addEventListener('click', () => {
+        loadTournamentList();
+    });
 
-	tournamentButtons.cancelTournamentButton.addEventListener('click', async () => { //?Should I just use returnToLobby()?
-		returnToLobby();
-	})
+    const backButton = document.getElementById('tournamentListBackButton') as HTMLButtonElement;
+    backButton.addEventListener('click', () => {
+        returnToLobby();
+    });
+
+    const container = document.getElementById('tournamentListContainer')!;
+    container.addEventListener('click', (event) => {
+        const target = event.target as HTMLElement;
+        
+        if (target.tagName === 'BUTTON' && target.dataset.tournamentId) {
+            const tournamentId = target.dataset.tournamentId;
+            const tournamentName = target.dataset.tournamentName || 'Unknown';
+            handleJoinTournament(tournamentId, tournamentName);
+        }
+    });	
+}
+
+
+/**
+ * @brief Setup tournament setup screen event listeners
+ */
+function setupTournamentSetupEventListeners(): void {
+	
+	const submitButton = document.getElementById('tournamentSetupSubmitButton') as HTMLButtonElement;
+    submitButton.addEventListener('click', async () => {
+		const nameInput = document.getElementById('tournamentName') as HTMLInputElement;
+        const countInput = document.getElementById('tournamentPlayerCount') as HTMLInputElement;
+        
+        const tournamentName = nameInput.value.trim();
+        const nbPlayers = Number(countInput.value.trim());
+		
+        if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
+            return;
+		
+		try {
+			const response = await fetch('/api/tournaments', {
+				method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+					name: tournamentName,
+                    maxPlayers: nbPlayers
+                })
+            });
+            
+            const data = await response.json();
+            if (!response.ok) {
+				showError(data.error || 'Impossible de créer le tournoi');
+                return;
+            }
+            
+            console.log('Tournament created:', data);
+            showTournamentListScreen();
+        } catch (error) {
+			showError('Erreur réseau');
+        }
+    });
+    
+	const cancelButton = document.getElementById('tournamentSetupCancelButton') as HTMLButtonElement;
+    cancelButton.addEventListener('click', () => {
+        returnToLobby();
+    });
 }
 
 /**
@@ -183,81 +245,17 @@ function setupGameEventListeners(): void
     });
 }
 
+
 /**
- * @brief Main game loop
- * @param currentTime Current timestamp
+ * @brief Shows tournament setup screen
  */
-function gameLoop(currentTime: number): void
-{
-    const deltaTime = currentTime - lastTime;
-    
-    if (!gameRunning)
-        return;
-    lastTime = currentTime;
-    sendInputToServer();
-    render();
-    updatePing();
-    requestAnimationFrame(gameLoop);
+function showTournamentSetupScreen(): void {
+    document.getElementById('lobby')!.classList.add('hidden');
+    document.getElementById('tournamentList')!.classList.add('hidden');
+    document.getElementById('tournamentSetup')!.classList.remove('hidden');
 }
 
-function sendInputToServer(): void
-{
-    if (!wsClient.isConnected() || !currentPlayerRole) return;
 
-    const input: GameInput = {
-        playerId: currentPlayerRole,
-        keys: {
-            up: keys.KeyQ || keys.KeyW || keys.KeyZ || keys.KeyA || keys.ArrowUp || keys.ArrowRight,
-            down: keys.KeyD || keys.KeyS || keys.ArrowDown || keys.ArrowLeft
-        }
-    };
-
-    wsClient.sendInput(input);
-}
-
-function updateGameState(gameState: GameState): void
-{
-    if (!player1 || !player2 || !ball) return;
-
-    // Vérifier si quelqu'un a marqué un point
-    const oldScore1 = player1.score;
-    const oldScore2 = player2.score;
-
-    player1.paddle.positionY = gameState.player1.paddle.y;
-    player1.score = gameState.player1.score;
-    
-    player2.paddle.positionY = gameState.player2.paddle.y;
-    player2.score = gameState.player2.score;
-    
-    ball.positionX = gameState.ball.x;
-    ball.positionY = gameState.ball.y;
-    ball.velocityX = gameState.ball.vx;
-    ball.velocityY = gameState.ball.vy;
-
-    // Logger les changements de score
-    if (player1.score > oldScore1) {
-        console.log(`[GAME] POINT POUR PLAYER 1! Score: ${player1.score} - ${player2.score}`);
-    }
-    if (player2.score > oldScore2) {
-        console.log(`[GAME] POINT POUR PLAYER 2! Score: ${player1.score} - ${player2.score}`);
-    }
-
-    // Logger toutes les informations de la partie (moins fréquent)
-    if (Math.random() < 0.05) { // 5% de chance à chaque frame
-        console.log('[GAME] Etat du jeu:', {
-            score: `${player1.score} - ${player2.score}`,
-            ball: {
-                position: `(${Math.round(gameState.ball.x)}, ${Math.round(gameState.ball.y)})`,
-                velocity: `(${Math.round(gameState.ball.vx)}, ${Math.round(gameState.ball.vy)})`
-            },
-            paddles: {
-                player1: Math.round(gameState.player1.paddle.y),
-                player2: Math.round(gameState.player2.paddle.y)
-            },
-            playerRole: currentPlayerRole
-        });
-    }
-}
 
 function showWaitingScreen(): void
 {
@@ -345,5 +343,175 @@ function renderScore(): void
     ctx.textAlign = "center";
     ctx.fillText(`${player1.score} - ${player2.score}`, canvas.width / 2, 60);
 }
+
+/**
+ * @brief Main game loop
+ * @param currentTime Current timestamp
+ */
+function gameLoop(currentTime: number): void
+{
+    const deltaTime = currentTime - lastTime;
+    
+    if (!gameRunning)
+        return;
+    lastTime = currentTime;
+    sendInputToServer();
+    render();
+    updatePing();
+    requestAnimationFrame(gameLoop);
+}
+
+function sendInputToServer(): void
+{
+    if (!wsClient.isConnected() || !currentPlayerRole) return;
+
+    const input: GameInput = {
+        playerId: currentPlayerRole,
+        keys: {
+            up: keys.KeyQ || keys.KeyW || keys.KeyZ || keys.KeyA || keys.ArrowUp || keys.ArrowRight,
+            down: keys.KeyD || keys.KeyS || keys.ArrowDown || keys.ArrowLeft
+        }
+    };
+
+    wsClient.sendInput(input);
+}
+
+function updateGameState(gameState: GameState): void
+{
+    if (!player1 || !player2 || !ball) return;
+
+    // Vérifier si quelqu'un a marqué un point
+    const oldScore1 = player1.score;
+    const oldScore2 = player2.score;
+
+    player1.paddle.positionY = gameState.player1.paddle.y;
+    player1.score = gameState.player1.score;
+    
+    player2.paddle.positionY = gameState.player2.paddle.y;
+    player2.score = gameState.player2.score;
+    
+    ball.positionX = gameState.ball.x;
+    ball.positionY = gameState.ball.y;
+    ball.velocityX = gameState.ball.vx;
+    ball.velocityY = gameState.ball.vy;
+
+    // Logger les changements de score
+    if (player1.score > oldScore1) {
+        console.log(`[GAME] POINT POUR PLAYER 1! Score: ${player1.score} - ${player2.score}`);
+    }
+    if (player2.score > oldScore2) {
+        console.log(`[GAME] POINT POUR PLAYER 2! Score: ${player1.score} - ${player2.score}`);
+    }
+
+    // Logger toutes les informations de la partie (moins fréquent)
+    if (Math.random() < 0.05) { // 5% de chance à chaque frame
+        console.log('[GAME] Etat du jeu:', {
+            score: `${player1.score} - ${player2.score}`,
+            ball: {
+                position: `(${Math.round(gameState.ball.x)}, ${Math.round(gameState.ball.y)})`,
+                velocity: `(${Math.round(gameState.ball.vx)}, ${Math.round(gameState.ball.vy)})`
+            },
+            paddles: {
+                player1: Math.round(gameState.player1.paddle.y),
+                player2: Math.round(gameState.player2.paddle.y)
+            },
+            playerRole: currentPlayerRole
+        });
+    }
+}
+
+
+async function loadTournamentList(): Promise<void> {
+    const container = document.getElementById('tournamentListContainer')!;
+    
+    try {
+        const response = await fetch('/api/tournaments');
+        const data = await response.json();
+        console.log(data);
+        
+        if (!response.ok) {
+            throw new Error('Failed to load tournaments');
+        }
+        
+        container.innerHTML = '';
+        
+        if (data.tournaments.length === 0) {
+            container.innerHTML = `
+                <p class="text-sonpi16-orange text-center" style="font-family: QuencyPixel-Regular;">
+                    Aucun tournoi disponible
+                </p>
+            `;
+            return;
+        }
+        
+        data.tournaments.forEach((tournament: any) => {
+            const div = document.createElement('div');
+            div.className = 'bg-sonpi16-orange p-4 rounded flex justify-between items-center hover:opacity-80 transition-opacity';
+            div.style.fontFamily = 'QuencyPixel-Regular';
+            
+            div.innerHTML = `
+                <div class="text-left text-sonpi16-black">
+                    <p class="font-bold text-lg">${tournament.name}</p>
+                    <p class="text-sm">Joueurs: ${tournament.currentPlayers}/${tournament.maxPlayers}</p>
+                    <p class="text-xs">Statut: ${tournament.status}</p>
+                </div>
+                <button data-tournament-id="${tournament.id}" 
+                        data-tournament-name="${tournament.name}"
+                        class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded font-bold">
+                    REJOINDRE
+                </button>
+            `;
+            
+            container.appendChild(div);
+        });
+        
+    } catch (error) {
+        container.innerHTML = `<p class="text-red-500">Erreur chargement</p>`;
+    }
+}
+
+
+async function handleJoinTournament(tournamentId: string, tournamentName: string): Promise<void>
+{
+	console.log(`Joining tournament ${tournamentName}`);
+
+	const input = document.getElementById('playerName') as HTMLInputElement;
+	const playerName = input.value.trim();
+	if (inputParser.parsePlayerName(playerName) === false)
+		return ;
+
+	try {
+		const response = await fetch(`/api/tournaments/${tournamentId}/join`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+				playerName: playerName
+			})
+		});
+		const data = await response.json();
+		if (!response.ok) {
+			showError(data.error || `Impossible de rejoindre le tournoi ${tournamentName}`);
+			return ;
+		}
+
+	} catch (error)
+	{
+		console.error('Failed to join tournament: ', error);
+		showError('Erreur réseau')
+	};
+}
+
+
+/**
+ * @brief Shows tournament list screen
+ */
+function showTournamentListScreen(): void {
+    document.getElementById('lobby')!.classList.add('hidden');
+    document.getElementById('tournamentList')!.classList.remove('hidden');
+    loadTournamentList();
+}
+
+
+
 
 initLobby();

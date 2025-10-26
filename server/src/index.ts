@@ -5,6 +5,9 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import { MatchmakingService } from './services/matchmaking.js'
 import fs from 'fs'
+import { TournamentManagerService } from './services/tournamentManager.js'
+import { Tournament } from './services/tournament.js'
+
 
 (async () => {
   const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -15,7 +18,7 @@ import fs from 'fs'
   const publicPath = path.join(__dirname, '../../client/public')
   const distPath = path.join(__dirname, '../../client/dist')
   const indexPath = path.join(publicPath, 'index.html')
-  
+  const tournamentManager = new TournamentManagerService(matchmaking);
   // Debug the correct paths
   console.log('Current directory:', process.cwd())
   console.log('__dirname:', __dirname)
@@ -38,9 +41,7 @@ import fs from 'fs'
     decorateReply: false
   })
   
-  //* Because of websocket: true -> this route doesnt serve an html page anymore, but is a websocket endpoint.
-  //* Fastify automatically creates server-side WebSocket when it receives the upgrade request
-  //* ONE connexion but two websockets (client and server)
+
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
     fastify.get('/game', { websocket: true }, (connection, req) => {
@@ -71,6 +72,34 @@ import fs from 'fs'
     }
   })
   
+  server.post<{ Body: { name: string; maxPlayers: number } }>
+  ('/api/tournaments', async (req, reply) => {
+
+	const { name, maxPlayers } = req.body;
+    const tournamentId = tournamentManager.createTournament(name, maxPlayers);
+    return { id: tournamentId, name, maxPlayers };
+
+  })
+
+  server.get('/api/tournaments', async (req, reply) => {
+	try {
+		const tournaments = tournamentManager.listTournaments();
+		console.log(tournaments);
+		return { tournaments };
+	} catch (error) {
+		return reply.code(500).send({ error: "Impossible de lister les tournois" })
+	}
+  })
+
+//   //ToDo setup possibility to join a tournament (add the routes and the logic)
+//   //
+//   server.post('/api/tournaments/:id/join', async(req, res) => {
+
+// 	const tournamentId = req.params.id as string;
+// 	const { playerName } = req.body;
+
+//   })
+
   server.setNotFoundHandler((request, reply) => {
     console.log(`NotFound handler for: ${request.url}`)
     

@@ -1,8 +1,14 @@
 FROM node:20-alpine
 
-WORKDIR /app
-
+WORKDIR /shared
 COPY shared/ /shared/
+RUN npm install
+RUN npm run build
+
+
+WORKDIR /app
+RUN mkdir -p public/dist/shared
+RUN cp -r /shared/dist/* public/dist/shared/
 
 COPY client/package*.json ./
 RUN npm ci

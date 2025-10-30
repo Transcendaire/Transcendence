@@ -15,18 +15,19 @@ export class TournamentManagerService
 		this.matchmaking = matchmaking;
 	}
 
-	public createTournament(name: string, maxPlayers: number): void
+	public createTournament(name: string, maxPlayers: number): string
 	{
 		try {
 			this.db.createTournament(name, maxPlayers);
 
-			const tournamentId = this.db.getTournament(undefined, name);
-			if (!tournamentId)
+			const tournamentData = this.db.getTournament(undefined, name);
+			if (!tournamentData)
 				throw new Error(`createTournament: can't find tournament ${name} in database`);
 
-			const tournament = new Tournament(tournamentId.id, name, maxPlayers, this.matchmaking);
-			this.tournaments.set(tournamentId.id, tournament);
+			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking);
+			this.tournaments.set(tournamentData.id, tournament);
 
+			return tournamentData.id;
 		} catch (error) {
 			console.error(`createTournament: error creating tournament ${name}: `, error);
 			throw error;
@@ -54,9 +55,12 @@ export class TournamentManagerService
 	status: string;
 	}>
 	{
+		console.log(`📋 Listing ${this.tournaments.size} tournaments:`);
 		const list = [];
 		for (const [id, tournament] of this.tournaments.entries())
 		{
+			const count = tournament.getPlayerCount();
+			console.log(`   - ${tournament.name}: ${count}/${tournament.maxPlayers} players`);
 			list.push({
 				id: id,
 				name: tournament.name,

@@ -6,3 +6,5 @@ test.cpp
 tmp.ts
 note.txt
 todo.txt
+*.d.*
+*.js.map

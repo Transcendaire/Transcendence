@@ -45,8 +45,15 @@ export class Tournament {
 	}
 
 
+	public hasPlayer(name: string): boolean
+	{
+		return this.players.has(name);
+	}
+
 	public addPlayerToTournament(alias: string, socket?: WebSocket): void
 	{
+    	console.log(`🔵 [START] Adding ${alias} to tournament ${this.name}`);
+    	console.log(`   Current players.size BEFORE: ${this.players.size}`);
 		if (this.status !== TournamentStatus.CREATED)
 			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament already started or ended`);
 		
@@ -58,8 +65,9 @@ export class Tournament {
 			const player = this.db.getPlayer(alias);
 			if (!player)
 				throw new Error(`addPlayerToTournament: cannot find player with alias ${alias} in tournament ${this.name}`);
-			
-			this.players.set(player.alias, {id: player.id,
+			console.log(`   ✅ Found player in DB:`, player);
+			this.players.set(player.alias, {
+				 id: player.id,
 				 alias,
 				 status: 'waiting',
 				 socket
@@ -68,6 +76,15 @@ export class Tournament {
 			console.error(`addPlayerToTournament: error while adding ${alias} to ${this.name}: `, error);
 			throw error;
 		}
+	}
+
+	public removePlayerFromTournament(name: string)
+	{
+		if (this.players.has(name) === false)
+			throw new Error(`removePlayerFromTournament: cannot remove player ${name} : player not in tournament`);
+		
+		this.players.delete(name);
+		this.db.removePlayerFromTournament(name, this.id, this.name);
 	}
 
 	public runTournament()
@@ -92,6 +109,7 @@ export class Tournament {
 
 	public getPlayerCount(): number
 	{
+		console.log(`📊 getPlayerCount() for ${this.name}: ${this.players.size}`);
 		return this.players.size;
 	}
 

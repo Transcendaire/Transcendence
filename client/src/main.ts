@@ -130,14 +130,14 @@ function setupLobbyEventListeners(): void
         });
     }
 
-	const showTournamentListButton = document.getElementById("lobbyShowTournamentListButton") as HTMLButtonElement;
+	const showTournamentListButton = document.getElementById("lobbyJoinTournamentListButton") as HTMLButtonElement;
     showTournamentListButton.addEventListener('click', () => {
         if (inputParser.parsePlayerName(getPlayerName()) === false)
             return;
         showTournamentListScreen();
     });
 
-	const showCreateTournamentButton = document.getElementById("lobbyShowCreateTournamentButton") as HTMLButtonElement;
+	const showCreateTournamentButton = document.getElementById("lobbyCreateTournamentButton") as HTMLButtonElement;
     showCreateTournamentButton?.addEventListener('click', () => {
         if (inputParser.parsePlayerName(getPlayerName()) === false)
             return;
@@ -176,10 +176,14 @@ function setupTournamentListEventListeners(): void
     container.addEventListener('click', (event) => {
         const target = event.target as HTMLElement;
         
-        if (target.tagName === 'BUTTON' && target.dataset.tournamentId) {
+        if (target.tagName === 'BUTTON' && target.dataset.tournamentId)
+		{
             const tournamentId = target.dataset.tournamentId;
             const tournamentName = target.dataset.tournamentName || 'Unknown';
-            handleJoinTournament(tournamentId, tournamentName);
+            if (target.dataset.action === 'leave')
+				handleLeaveTournament(tournamentId);
+			else
+				handleJoinTournament(tournamentId, tournamentName);
         }
     });	
 }
@@ -194,20 +198,25 @@ function setupTournamentSetupEventListeners(): void {
     submitButton.addEventListener('click', async () => {
 		const nameInput = document.getElementById('tournamentName') as HTMLInputElement;
         const countInput = document.getElementById('tournamentPlayerCount') as HTMLInputElement;
-        
+		const playerNameInput = document.getElementById('playerName') as HTMLInputElement;
+
         const tournamentName = nameInput.value.trim();
         const nbPlayers = Number(countInput.value.trim());
-		
+		const playerName = playerNameInput.value.trim();
+
         if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
             return;
-		
+		if (inputParser.parsePlayerName(playerName) === false)
+            return;
+
 		try {
 			const response = await fetch('/api/tournaments', {
 				method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
 					name: tournamentName,
-                    maxPlayers: nbPlayers
+                    maxPlayers: nbPlayers,
+					creatorName: playerName
                 })
             });
             
@@ -218,6 +227,7 @@ function setupTournamentSetupEventListeners(): void {
             }
             
             console.log('Tournament created:', data);
+			
             showTournamentListScreen();
         } catch (error) {
 			showError('Erreur réseau');
@@ -311,7 +321,7 @@ function returnToLobby(): void
 
 function showError(message: string): void
 {
-    alert(message);
+    alert(message);77777
 }
 
 function updatePing(): void
@@ -423,19 +433,21 @@ function updateGameState(gameState: GameState): void
 
 async function loadTournamentList(): Promise<void> {
     const container = document.getElementById('tournamentListContainer')!;
-    
+
+	const playerName = (document.getElementById('playerName') as HTMLInputElement).value.trim();
+	
     try {
-        const response = await fetch('/api/tournaments');
+        const response = await fetch(`/api/tournaments?playerName=${encodeURIComponent(playerName)}`);
         const data = await response.json();
         console.log(data);
         
-        if (!response.ok) {
+        if (!response.ok)
             throw new Error('Failed to load tournaments');
-        }
         
         container.innerHTML = '';
         
-        if (data.tournaments.length === 0) {
+        if (data.tournaments.length === 0)
+		{
             container.innerHTML = `
                 <p class="text-sonpi16-orange text-center" style="font-family: QuencyPixel-Regular;">
                     Aucun tournoi disponible
@@ -445,22 +457,30 @@ async function loadTournamentList(): Promise<void> {
         }
         
         data.tournaments.forEach((tournament: any) => {
-            const div = document.createElement('div');
-            div.className = 'bg-sonpi16-orange p-4 rounded flex justify-between items-center hover:opacity-80 transition-opacity';
-            div.style.fontFamily = 'QuencyPixel-Regular';
-            
-            div.innerHTML = `
-                <div class="text-left text-sonpi16-black">
-                    <p class="font-bold text-lg">${tournament.name}</p>
-                    <p class="text-sm">Joueurs: ${tournament.currentPlayers}/${tournament.maxPlayers}</p>
-                    <p class="text-xs">Statut: ${tournament.status}</p>
-                </div>
-                <button data-tournament-id="${tournament.id}" 
-                        data-tournament-name="${tournament.name}"
-                        class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded font-bold">
-                    REJOINDRE
-                </button>
-            `;
+    		const div = document.createElement('div');
+    		div.className = 'bg-sonpi16-orange p-4 rounded flex justify-between items-center hover:opacity-80 transition-opacity';
+    		div.style.fontFamily = 'QuencyPixel-Regular';
+
+    		div.innerHTML = `
+    		    <div class="text-left text-sonpi16-black">
+    		        <p class="font-bold text-lg">${tournament.name}</p>
+    		        <p class="text-sm">Joueurs: ${tournament.currentPlayers}/${tournament.maxPlayers}</p>
+    		        <p class="text-xs">Statut: ${tournament.status}</p>
+    		    </div>
+    		    ${tournament.isMember ? `
+    		        <button data-tournament-id="${tournament.id}"
+    		                data-action="leave"
+    		                class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded font-bold">
+    		            QUITTER
+    		        </button>
+    		    ` : `
+    		        <button data-tournament-id="${tournament.id}" 
+    		                data-tournament-name="${tournament.name}"
+    		                class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded font-bold">
+    		            REJOINDRE
+    		        </button>
+    		    `}
+    		`;
             
             container.appendChild(div);
         });
@@ -493,7 +513,7 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 			showError(data.error || `Impossible de rejoindre le tournoi ${tournamentName}`);
 			return ;
 		}
-
+		loadTournamentList();
 	} catch (error)
 	{
 		console.error('Failed to join tournament: ', error);
@@ -501,6 +521,31 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 	};
 }
 
+
+async function handleLeaveTournament(tournamentId: string): Promise<void>
+{
+	const input = document.getElementById('playerName') as HTMLInputElement;
+	const playerName = input.value.trim();
+	if (inputParser.parsePlayerName(playerName) === false)
+		return ;
+
+	try {
+		const response = await fetch(`/api/tournaments/${tournamentId}/leave`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'Application/json' },
+			body: JSON.stringify({ playerName })
+		});
+		const data = await response.json();
+		if (!response.ok)
+		{
+			showError(data.error || 'Impossible de quitter le tournoi');
+			return ;
+		}
+		loadTournamentList();
+	} catch (error) {
+		showError('Erreur réseau');
+	}
+}
 
 /**
  * @brief Shows tournament list screen

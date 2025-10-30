@@ -1,3 +1,5 @@
+
+
 function showError(message: string): void
 {
     alert(message);
@@ -53,4 +55,37 @@ export class inputParserClass {
 		}
 		return true;
 	}
+
+	public parseTournamentWithHTTPResponse(tournament: any | undefined, res: any): void
+    {
+        if (!tournament || tournament === undefined)
+		{
+            res.code(404).send({ error: 'Tournoi introuvable' });
+            return;
+        }
+
+		const status = tournament.getStatus();
+        if (status === 'running')
+		{
+            res.code(409).send({ error: 'Le tournoi a déjà commencé' });
+            return;
+        }
+
+        if (status === 'finished')
+		{
+            res.code(409).send({ error: 'Le tournoi est terminé' });
+            return;
+        }
+
+        const currentPlayers = tournament.getPlayerCount();
+        const maxPlayers = tournament.maxPlayers;
+        
+        if (tournament.getPlayerCount() === tournament.maxPlayers)
+		{
+            res.code(409).send({ error: 'Le tournoi est complet' });
+            return;
+        }
+    }
+
+	
 };

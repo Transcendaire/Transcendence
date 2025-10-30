@@ -7,6 +7,7 @@ import { MatchmakingService } from './services/matchmaking.js'
 import fs from 'fs'
 import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament } from './services/tournament.js'
+import { inputParserClass } from '../../client/src/inputParser.js'
 
 
 (async () => {
@@ -15,10 +16,13 @@ import { Tournament } from './services/tournament.js'
     logger: true // Enable logging
   })
   const matchmaking = new MatchmakingService()
-  const publicPath = path.join(__dirname, '../../client/public')
-  const distPath = path.join(__dirname, '../../client/dist')
-  const indexPath = path.join(publicPath, 'index.html')
   const tournamentManager = new TournamentManagerService(matchmaking);
+  const inputParser = new inputParserClass();
+
+  const serverCwd = process.cwd();
+  const publicPath = path.join(serverCwd, '../client/public')
+  const distPath = path.join(serverCwd, '../client/dist')
+  const indexPath = path.join(publicPath, 'index.html')
   // Debug the correct paths
   console.log('Current directory:', process.cwd())
   console.log('__dirname:', __dirname)
@@ -72,33 +76,123 @@ import { Tournament } from './services/tournament.js'
     }
   })
   
-  server.post<{ Body: { name: string; maxPlayers: number } }>
-  ('/api/tournaments', async (req, reply) => {
+	server.post<{ Body: { name: string; maxPlayers: number; creatorName: string } }>
+	('/api/tournaments', 
+		async (req, reply) => {
+		try {
+			const { name, maxPlayers, creatorName } = req.body;
+		
+	        if (!creatorName)
+	            return reply.code(400).send({ error: 'Nom du créateur requis' });
+	        if (creatorName.trim().length < 3)
+	            return reply.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
+	        if (!/^[a-zA-Z0-9_-]+$/.test(creatorName))
+	            return reply.code(400).send({ error: 'Caractères invalides dans le nom' });
+		
+	        const tournamentId = tournamentManager.createTournament(name, maxPlayers);
+	
+	        const tournament = tournamentManager.getTournament(tournamentId);
+	        if (!tournament)
+	            return reply.code(500).send({ error: 'Erreur lors de la création du tournoi'});
+	
+	        try {
+	            tournament.addPlayerToTournament(creatorName, undefined);
+			
+	            return reply.code(201).send({
+	                success: true,
+	                id: tournamentId,
+	                name: name,
+	                maxPlayers: maxPlayers,
+	                currentPlayers: tournament.getPlayerCount(),  // ✅ Use actual count
+	                status: 'created',
+	                message: 'Tournoi créé et vous avez rejoint automatiquement'
+	            });
+			
+	        } catch (error) {
+	            console.error('❌ Error auto-joining creator:', error);
+	            return reply.code(500).send({ error: 'Tournoi créé mais impossible de vous ajouter' });
+	        }
+	    } catch (error) {
+	        console.error('❌ Error creating tournament:', error);
+	        return reply.code(500).send({ error: 'Impossible de créer le tournoi' })
+	    }
+	})
 
-	const { name, maxPlayers } = req.body;
-    const tournamentId = tournamentManager.createTournament(name, maxPlayers);
-    return { id: tournamentId, name, maxPlayers };
 
-  })
+	server.post<{ Params: {id: string}, Body: {playerName: string}}>
+	('/api/tournaments/:id/leave', async(req, res) => {
+	    const tournamentId = req.params.id;
+	    const { playerName } = req.body;
+	    const tournament = tournamentManager.getTournament(tournamentId);
 
-  server.get('/api/tournaments', async (req, reply) => {
+	    if (!tournament)
+	        return res.code(404).send({ error: 'Tournoi introuvable' });
+	    if (!playerName || playerName.trim().length < 3)
+	        return res.code(400).send({ error: 'Nom du joueur requis' });
+
+	    try {
+	        tournament.removePlayerFromTournament(playerName);
+	        return res.code(200).send({ success: true });
+	    } catch (error) {
+	        console.error(`Error removing player from tournament ${tournament.name}`, error);
+	        return res.code(500).send({ error: 'Impossible de quitter le tournoi' });
+	    }
+	});
+
+  server.get<{ Querystring: { playerName?: string } }>
+  ('/api/tournaments', 
+	async (req, reply) => {
 	try {
+		const { playerName } = req.query;
 		const tournaments = tournamentManager.listTournaments();
-		console.log(tournaments);
-		return { tournaments };
+		const updatedTournaments = tournaments.map(t => {
+
+			const currTournament = tournamentManager.getTournament(t.id);
+			const isMember = playerName && currTournament!.hasPlayer(playerName)
+			return {...t, isMember};
+		})
+		return reply.send({ tournaments: updatedTournaments });
 	} catch (error) {
 		return reply.code(500).send({ error: "Impossible de lister les tournois" })
 	}
   })
 
-//   //ToDo setup possibility to join a tournament (add the routes and the logic)
-//   //
-//   server.post('/api/tournaments/:id/join', async(req, res) => {
 
-// 	const tournamentId = req.params.id as string;
-// 	const { playerName } = req.body;
+  server.post<{ Params: {id: string}, Body: {playerName: string}}>
+	('/api/tournaments/:id/join', async(req, res) => {
+		
+		const tournamentId = req.params.id;
+		const { playerName } = req.body;
+		const tournament = tournamentManager.getTournament(tournamentId);
 
-//   })
+		inputParser.parseTournamentWithHTTPResponse(tournament, res); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
+		
+		if (!playerName || playerName === undefined)
+			return res.code(400).send({ error: 'Nom du joueur requis' });
+		if (playerName.trim().length < 3)
+			return res.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
+		if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
+			return res.code(400).send({ error: 'Au moins un caractère interdit dans le nom du joueur'});
+	
+		try {
+		tournament!.addPlayerToTournament(playerName, undefined);
+
+		const updatedTournament = tournamentManager.getTournament(tournamentId);
+		return res.code(200).send({
+		success: true,
+		tournamentId: tournamentId,
+		tournamentName: updatedTournament?.name,
+		currentPlayers: updatedTournament?.getPlayerCount(),
+		maxPlayers: updatedTournament?.maxPlayers,
+		status: updatedTournament?.getStatus()
+		})
+
+		} catch (error) {
+		console.error(`Error adding player to tournament ${tournament!.name}`,error);
+		return res.code(500).send({error: 'Impossible de rejoindre le tournoi'})
+		}
+
+	})
 
   server.setNotFoundHandler((request, reply) => {
     console.log(`NotFound handler for: ${request.url}`)

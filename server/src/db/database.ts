@@ -358,7 +358,7 @@ export class DatabaseService {
 	 * @returns Generated UUID for the created tournament
 	 * @throws Error if tournament name already exists or database operation fails
 	 */
-	public createTournament(name:string, maxPlayers:number)
+	public createTournament(name:string, maxPlayers:number): string
 	{
 		if (this.getTournament(undefined, name))
 			throw new Error(`createTournament: tournament ${name} already exists and cannot be created`);
@@ -409,6 +409,35 @@ export class DatabaseService {
 		).run(tournamentId, player.id, alias, Date.now());
 
 		this.db.prepare("UPDATE tournaments SET curr_nb_players = curr_nb_players + 1 WHERE id = ?").run(tournamentId);
+	}
+
+	/**
+	 * @brief Removes a player from a tournament.
+	 
+	 * @param alias - The player's alias used to look up the player record.
+	 * @param tournamentId - The unique identifier of the tournament.
+	 * @param tournamentName - The human-readable tournament name (used only in error messages).
+	 *
+	 * @throws {Error} If the player with the given alias cannot be found.
+	 * @throws {Error} If the player is not a member of the specified tournament.
+	 */
+	public removePlayerFromTournament(alias: string, tournamentId: string, tournamentName: string): void
+	{
+		const player = this.getPlayer(alias);
+		if (!player)
+			throw new Error(`removePlayerFromTournament: player ${alias} not found`);
+
+		const result = this.db.prepare(
+			"DELETE FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
+		).run(tournamentId, player.id);
+
+		if (result.changes === 0)
+			throw new Error(`removePlayerFromTournament: player ${alias} not in tournament ${tournamentName}`);
+
+		this.db.prepare(
+			"UPDATE tournaments SET curr_nb_players = curr_nb_players - 1 WHERE id = ?"
+		).run(tournamentId);
+		this.removePlayer(player.id);
 	}
 
 	/**

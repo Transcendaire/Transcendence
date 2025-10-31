@@ -39,13 +39,20 @@ export class TournamentManagerService
 		return this.tournaments.get(id);
 	}
 
+	// public 
+
 	private getStatusInFrench(status: string): string
 	{
-		if (status === 'created')
-			return ('En attente');
-		if (status === 'running')
-			return ('En cours de jeu');
-		return ('Terminé');
+		switch (status) {
+			case 'created':
+				return 'En attente';
+			case 'full':
+				return 'Complet';
+			case 'running':
+				return 'En cours de jeu';
+			default:
+				return 'Terminé';
+		}
 	}
 	public listTournaments(): Array<{
 	id: string;

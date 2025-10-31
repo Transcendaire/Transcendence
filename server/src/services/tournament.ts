@@ -8,6 +8,7 @@ import { sign } from 'crypto';
 
 export enum TournamentStatus {
 	CREATED = 'created',
+	FULL = 'full',
 	RUNNING = 'running',
 	COMPLETED = 'completed'
 }
@@ -52,12 +53,10 @@ export class Tournament {
 
 	public addPlayerToTournament(alias: string, socket?: WebSocket): void
 	{
-    	console.log(`🔵 [START] Adding ${alias} to tournament ${this.name}`);
-    	console.log(`   Current players.size BEFORE: ${this.players.size}`);
 		if (this.status !== TournamentStatus.CREATED)
 			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament already started or ended`);
 		
-		if (this.players.size + 1 > this.maxPlayers)
+		if (this.players.size === this.maxPlayers)
 			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament full`);
 		
 		try {
@@ -72,6 +71,8 @@ export class Tournament {
 				 status: 'waiting',
 				 socket
 				});
+			if (this.players.size === this.maxPlayers)
+				this.status = TournamentStatus.FULL;
 		} catch (error) {
 			console.error(`addPlayerToTournament: error while adding ${alias} to ${this.name}: `, error);
 			throw error;

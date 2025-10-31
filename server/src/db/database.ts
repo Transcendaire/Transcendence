@@ -401,7 +401,7 @@ export class DatabaseService {
 		}
 
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
-		).get(tournamentId, player.id);
+		).get(tournamentId, player.alias);
 		if (playerAlreadyInTournament)
 			throw new Error(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
 
@@ -437,7 +437,6 @@ export class DatabaseService {
 		this.db.prepare(
 			"UPDATE tournaments SET curr_nb_players = curr_nb_players - 1 WHERE id = ?"
 		).run(tournamentId);
-		this.removePlayer(player.id);
 	}
 
 	/**

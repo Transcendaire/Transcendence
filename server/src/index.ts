@@ -8,6 +8,7 @@ import fs from 'fs'
 import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament } from './services/tournament.js'
 import { inputParserClass } from '../../client/src/inputParser.js'
+import { getDatabase } from './db/databaseSingleton.js'
 
 
 (async () => {
@@ -18,6 +19,7 @@ import { inputParserClass } from '../../client/src/inputParser.js'
   const matchmaking = new MatchmakingService()
   const tournamentManager = new TournamentManagerService(matchmaking);
   const inputParser = new inputParserClass();
+  const db = getDatabase();
 
   const serverCwd = process.cwd();
   const publicPath = path.join(serverCwd, '../client/public')
@@ -88,7 +90,7 @@ import { inputParserClass } from '../../client/src/inputParser.js'
 	            return reply.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
 	        if (!/^[a-zA-Z0-9_-]+$/.test(creatorName))
 	            return reply.code(400).send({ error: 'Caractères invalides dans le nom' });
-		
+
 	        const tournamentId = tournamentManager.createTournament(name, maxPlayers);
 	
 	        const tournament = tournamentManager.getTournament(tournamentId);
@@ -120,7 +122,8 @@ import { inputParserClass } from '../../client/src/inputParser.js'
 
 
 	server.post<{ Params: {id: string}, Body: {playerName: string}}>
-	('/api/tournaments/:id/leave', async(req, res) => {
+	('/api/tournaments/:id/leave', 
+		async(req, res) => {
 	    const tournamentId = req.params.id;
 	    const { playerName } = req.body;
 	    const tournament = tournamentManager.getTournament(tournamentId);
@@ -138,6 +141,16 @@ import { inputParserClass } from '../../client/src/inputParser.js'
 	        return res.code(500).send({ error: 'Impossible de quitter le tournoi' });
 	    }
 	});
+
+	server.get<{ Querystring: { playerName: string}}>
+	('/api/players/check-playerName',
+		async(req, res) => {
+			const { playerName } = req.query;
+			if (db.getPlayer(playerName))
+				return res.code(409).send({ taken: true, error: 'Le nom du joueur est déjà pris' });
+			return res.code(200).send({ taken: false });
+		}
+	)
 
   server.get<{ Querystring: { playerName?: string } }>
   ('/api/tournaments', 
@@ -173,7 +186,6 @@ import { inputParserClass } from '../../client/src/inputParser.js'
 			return res.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
 		if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
 			return res.code(400).send({ error: 'Au moins un caractère interdit dans le nom du joueur'});
-	
 		try {
 		tournament!.addPlayerToTournament(playerName, undefined);
 

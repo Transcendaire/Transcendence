@@ -87,6 +87,20 @@ function setupWebSocketHandlers(): void
     };
 }
 
+async function checkIfPlayerNameAlreadyTaken(playerName: string)
+{
+		const response = await fetch(`/api/players/check-playerName?alias=${playerName}`)
+		const data = await response.json();
+
+		if (!response.ok)
+		{
+			showError(data.error || 'Impossible de vérifier si le nom existe déjà');
+			return ;
+		}
+		if (data.taken === true)
+			throw new Error(`Le nom ${playerName} est déjà pris`);
+}
+
 /**
  * @brief Setup lobby event listeners
  * @param joinButton Join game button
@@ -106,11 +120,13 @@ function setupLobbyEventListeners(): void
 
 		if (inputParser.parsePlayerName(getPlayerName()) === false)
 			return;
-        try {
+		try {
+			await checkIfPlayerNameAlreadyTaken(getPlayerName());
             await wsClient.connect(`ws://${window.location.host}/game`);
             wsClient.joinGame(getPlayerName());
         } catch (error) {
-            showError("Impossible de se connecter au serveur");
+            showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+			return ;
         }
     });
 
@@ -122,25 +138,37 @@ function setupLobbyEventListeners(): void
                 return;
             }
             try {
+				await checkIfPlayerNameAlreadyTaken(getPlayerName());
                 await wsClient.connect(`ws://${window.location.host}/game`);
                 wsClient.joinAIGame(playerName);
             } catch (error) {
-                showError("Impossible de se connecter au serveur");
+				showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+				return ;
             }
         });
     }
 
 	const showTournamentListButton = document.getElementById("lobbyJoinTournamentListButton") as HTMLButtonElement;
-    showTournamentListButton.addEventListener('click', () => {
+    showTournamentListButton.addEventListener('click', async () => {
         if (inputParser.parsePlayerName(getPlayerName()) === false)
             return;
+		try {
+			await checkIfPlayerNameAlreadyTaken(getPlayerName());
+		} catch (error) {
+			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+		}
         showTournamentListScreen();
     });
 
 	const showCreateTournamentButton = document.getElementById("lobbyCreateTournamentButton") as HTMLButtonElement;
-    showCreateTournamentButton?.addEventListener('click', () => {
+    showCreateTournamentButton?.addEventListener('click', async () => {
         if (inputParser.parsePlayerName(getPlayerName()) === false)
             return;
+		try {
+			await checkIfPlayerNameAlreadyTaken(getPlayerName());
+		} catch (error) {
+			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+		}
         showTournamentSetupScreen();
     });
 
@@ -210,6 +238,7 @@ function setupTournamentSetupEventListeners(): void {
             return;
 
 		try {
+			checkIfPlayerNameAlreadyTaken(playerName);
 			const response = await fetch('/api/tournaments', {
 				method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -497,7 +526,7 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 
 	const input = document.getElementById('playerName') as HTMLInputElement;
 	const playerName = input.value.trim();
-	if (inputParser.parsePlayerName(playerName) === false)
+	if (inputParser.parsePlayerName(playerName) === false) //? necessary ? name should already be parsed here
 		return ;
 
 	try {
@@ -526,8 +555,8 @@ async function handleLeaveTournament(tournamentId: string): Promise<void>
 {
 	const input = document.getElementById('playerName') as HTMLInputElement;
 	const playerName = input.value.trim();
-	if (inputParser.parsePlayerName(playerName) === false)
-		return ;
+	// if (inputParser.parsePlayerName(playerName) === false) //? is it necessary? if player can leave tournament, then username is ok because he could join it
+	// 	return ;
 
 	try {
 		const response = await fetch(`/api/tournaments/${tournamentId}/leave`, {

@@ -48,7 +48,7 @@ restart:
 clean:
 	@echo "$(RED)Cleaning all resources...$(NC)"
 	@docker compose down -v --rmi all
-	@rm -rf client/public/dist server/dist
+	@rm -rf client/public/dist server/dist server/nodes_module
 	@echo "$(GREEN)Clean complete$(NC)"
 
 re:

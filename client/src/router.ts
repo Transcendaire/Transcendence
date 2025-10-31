@@ -1,8 +1,8 @@
-export type Route = 'home';
+export type Route = 'home' | 'profile';
 
 const ROUTES: Record<Route, string> = {
-    home: '/page/home.html'
-    
+    home: '/page/home.html',
+    profile: '/page/profile.html'
 }
 
 export async function render(route: Route) {

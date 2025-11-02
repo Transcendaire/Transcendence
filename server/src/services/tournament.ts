@@ -64,7 +64,6 @@ export class Tournament {
 			const player = this.db.getPlayer(alias);
 			if (!player)
 				throw new Error(`addPlayerToTournament: cannot find player with alias ${alias} in tournament ${this.name}`);
-			console.log(`   ✅ Found player in DB:`, player);
 			this.players.set(player.alias, {
 				 id: player.id,
 				 alias,

@@ -46,6 +46,12 @@ function initLobby(): void
 	setupTournamentSetupEventListeners();
 }
 
+function getPlayerName(): string
+{
+    const input = document.getElementById('playerName') as HTMLInputElement;
+    console.log(`PLAYER NAME IS ${input.value}`);
+	return input ? input.value.trim() : 'asasas';
+}
 
 /**
  * @brief Initialize game objects and event listeners
@@ -89,16 +95,22 @@ function setupWebSocketHandlers(): void
 
 async function checkIfPlayerNameAlreadyTaken(playerName: string)
 {
-		const response = await fetch(`/api/players/check-playerName?alias=${playerName}`)
+    	console.log(`🔍 [CLIENT] Checking player: "${playerName}"`);
+		const response = await fetch(`/api/players/check-playerNameInTournament?playerName=${playerName}`)
 		const data = await response.json();
-
+  		console.log(`📊 [CLIENT] Response status: ${response.status}, data:`, data);
+	
 		if (!response.ok)
 		{
-			showError(data.error || 'Impossible de vérifier si le nom existe déjà');
-			return ;
+			console.log(`❌ [CLIENT] Request failed`);
+			throw new Error(data.error || 'Impossible de vérifier si le nom existe déjà');
 		}
 		if (data.taken === true)
+		{
+			console.log(`🚫 [CLIENT] Name is taken, throwing error`);
 			throw new Error(`Le nom ${playerName} est déjà pris`);
+		}
+		console.log(`✅ [CLIENT] Name is available`);
 }
 
 /**
@@ -113,7 +125,6 @@ function setupLobbyEventListeners(): void
 {
     const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
 
-	const getPlayerName = () => playerNameInput.value.trim() ; 
 
     const joinGameButton = document.getElementById("lobbyJoinGameButton") as HTMLButtonElement;
 	joinGameButton.addEventListener('click', async () => { //! Didn't add a check to see if playerName already exists in database, since its a one match only situation
@@ -121,7 +132,6 @@ function setupLobbyEventListeners(): void
 		if (inputParser.parsePlayerName(getPlayerName()) === false)
 			return;
 		try {
-			await checkIfPlayerNameAlreadyTaken(getPlayerName());
             await wsClient.connect(`ws://${window.location.host}/game`);
             wsClient.joinGame(getPlayerName());
         } catch (error) {
@@ -138,7 +148,6 @@ function setupLobbyEventListeners(): void
                 return;
             }
             try {
-				await checkIfPlayerNameAlreadyTaken(getPlayerName());
                 await wsClient.connect(`ws://${window.location.host}/game`);
                 wsClient.joinAIGame(playerName);
             } catch (error) {
@@ -156,20 +165,31 @@ function setupLobbyEventListeners(): void
 			await checkIfPlayerNameAlreadyTaken(getPlayerName());
 		} catch (error) {
 			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+			return ;
 		}
         showTournamentListScreen();
     });
 
 	const showCreateTournamentButton = document.getElementById("lobbyCreateTournamentButton") as HTMLButtonElement;
     showCreateTournamentButton?.addEventListener('click', async () => {
-        if (inputParser.parsePlayerName(getPlayerName()) === false)
+
+		console.log(`🎯 [BUTTON] Create tournament button clicked`);
+		const playerName = getPlayerName()
+        console.log(`👤 [BUTTON] Player name: "${playerName}"`);
+		if (inputParser.parsePlayerName(playerName) === false)
             return;
+		console.log(`✅ [BUTTON] Name validation passed`);
 		try {
-			await checkIfPlayerNameAlreadyTaken(getPlayerName());
+			await checkIfPlayerNameAlreadyTaken(playerName);
+			console.log(`✅ [BUTTON] Name check passed, showing setup screen`);
 		} catch (error) {
+			 console.log(`❌ [BUTTON] Name check failed:`, error);
 			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+			return ;
 		}
-        showTournamentSetupScreen();
+    	console.log(`📺 [BUTTON] About to show tournament setup screen`);
+    	showTournamentSetupScreen();
+    	console.log(`📺 [BUTTON] Tournament setup screen should be visible now`);
     });
 
     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
@@ -186,8 +206,16 @@ function setupLobbyEventListeners(): void
 function setupTournamentListEventListeners(): void
 {
 	const createTournamentButton = document.getElementById('tournamentListCreateButton') as HTMLButtonElement;
-	createTournamentButton.addEventListener('click', () => {
-		showTournamentSetupScreen();
+	createTournamentButton.addEventListener('click', async () => {
+		if (inputParser.parsePlayerName(getPlayerName()) === false)
+			return;
+    	try {
+    	    await checkIfPlayerNameAlreadyTaken(getPlayerName());
+    	} catch (error) {
+    	    showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+    	    return;
+    	}
+			showTournamentSetupScreen();
 	});
 
 	const refreshButton = document.getElementById('tournamentListRefreshButton') as HTMLButtonElement;
@@ -197,6 +225,11 @@ function setupTournamentListEventListeners(): void
 
     const backButton = document.getElementById('tournamentListBackButton') as HTMLButtonElement;
     backButton.addEventListener('click', () => {
+		const playerName = getPlayerName();
+		if (playerName !== undefined || playerName !== null)
+		{
+			
+		}
         returnToLobby();
     });
 
@@ -238,7 +271,7 @@ function setupTournamentSetupEventListeners(): void {
             return;
 
 		try {
-			checkIfPlayerNameAlreadyTaken(playerName);
+			await checkIfPlayerNameAlreadyTaken(playerName);
 			const response = await fetch('/api/tournaments', {
 				method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -289,9 +322,14 @@ function setupGameEventListeners(): void
  * @brief Shows tournament setup screen
  */
 function showTournamentSetupScreen(): void {
+    console.log(`📺 [SCREEN] showTournamentSetupScreen called`);
+    console.log(`📺 [SCREEN] Hiding lobby...`);
     document.getElementById('lobby')!.classList.add('hidden');
+    console.log(`📺 [SCREEN] Hiding tournament list...`);
     document.getElementById('tournamentList')!.classList.add('hidden');
+    console.log(`📺 [SCREEN] Showing tournament setup...`);
     document.getElementById('tournamentSetup')!.classList.remove('hidden');
+    console.log(`📺 [SCREEN] Tournament setup should be visible now`);
 }
 
 
@@ -530,6 +568,7 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 		return ;
 
 	try {
+		await checkIfPlayerNameAlreadyTaken(playerName);
 		const response = await fetch(`/api/tournaments/${tournamentId}/join`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },

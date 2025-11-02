@@ -119,9 +119,25 @@ export class DatabaseService {
 	 */
 	public playerExists(alias: string): boolean
 	{
-		if (!alias)
+		if (!alias || alias === undefined)
 			return false;
+		const check = (this.db.prepare("SELECT 1 FROM players WHERE alias= ?").get(alias)) !== undefined
+		console.log(`check is ${check}`);
 		return (this.db.prepare("SELECT 1 FROM players WHERE alias= ?").get(alias)) !== undefined
+	}
+
+		/**
+	 * @brief Checks if a player with a given alias exists in a tournament
+	 * @param alias The alias to check
+	 * @returns True if player exists in a tournament, false otherwise
+	 */
+	public playerExistsInTournament(alias: string): boolean
+	{
+		if (!alias || alias === undefined)
+			return false;
+		const check = (this.db.prepare("SELECT 1 FROM tournament_players WHERE alias= ?").get(alias)) !== undefined
+		console.log(`check is ${check}`);
+		return (this.db.prepare("SELECT 1 FROM tournament_players WHERE alias= ?").get(alias)) !== undefined
 	}
 
 	/**
@@ -401,7 +417,7 @@ export class DatabaseService {
 		}
 
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
-		).get(tournamentId, player.alias);
+		).get(tournamentId, player.id);
 		if (playerAlreadyInTournament)
 			throw new Error(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
 

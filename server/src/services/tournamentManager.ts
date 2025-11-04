@@ -39,7 +39,15 @@ export class TournamentManagerService
 		return this.tournaments.get(id);
 	}
 
-	// public 
+	public findTournamentOfPlayer(playerName: string): Tournament | undefined
+	{
+		for (const t of this.tournaments.values())
+		{
+			if (t.hasPlayer(playerName))
+				return t;
+		}
+		return undefined;
+	}
 
 	private getStatusInFrench(status: string): string
 	{

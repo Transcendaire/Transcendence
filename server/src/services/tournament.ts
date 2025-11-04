@@ -1,8 +1,9 @@
 import { WebSocket } from 'ws';
 import { MatchmakingService } from './matchmaking.js';
 import { getDatabase } from '../db/databaseSingleton.js';
-import { Player } from '../types.js';
 import { Match, SingleEliminationBracket } from './brackets.js';
+import { TournamentError } from "../errors.js"
+import { Player } from '../types.js';
 import { WebsocketHandler } from '@fastify/websocket';
 import { sign } from 'crypto';
 
@@ -54,16 +55,16 @@ export class Tournament {
 	public addPlayerToTournament(alias: string, socket?: WebSocket): void
 	{
 		if (this.status !== TournamentStatus.CREATED)
-			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament already started or ended`);
+			throw new TournamentError(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament already started or ended`);
 		
 		if (this.players.size === this.maxPlayers)
-			throw new Error(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament full`);
+			throw new TournamentError(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament full`);
 		
 		try {
 			this.db.addPlayerToTournament(alias, this.id, this.name);
 			const player = this.db.getPlayer(alias);
 			if (!player)
-				throw new Error(`addPlayerToTournament: cannot find player with alias ${alias} in tournament ${this.name}`);
+				throw new TournamentError(`addPlayerToTournament: cannot find player with alias ${alias} in tournament ${this.name}`);
 			this.players.set(player.alias, {
 				 id: player.id,
 				 alias,
@@ -81,7 +82,7 @@ export class Tournament {
 	public removePlayerFromTournament(name: string)
 	{
 		if (this.players.has(name) === false)
-			throw new Error(`removePlayerFromTournament: cannot remove player ${name} : player not in tournament`);
+			throw new TournamentError(`removePlayerFromTournament: cannot remove player ${name} : player not in tournament`);
 		
 		this.players.delete(name);
 		this.db.removePlayerFromTournament(name, this.id, this.name);
@@ -90,7 +91,7 @@ export class Tournament {
 	public runTournament()
 	{
 		if (this.status !== TournamentStatus.CREATED)
-			throw new Error(`runTournament: cannot run tournament ${this.name}: tournament already started or finished`);
+			throw new TournamentError(`runTournament: cannot run tournament ${this.name}: tournament already started or finished`);
 
 		this.db.setTournamentStatus(TournamentStatus.RUNNING, this.id);
 		try {

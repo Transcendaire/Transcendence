@@ -3,10 +3,12 @@ import { Ball } from "./Ball.js";
 import { COLORS, FONTS } from "./constants.js";
 import { WebSocketClient } from "./WebSocketClient.js";
 import { GameState, GameInput } from "../../server/src/types.js";
-import { TournamentHTMLElements } from "../../server/src/types.js"
 import { inputParserClass } from "./inputParser.js"
-import { getDatabase } from "../../server/src/db/databaseSingleton.js"
 import { paddleSize, paddleOffset } from "../../server/src/consts.js";
+import { TournamentError, UserError } from "../../server/src/errors.js";
+
+import { TournamentHTMLElements } from "../../server/src/types.js"
+import { getDatabase } from "../../server/src/db/databaseSingleton.js"
 
 
 const canvas = document.getElementById("pong") as HTMLCanvasElement;
@@ -103,12 +105,12 @@ async function checkIfPlayerNameAlreadyTaken(playerName: string)
 		if (!response.ok)
 		{
 			console.log(`❌ [CLIENT] Request failed`);
-			throw new Error(data.error || 'Impossible de vérifier si le nom existe déjà');
+			throw new UserError(data.error || 'Impossible de vérifier si le nom existe déjà');
 		}
 		if (data.taken === true)
 		{
 			console.log(`🚫 [CLIENT] Name is taken, throwing error`);
-			throw new Error(`Le nom ${playerName} est déjà pris`);
+			throw new UserError(`Le nom ${playerName} est déjà pris`);
 		}
 		console.log(`✅ [CLIENT] Name is available`);
 }
@@ -164,6 +166,14 @@ function setupLobbyEventListeners(): void
 		try {
 			await checkIfPlayerNameAlreadyTaken(getPlayerName());
 		} catch (error) {
+			if (error instanceof UserError) {
+				showError(error.message);
+				return ;
+			}
+			else if (error instanceof TournamentError) {
+				showError(error.message);
+				return ;
+			}
 			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
 			return ;
 		}
@@ -184,6 +194,10 @@ function setupLobbyEventListeners(): void
 			console.log(`✅ [BUTTON] Name check passed, showing setup screen`);
 		} catch (error) {
 			 console.log(`❌ [BUTTON] Name check failed:`, error);
+			if (error instanceof UserError) {
+				showError(error.message || "Erreur de la part de l'utilisateur");
+				return ;
+			}
 			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
 			return ;
 		}
@@ -212,7 +226,15 @@ function setupTournamentListEventListeners(): void
     	try {
     	    await checkIfPlayerNameAlreadyTaken(getPlayerName());
     	} catch (error) {
-    	    showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
+			if (error instanceof UserError) {
+				showError(error.message || "Erreur de la part de l'utilisateur");
+				return ;
+			}
+			else if (error instanceof TournamentError) {
+				showError(error.message || "Erreur lors de la création du tournoi");
+				return ;
+			}
+    	    showError(error instanceof Error ? 'Impossible de créer le tournoi' : "Impossible de se connecter au serveur");
     	    return;
     	}
 			showTournamentSetupScreen();
@@ -224,13 +246,14 @@ function setupTournamentListEventListeners(): void
     });
 
     const backButton = document.getElementById('tournamentListBackButton') as HTMLButtonElement;
-    backButton.addEventListener('click', () => {
+    backButton.addEventListener('click', async () => {
 		const playerName = getPlayerName();
-		if (playerName !== undefined || playerName !== null)
-		{
-			
-		}
-        returnToLobby();
+		const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/tournament`);
+		const data = await response.json();
+		if (!response.ok)
+        	returnToLobby();
+		handleLeaveTournament(data.tournamentId);
+		returnToLobby();
     });
 
     const container = document.getElementById('tournamentListContainer')!;
@@ -284,7 +307,7 @@ function setupTournamentSetupEventListeners(): void {
             
             const data = await response.json();
             if (!response.ok) {
-				showError(data.error || 'Impossible de créer le tournoi');
+				showError(data.error || 'Impossible de créer le tournoi'); //not here
                 return;
             }
             
@@ -292,7 +315,7 @@ function setupTournamentSetupEventListeners(): void {
 			
             showTournamentListScreen();
         } catch (error) {
-			showError('Erreur réseau');
+			showError('Erreur réseau 1');
         }
     });
     
@@ -374,7 +397,7 @@ function returnToLobby(): void
 {
     const lobbyScreen = document.getElementById("lobby")!;
     const gameScreen = document.getElementById("gameScreen")!;
-    const lobbyContent = document.getElementById("lobby-content")!;
+    const lobbyContent = document.getElementById("lobb	y-content")!;
     const waitingDiv = document.getElementById("waiting")!;
     
     gameRunning = false;
@@ -585,7 +608,7 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 	} catch (error)
 	{
 		console.error('Failed to join tournament: ', error);
-		showError('Erreur réseau')
+		showError('Erreur réseau 2')
 	};
 }
 
@@ -611,7 +634,7 @@ async function handleLeaveTournament(tournamentId: string): Promise<void>
 		}
 		loadTournamentList();
 	} catch (error) {
-		showError('Erreur réseau');
+		showError('Erreur réseau 3');
 	}
 }
 

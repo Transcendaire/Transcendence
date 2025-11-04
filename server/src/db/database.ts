@@ -1,6 +1,7 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player } from "../types.js"
+import { DatabaseError } from "../errors.js"
 import { getDatabase } from "./databaseSingleton.js";
 // import { create } from "domain";
 
@@ -21,11 +22,11 @@ import { getDatabase } from "./databaseSingleton.js";
 function checkAliasValidity(alias: string): void
 {
 	if (!alias || alias.trim().length < 3)
-		throw new Error("Alias cannot be less than 3 characters");
+		throw new DatabaseError("Alias cannot be less than 3 characters");
 	if (alias.length > 20)
-		throw new Error("Alias too long (max 20 characters");
+		throw new DatabaseError("Alias too long (max 20 characters");
 	if (!/^[a-zA-Z0-9_-]+$/.test(alias))
-		throw new Error("Alias contains at least one invalid character");
+		throw new DatabaseError("Alias contains at least one invalid character");
 }
 
 export class DatabaseService {
@@ -96,7 +97,7 @@ export class DatabaseService {
 		checkAliasValidity(alias);
 		
 		if (this.getPlayerBy("alias", alias))
-			throw new Error("Alias already taken, please chose a new one."); //? Should throw
+			throw new DatabaseError("Alias already taken, please chose a new one."); //? Should throw
 		const id = randomUUID();
 		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), Date.now(), 'created');
 		return id;
@@ -153,13 +154,13 @@ export class DatabaseService {
 		const result = this.db.prepare("UPDATE players SET alias = ? WHERE id = ?").run(newAlias.trim(), id);
 
 		if (!newAlias || newAlias.trim().length < 3)
-			throw new Error("New alias cannot be less than 3 characters");
+			throw new DatabaseError("New alias cannot be less than 3 characters");
 		checkAliasValidity(newAlias);
 
 		if (!this.db.prepare("SELECT 1 FROM players WHERE id = ?").get(id))
-			throw new Error("Player not found");
+			throw new DatabaseError("Player not found");
 		if (existingPlayer && existingPlayer.id !== id) 
-			throw new Error("Alias already taken by another player");
+			throw new DatabaseError("Alias already taken by another player");
 		return result.changes > 0;
 	}
 
@@ -192,7 +193,7 @@ export class DatabaseService {
 		const query: string | undefined = columnMap[type];
 
 		if (!query)
-			throw new Error(`Invalid data request in ${type}`);
+			throw new DatabaseError(`Invalid data request in ${type}`);
 		return this.db.prepare(query).get(value) as (Player | undefined);
 	}
 
@@ -208,7 +209,7 @@ export class DatabaseService {
 	public removePlayer(id: string): boolean
 	{
 		if (!id || id.trim().length < 3)
-			throw new Error("Player ID cannot be less than 3 characters");
+			throw new DatabaseError("Player ID cannot be less than 3 characters");
 
 		const result = this.db.prepare("DELETE FROM players WHERE id= ?").run(id);
 		return result.changes > 0;
@@ -241,7 +242,7 @@ export class DatabaseService {
 		const query: string | undefined = columnMap[type];
 
 		if (!query)
-			throw new Error(`Invalid data request in ${type}`); //? Is this check really necessary with user-defined type
+			throw new DatabaseError(`Invalid data request in ${type}`); //? Is this check really necessary with user-defined type
 		return this.db.prepare(query).all();
 	}
 
@@ -260,7 +261,7 @@ export class DatabaseService {
 	public getMatches(tournamentId?: string, matchId?: string) 
 	{
 		if (!tournamentId && !matchId)
-			throw new Error("getMatchById: at least one of tournamentId or matchId is needed");
+			throw new DatabaseError("getMatchById: at least one of tournamentId or matchId is needed");
 		
 		let query: string = "SELECT * FROM matches WHERE ";
 		if (tournamentId)
@@ -327,7 +328,7 @@ export class DatabaseService {
 	public getTournament(id?: string, name?: string)
 	{
 		if (!id && !name)
-			throw new Error("getTournament: at least one of id or name is needed")
+			throw new DatabaseError("getTournament: at least one of id or name is needed")
 		
 		let query: string = "SELECT * FROM tournaments WHERE"
 		if (id)
@@ -362,7 +363,7 @@ export class DatabaseService {
 	public getTournamentPlayers(tournamentId: string)
 	{
 		if (!tournamentId)
-			throw new Error("getTournamentPlayers: tournament ID cannot be empty");
+			throw new DatabaseError("getTournamentPlayers: tournament ID cannot be empty");
 		return this.db.prepare("SELECT * FROM tournament_players WHERE tournament_id = ?").all(tournamentId);
 	}
 
@@ -377,12 +378,12 @@ export class DatabaseService {
 	public createTournament(name:string, maxPlayers:number): string
 	{
 		if (this.getTournament(undefined, name))
-			throw new Error(`createTournament: tournament ${name} already exists and cannot be created`);
+			throw new DatabaseError(`createTournament: tournament ${name} already exists and cannot be created`);
 
 		if (maxPlayers % 2)
-			throw new Error("createTournament: Number of players inside a tournament must be even")
+			throw new DatabaseError("createTournament: Number of players inside a tournament must be even")
 		if (maxPlayers < 2 || maxPlayers > 64)
-			throw new Error("createTournament: Number of players inside a tournament must be between 2 and 64")
+			throw new DatabaseError("createTournament: Number of players inside a tournament must be between 2 and 64")
 	
 		const id = randomUUID();
 		this.db.prepare("INSERT INTO tournaments (id, name, curr_nb_players, max_players, status, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -404,10 +405,10 @@ export class DatabaseService {
 
 		const tournament = this.getTournament(tournamentId);
 		if (!tournament)
-			throw new Error(`addPlayerToTournament: Tournament ${tournamentName} not found`);
+			throw new DatabaseError(`addPlayerToTournament: Tournament ${tournamentName} not found`);
 		
 		if (tournament.curr_nb_players === tournament.max_players)
-			throw new Error(`addPlayerToTournament: cannot add ${alias}: Tournament ${tournamentName} is already full`)
+			throw new DatabaseError(`addPlayerToTournament: cannot add ${alias}: Tournament ${tournamentName} is already full`)
 
 		let player = this.getPlayer(alias);
 		if (!player)
@@ -419,7 +420,7 @@ export class DatabaseService {
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
 		).get(tournamentId, player.id);
 		if (playerAlreadyInTournament)
-			throw new Error(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
+			throw new DatabaseError(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
 
 		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, alias, joined_at) VALUES (?, ?, ?, ?)"
 		).run(tournamentId, player.id, alias, Date.now());
@@ -441,14 +442,14 @@ export class DatabaseService {
 	{
 		const player = this.getPlayer(alias);
 		if (!player)
-			throw new Error(`removePlayerFromTournament: player ${alias} not found`);
+			throw new DatabaseError(`removePlayerFromTournament: player ${alias} not found`);
 
 		const result = this.db.prepare(
 			"DELETE FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
 		).run(tournamentId, player.id);
 
 		if (result.changes === 0)
-			throw new Error(`removePlayerFromTournament: player ${alias} not in tournament ${tournamentName}`);
+			throw new DatabaseError(`removePlayerFromTournament: player ${alias} not in tournament ${tournamentName}`);
 
 		this.db.prepare(
 			"UPDATE tournaments SET curr_nb_players = curr_nb_players - 1 WHERE id = ?"
@@ -480,14 +481,14 @@ export class DatabaseService {
 		scoreA: number, scoreB: number, status: 'pending' | 'running' | 'completed'): string 
 	{
 		if (!tournamentId || !p1ID || !p2ID)
-			throw new Error("recordMatch: tournamentId, player1ID and player2ID needed");
+			throw new DatabaseError("recordMatch: tournamentId, player1ID and player2ID needed");
 		
 		if (p1ID === p2ID)
-			throw new Error("recordMatch: player1ID and player2ID cannot be the same");
+			throw new DatabaseError("recordMatch: player1ID and player2ID cannot be the same");
 
 		const tournament = this.getTournament(tournamentId);
 		if (!tournament)
-			throw new Error(`recordMatch: ${tournamentName} tournament doesn't exist`)
+			throw new DatabaseError(`recordMatch: ${tournamentName} tournament doesn't exist`)
 
 		if (status === "completed")
 		{
@@ -495,9 +496,9 @@ export class DatabaseService {
 			let playerBExists = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?").get(tournamentId, p2ID);
 			
 			if (!playerAExists)
-				throw new Error(`recordMatch: first player not found in tournament ${tournamentId}`);
+				throw new DatabaseError(`recordMatch: first player not found in tournament ${tournamentId}`);
 			if (!playerBExists)
-				throw new Error(`recordMatch: second player not found in tournament ${tournamentId}`);
+				throw new DatabaseError(`recordMatch: second player not found in tournament ${tournamentId}`);
 		}
 
 		const matchId = randomUUID();
@@ -516,7 +517,7 @@ export class DatabaseService {
 	public deleteTournament(tournamentId?: string, tournamentName?: string)
 	{
 		if (!tournamentId && !tournamentName)
-			throw new Error("deleteTournament: at least one of tournamentId or tournamentName is needed");
+			throw new DatabaseError("deleteTournament: at least one of tournamentId or tournamentName is needed");
 		
 		if (tournamentId)
 		{
@@ -529,7 +530,7 @@ export class DatabaseService {
 		{
 			const tournament = this.getTournament(undefined, tournamentName);
 		 	if (!tournament)
-				throw new Error(`deleteTournament: tournament ${tournamentName} doesn't exist`);
+				throw new DatabaseError(`deleteTournament: tournament ${tournamentName} doesn't exist`);
 
 			this.db.prepare("DELETE FROM matches WHERE tournament_id = ?").run(tournament.id);
 			this.db.prepare("DELETE FROM tournament_players WHERE tournament_id = ?").run(tournament.id);

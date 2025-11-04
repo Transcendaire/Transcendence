@@ -87,5 +87,15 @@ export class inputParserClass {
         }
     }
 
+	public parsePlayerNameWithHTTPResponse(playerName: string, res: any): void
+	{
+		if (!playerName || playerName === undefined)
+			return res.code(400).send({ error: 'Nom du joueur requis' });
+    	if (playerName.trim().length < 3)
+    	  return res.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
+    	if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
+    	  return res.code(400).send({ error: 'Au moins un caractère invalide dans le nom du joueur'});
+	}
+
 	
 };

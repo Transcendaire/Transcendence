@@ -1,7 +1,8 @@
-import { machine } from "os";
 import { getDatabase } from "../db/databaseSingleton.js";
-import { match } from "assert";
 import { randomInt } from "crypto";
+import { BracketError } from "../errors.js";
+import { machine } from "os";
+import { match } from "assert";
 
 //* in tournament service
 
@@ -123,7 +124,7 @@ export class SingleEliminationBracket implements BracketService
     public isRoundComplete(bracket: Match[][], round: number): boolean
 	{
 		if (!bracket || round === undefined)
-			throw new Error(`isRoundComplete: cannot find informations on round ${round}`);
+			throw new BracketError(`isRoundComplete: cannot find informations on round ${round}`);
 
 		let isComplete: boolean = true;
 		bracket[round]?.forEach((match) => {
@@ -204,7 +205,7 @@ export class SingleEliminationBracket implements BracketService
 	private findTotalNumberOfMatches(tournament: any): number
 	{
 		if (tournament === undefined)
-			throw new Error(`findMaxRound: Couldn't find tournament ${this.tournamentName} in database`);
+			throw new BracketError(`findMaxRound: Couldn't find tournament ${this.tournamentName} in database`);
 		
 		let nbPlayers: number = tournament.curr_nb_players;
 		return nbPlayers - 1;

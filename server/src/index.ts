@@ -97,7 +97,7 @@ import { getDatabase } from './db/databaseSingleton.js'
 
   server.get<{ Querystring: { playerName?: string } }>
   ('/api/tournaments', 
-    async (req, reply) => {
+    async (req, res) => {
     try {
       const { playerName } = req.query;
       const tournaments = tournamentManager.listTournaments();
@@ -107,45 +107,47 @@ import { getDatabase } from './db/databaseSingleton.js'
         const isMember = playerName && currTournament!.hasPlayer(playerName)
         return {...t, isMember};
       })
-      return reply.send({ tournaments: updatedTournaments });
+      return res.send({ tournaments: updatedTournaments });
     } catch (error) {
-      return reply.code(500).send({ error: "Impossible de lister les tournois" })
+      return res.code(500).send({ error: "Impossible de lister les tournois" })
     }
   })
 
 
-  server.get<{Querystring: { playerName?: string} }>
+  server.get<{Params: { playerName: string} }>
   ('/api/players/:playerName/tournament',
 	async (req, res) => {
 
-		
+		const playerName = req.params.playerName.trim();
+		inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
+
+		const tournamentOfPlayer = tournamentManager.findTournamentOfPlayer(playerName);
+		if (tournamentOfPlayer !== undefined)
+			res.code(200).send( {tournamentId: tournamentOfPlayer.id} );
+		else
+			res.code(404).send( { tournamentId: undefined} );
 
 	}
   )
 
   server.post<{ Body: { name: string; maxPlayers: number; creatorName: string } }>
   ('/api/tournaments', 
-    async (req, reply) => {
+    async (req, res) => {
     try {
       const { name, maxPlayers, creatorName } = req.body;
     
-      if (!creatorName)
-          return reply.code(400).send({ error: 'Nom du créateur requis' });
-      if (creatorName.trim().length < 3)
-          return reply.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
-      if (!/^[a-zA-Z0-9_-]+$/.test(creatorName))
-          return reply.code(400).send({ error: 'Caractères invalides dans le nom' });
+	  inputParser.parsePlayerNameWithHTTPResponse(creatorName, res);
       
       try {
         const tournamentId = tournamentManager.createTournament(name, maxPlayers);
     
         const tournament = tournamentManager.getTournament(tournamentId);
         if (!tournament)
-          return reply.code(500).send({ error: 'Erreur lors de la création du tournoi'});
+          return res.code(500).send({ error: 'Erreur lors de la création du tournoi'});
 
         tournament.addPlayerToTournament(creatorName, undefined);
       
-        return reply.code(201).send({
+        return res.code(201).send({
             success: true,
             id: tournamentId,
             name: name,
@@ -157,11 +159,11 @@ import { getDatabase } from './db/databaseSingleton.js'
       
         } catch (error) {
             console.error('❌ Error auto-joining creator:', error);
-            return reply.code(500).send({ error: 'Erreur lors de la création du tournoi' });
+            return res.code(500).send({ error: 'Erreur lors de la création du tournoi' });
         }
     } catch (error) {
         console.error('❌ Error creating tournament:', error);
-        return reply.code(500).send({ error: 'Impossible de créer le tournoi' })
+        return res.code(500).send({ error: 'Impossible de créer le tournoi' })
     }
   })
 
@@ -173,13 +175,8 @@ import { getDatabase } from './db/databaseSingleton.js'
     const tournament = tournamentManager.getTournament(tournamentId);
 
     inputParser.parseTournamentWithHTTPResponse(tournament, res); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
-    
-    if (!playerName || playerName === undefined)
-      return res.code(400).send({ error: 'Nom du joueur requis' });
-    if (playerName.trim().length < 3)
-      return res.code(400).send({ error: 'Le nom doit faire au moins 3 caractères' });
-    if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
-      return res.code(400).send({ error: 'Au moins un caractère interdit dans le nom du joueur'});
+    inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
+
     try {
     tournament!.addPlayerToTournament(playerName, undefined);
 
@@ -227,38 +224,38 @@ import { getDatabase } from './db/databaseSingleton.js'
    *******************************/
   
   // Serve index.html for the root path
-  server.get('/', async (request, reply) => {
+  server.get('/', async (request, res) => {
     console.log('Serving root path')
     try {
       const content = await fs.promises.readFile(indexPath, 'utf8')
-      return reply.type('text/html').send(content)
+      return res.type('text/html').send(content)
     } catch (err) {
       console.error(`Error reading index.html: ${err}`)
-      return reply.code(500).send('Internal Server Error')
+      return res.code(500).send('Internal Server Error')
     }
   })
 
-  server.setNotFoundHandler((request, reply) => {
+  server.setNotFoundHandler((request, res) => {
     console.log(`NotFound handler for: ${request.url}`)
     
     // Skip API routes
     if (request.url.startsWith('/api/')) {
-      return reply.code(404).send({ error: 'API endpoint not found' })
+      return res.code(404).send({ error: 'API endpoint not found' })
     }
     
     // Skip WebSocket route
     if (request.url === '/game') {
-      return reply.code(404).send({ error: 'WebSocket endpoint not found' })
+      return res.code(404).send({ error: 'WebSocket endpoint not found' })
     }
     
     // For all other routes, serve the index.html file
     return fs.promises.readFile(indexPath, 'utf8')
       .then(content => {
-        return reply.type('text/html').send(content)
+        return res.type('text/html').send(content)
       })
       .catch(err => {
         console.error(`Error reading index.html: ${err}`)
-        return reply.code(500).send('Internal Server Error')
+        return res.code(500).send('Internal Server Error')
       })
   })
   

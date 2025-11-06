@@ -9,6 +9,7 @@ import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament } from './services/tournament.js'
 import { inputParserClass } from '../../client/src/inputParser.js'
 import { getDatabase } from './db/databaseSingleton.js'
+import { DatabaseError } from './errors.js'
 
 
 (async () => {
@@ -109,7 +110,8 @@ import { getDatabase } from './db/databaseSingleton.js'
       })
       return res.send({ tournaments: updatedTournaments });
     } catch (error) {
-      return res.code(500).send({ error: "Impossible de lister les tournois" })
+		const message = String(error);
+		return res.code(500).send({ error: message})
     }
   })
 
@@ -143,7 +145,7 @@ import { getDatabase } from './db/databaseSingleton.js'
     
         const tournament = tournamentManager.getTournament(tournamentId);
         if (!tournament)
-          return res.code(500).send({ error: 'Erreur lors de la création du tournoi'});
+          return res.code(500).send({ error: 'Erreur lors de la création du tournoi 1'});
 
         tournament.addPlayerToTournament(creatorName, undefined);
       
@@ -159,11 +161,13 @@ import { getDatabase } from './db/databaseSingleton.js'
       
         } catch (error) {
             console.error('❌ Error auto-joining creator:', error);
-            return res.code(500).send({ error: 'Erreur lors de la création du tournoi' });
+			const message = String(error);
+            return res.code(500).send({ error: message });
         }
     } catch (error) {
         console.error('❌ Error creating tournament:', error);
-        return res.code(500).send({ error: 'Impossible de créer le tournoi' })
+		const message = String(error);
+        return res.code(500).send({ error: message })
     }
   })
 
@@ -192,7 +196,8 @@ import { getDatabase } from './db/databaseSingleton.js'
 
     } catch (error) {
     console.error(`Error adding player to tournament ${tournament!.name}`,error);
-    return res.code(500).send({error: 'Impossible de rejoindre le tournoi'})
+	const message = String(error);
+    return res.code(500).send({error: message })
     }
 
   })
@@ -204,17 +209,16 @@ import { getDatabase } from './db/databaseSingleton.js'
       const { playerName } = req.body;
       const tournament = tournamentManager.getTournament(tournamentId);
 
-      if (!tournament)
-          return res.code(404).send({ error: 'Tournoi introuvable' });
-      if (!playerName || playerName.trim().length < 3)
-          return res.code(400).send({ error: 'Nom du joueur requis' });
+	  inputParser.parseTournamentWithHTTPResponse(tournament, res);
+	  inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
 
       try {
-          tournament.removePlayerFromTournament(playerName);
+          tournament!.removePlayerFromTournament(playerName);
           return res.code(200).send({ success: true });
       } catch (error) {
-          console.error(`Error removing player from tournament ${tournament.name}`, error);
-          return res.code(500).send({ error: 'Impossible de quitter le tournoi' });
+          console.error(`Error removing player from tournament ${tournament!.name}`, error);
+		  const message = String(error);
+          return res.code(500).send({ error: message });
       }
   });
 
@@ -231,7 +235,8 @@ import { getDatabase } from './db/databaseSingleton.js'
       return res.type('text/html').send(content)
     } catch (err) {
       console.error(`Error reading index.html: ${err}`)
-      return res.code(500).send('Internal Server Error')
+	  const message = String(err);
+      return res.code(500).send(message)
     }
   })
 

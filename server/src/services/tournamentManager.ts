@@ -3,6 +3,7 @@ import { MatchmakingService } from './matchmaking.js'
 import crypto from 'crypto'
 import { match } from 'assert';
 import { getDatabase } from '../db/databaseSingleton.js';
+import { DatabaseError } from '../errors.js';
 
 export class TournamentManagerService 
 {
@@ -22,7 +23,7 @@ export class TournamentManagerService
 
 			const tournamentData = this.db.getTournament(undefined, name);
 			if (!tournamentData)
-				throw new Error(`createTournament: can't find tournament ${name} in database`);
+				throw new DatabaseError(`Impossible de trouver le tournoi ${name} dans la base de données`);
 
 			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking);
 			this.tournaments.set(tournamentData.id, tournament);

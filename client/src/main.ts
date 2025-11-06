@@ -231,7 +231,7 @@ function setupTournamentListEventListeners(): void
 				return ;
 			}
 			else if (error instanceof TournamentError) {
-				showError(error.message || "Erreur lors de la création du tournoi");
+				showError(error.message || "Erreur lors de la création du tournoi 3");
 				return ;
 			}
     	    showError(error instanceof Error ? 'Impossible de créer le tournoi' : "Impossible de se connecter au serveur");
@@ -315,7 +315,8 @@ function setupTournamentSetupEventListeners(): void {
 			
             showTournamentListScreen();
         } catch (error) {
-			showError('Erreur réseau 1');
+		const message = String(error);
+			showError(message);
         }
     });
     
@@ -608,7 +609,8 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 	} catch (error)
 	{
 		console.error('Failed to join tournament: ', error);
-		showError('Erreur réseau 2')
+		const message = String(error); //!issue here
+		showError(message)
 	};
 }
 
@@ -634,7 +636,8 @@ async function handleLeaveTournament(tournamentId: string): Promise<void>
 		}
 		loadTournamentList();
 	} catch (error) {
-		showError('Erreur réseau 3');
+		const message = String(error);
+		showError(message);
 	}
 }
 

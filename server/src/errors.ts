@@ -3,7 +3,7 @@ export class ServerError extends Error
 	constructor(message: string)
 	{
 		super(message);
-		this.name = 'ServerError';
+		this.name = ''
 	}
 }
 
@@ -12,7 +12,7 @@ export class DatabaseError extends Error
 	constructor(message: string)
 	{
 		super(message);
-		this.name = 'DatabaseError';
+		this.name = ''
 	}
 }
 
@@ -21,7 +21,6 @@ export class UserError extends Error
 	constructor(message: string)
 	{
 		super(message);
-		this.name = ('UserError');
 	}
 }
 
@@ -30,7 +29,7 @@ export class TournamentError extends Error
 	constructor(message: string)
 	{
 		super(message);
-		this.name = ('TournamentError');
+		this.name = ''
 	}
 }
 
@@ -39,7 +38,7 @@ export class BracketError extends Error
 	constructor(message: string)
 	{
 		super(message);
-		this.name = ('BracketError');
+		this.name = ''
 	}
 }
 

@@ -97,7 +97,7 @@ export class DatabaseService {
 		checkAliasValidity(alias);
 		
 		if (this.getPlayerBy("alias", alias))
-			throw new DatabaseError("Alias already taken, please chose a new one."); //? Should throw
+			throw new DatabaseError("Ce nom est déjà pris, merci d'en choisir un nouveau."); //? Should throw
 		const id = randomUUID();
 		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), Date.now(), 'created');
 		return id;
@@ -154,13 +154,13 @@ export class DatabaseService {
 		const result = this.db.prepare("UPDATE players SET alias = ? WHERE id = ?").run(newAlias.trim(), id);
 
 		if (!newAlias || newAlias.trim().length < 3)
-			throw new DatabaseError("New alias cannot be less than 3 characters");
+			throw new DatabaseError("Le nom doit faire au moins trois caractères");
 		checkAliasValidity(newAlias);
 
 		if (!this.db.prepare("SELECT 1 FROM players WHERE id = ?").get(id))
 			throw new DatabaseError("Player not found");
 		if (existingPlayer && existingPlayer.id !== id) 
-			throw new DatabaseError("Alias already taken by another player");
+			throw new DatabaseError("Le nom de joueur est déjà pris");
 		return result.changes > 0;
 	}
 
@@ -209,7 +209,7 @@ export class DatabaseService {
 	public removePlayer(id: string): boolean
 	{
 		if (!id || id.trim().length < 3)
-			throw new DatabaseError("Player ID cannot be less than 3 characters");
+			throw new DatabaseError("Le nom doit faire au moins trois caractères");
 
 		const result = this.db.prepare("DELETE FROM players WHERE id= ?").run(id);
 		return result.changes > 0;
@@ -378,12 +378,12 @@ export class DatabaseService {
 	public createTournament(name:string, maxPlayers:number): string
 	{
 		if (this.getTournament(undefined, name))
-			throw new DatabaseError(`createTournament: tournament ${name} already exists and cannot be created`);
+			throw new DatabaseError(`Le tournoi ${name} existe déjà et ne peut pas être créé`);
 
 		if (maxPlayers % 2)
-			throw new DatabaseError("createTournament: Number of players inside a tournament must be even")
+			throw new DatabaseError("Le nombre de joueurs au sein d'un tournoi doit être pair")
 		if (maxPlayers < 2 || maxPlayers > 64)
-			throw new DatabaseError("createTournament: Number of players inside a tournament must be between 2 and 64")
+			throw new DatabaseError("Le nombre de joueurs au sein d'un tournoi doit être entre 2 et 64")
 	
 		const id = randomUUID();
 		this.db.prepare("INSERT INTO tournaments (id, name, curr_nb_players, max_players, status, created_at) VALUES (?, ?, ?, ?, ?, ?)"
@@ -405,10 +405,10 @@ export class DatabaseService {
 
 		const tournament = this.getTournament(tournamentId);
 		if (!tournament)
-			throw new DatabaseError(`addPlayerToTournament: Tournament ${tournamentName} not found`);
+			throw new DatabaseError(`Le tournoi ${tournamentName} n'existe pas`);
 		
 		if (tournament.curr_nb_players === tournament.max_players)
-			throw new DatabaseError(`addPlayerToTournament: cannot add ${alias}: Tournament ${tournamentName} is already full`)
+			throw new DatabaseError(`Impossible d'ajouter ${alias}: le tournoi ${tournamentName} est déjà plein`);
 
 		let player = this.getPlayer(alias);
 		if (!player)
@@ -420,7 +420,7 @@ export class DatabaseService {
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
 		).get(tournamentId, player.id);
 		if (playerAlreadyInTournament)
-			throw new DatabaseError(`addPlayerToTournament: player with alias ${alias} already exists in tournament ${tournamentName}`)
+			throw new DatabaseError(`Le joueur ${alias} existe déjà dans le tournoi ${tournamentName}`)
 
 		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, alias, joined_at) VALUES (?, ?, ?, ?)"
 		).run(tournamentId, player.id, alias, Date.now());
@@ -442,14 +442,14 @@ export class DatabaseService {
 	{
 		const player = this.getPlayer(alias);
 		if (!player)
-			throw new DatabaseError(`removePlayerFromTournament: player ${alias} not found`);
+			throw new DatabaseError(`Le joueur ${alias} n'existe pas`);
 
 		const result = this.db.prepare(
 			"DELETE FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
 		).run(tournamentId, player.id);
 
 		if (result.changes === 0)
-			throw new DatabaseError(`removePlayerFromTournament: player ${alias} not in tournament ${tournamentName}`);
+			throw new DatabaseError(`Le joueur ${alias} n'est pas dans le tournoi ${tournamentName}`);
 
 		this.db.prepare(
 			"UPDATE tournaments SET curr_nb_players = curr_nb_players - 1 WHERE id = ?"

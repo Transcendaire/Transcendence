@@ -343,6 +343,12 @@ export class DatabaseService {
 		}
 	}
 
+
+	public getAllTournaments()
+	{
+		 return this.db.prepare("SELECT * FROM tournaments").all();
+	}
+
 	/**
 	 * @brief Retrieves all tournaments from the database that match the specified status.
 	 * 
@@ -360,12 +366,22 @@ export class DatabaseService {
 		return this.db.prepare("SELECT * FROM tournaments WHERE status = ?").all(status);
 	}
 
+	/**
+	 * @brief Retrieve all players associated with a tournament.
+	 *
+	 * Retrieves all rows from the `tournament_players` table that match the given
+	 * tournament ID. The query is parameterized to prevent SQL injection.
+	 *
+	 * @param tournamentId - The ID of the tournament to fetch players for. Must be a non-empty string.
+	 * @throws {DatabaseError} When `tournamentId` is falsy/empty.
+	 */
 	public getTournamentPlayers(tournamentId: string)
 	{
 		if (!tournamentId)
 			throw new DatabaseError("getTournamentPlayers: tournament ID cannot be empty");
 		return this.db.prepare("SELECT * FROM tournament_players WHERE tournament_id = ?").all(tournamentId);
 	}
+
 
 	//ToDo add a filler if players are even (with AI players);
 	/**

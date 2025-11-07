@@ -32,6 +32,8 @@ import { DatabaseError } from './errors.js'
   console.log('Public path:', publicPath)
   console.log('Index path:', indexPath)
   
+
+  tournamentManager.loadTournamentsFromDatabase();
   // Register WebSocket plugin
   await server.register(websocket)
   
@@ -128,7 +130,6 @@ import { DatabaseError } from './errors.js'
 			res.code(200).send( {tournamentId: tournamentOfPlayer.id} );
 		else
 			res.code(404).send( { tournamentId: undefined} );
-
 	}
   )
 
@@ -214,6 +215,8 @@ import { DatabaseError } from './errors.js'
 
       try {
           tournament!.removePlayerFromTournament(playerName);
+		  if (tournament!.getPlayerCount() === 0)
+			tournamentManager.deleteTournament(tournament!.id);
           return res.code(200).send({ success: true });
       } catch (error) {
           console.error(`Error removing player from tournament ${tournament!.name}`, error);
@@ -281,9 +284,3 @@ import { DatabaseError } from './errors.js'
 
 
 /*******************************> > > > UTILS < < < <******************************/
-
-function isPlayerInAnotherTournament(playerName: string): boolean
-{
-
-  return false;
-}

@@ -3,11 +3,11 @@ import { MatchmakingService } from './matchmaking.js'
 import crypto from 'crypto'
 import { match } from 'assert';
 import { getDatabase } from '../db/databaseSingleton.js';
-import { DatabaseError } from '../errors.js';
+import { DatabaseError, TournamentError } from '../errors.js';
 
 export class TournamentManagerService 
 {
-	private tournaments: Map<string, Tournament> = new Map();
+	private tournamentsMap: Map<string, Tournament> = new Map();
 	private matchmaking: MatchmakingService;
 	private db = getDatabase();
 
@@ -26,7 +26,7 @@ export class TournamentManagerService
 				throw new DatabaseError(`Impossible de trouver le tournoi ${name} dans la base de données`);
 
 			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking);
-			this.tournaments.set(tournamentData.id, tournament);
+			this.tournamentsMap.set(tournamentData.id, tournament);
 
 			return tournamentData.id;
 		} catch (error) {
@@ -35,14 +35,63 @@ export class TournamentManagerService
 		}
 	}
 
+	public deleteTournament(id: string): void
+	{
+		try {
+			this.db.deleteTournament(id, undefined);
+			this.tournamentsMap.delete(id);
+		} catch (error)
+		{
+			console.log(error);
+			throw error;
+		}
+	}
+
 	public getTournament(id: string): Tournament | undefined
 	{
-		return this.tournaments.get(id);
+		return this.tournamentsMap.get(id);
+	}
+
+	public loadTournamentsFromDatabase()
+	{
+		const allTournaments = this.db.getAllTournaments();
+		if (!allTournaments || allTournaments.length === 0)
+			return ;
+
+		for (const t of allTournaments)
+		{
+			if (t.status === 'completed')
+				continue ;
+			if (this.tournamentsMap.has(t.id))
+				continue ;
+			const tournament = new Tournament(
+				t.id,
+				t.name,
+				t.max_players,
+				this.matchmaking
+			)
+
+			const tournamentPlayers = this.db.getTournamentPlayers(t.id);
+			if (tournamentPlayers && tournamentPlayers.length > 0)
+			{
+				for (const p of tournamentPlayers)
+				{
+					const player = this.db.getPlayer(p.alias);
+					if (player)
+						tournament.restorePlayer(player);
+					else
+						throw new TournamentError(`Impossible de rajouter un des joueurs au tournoi ${t.name}`);//!verifier que c bien catch
+				}
+			}
+
+			tournament.setStatus(t.status);
+			this.tournamentsMap.set(t.id, tournament);
+		}
 	}
 
 	public findTournamentOfPlayer(playerName: string): Tournament | undefined
 	{
-		for (const t of this.tournaments.values())
+		for (const t of this.tournamentsMap.values())
 		{
 			if (t.hasPlayer(playerName))
 				return t;
@@ -71,9 +120,9 @@ export class TournamentManagerService
 	status: string;
 	}>
 	{
-		console.log(`📋 Listing ${this.tournaments.size} tournaments:`);
+		console.log(`📋 Listing ${this.tournamentsMap.size} tournaments:`);
 		const list = [];
-		for (const [id, tournament] of this.tournaments.entries())
+		for (const [id, tournament] of this.tournamentsMap.entries())
 		{
 			const count = tournament.getPlayerCount();
 			console.log(`   - ${tournament.name}: ${count}/${tournament.maxPlayers} players`);

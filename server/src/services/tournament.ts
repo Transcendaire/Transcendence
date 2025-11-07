@@ -88,6 +88,16 @@ export class Tournament {
 		this.db.removePlayerFromTournament(name, this.id, this.name);
 	}
 
+	public restorePlayer(player: Player): void
+	{
+		this.players.set(player.alias, {
+			id: player.id, 
+			alias: player.alias,
+			status: 'waiting',
+			socket: undefined
+		});
+	}
+
 	public runTournament()
 	{
 		if (this.status !== TournamentStatus.CREATED)
@@ -117,6 +127,26 @@ export class Tournament {
 	public getStatus(): string
 	{
 		return this.status;
+	}
+
+	public setStatus(newStatus: string): void
+	{
+		switch (newStatus) {
+			case 'created':
+				this.status = TournamentStatus.CREATED;
+				break ;
+			case 'full':
+				this.status = TournamentStatus.FULL;
+				break ;
+			case 'running':
+				this.status = TournamentStatus.RUNNING;
+				break ;
+			case 'completed':
+				this.status = TournamentStatus.COMPLETED;
+				break ;
+			default:
+				return ;
+		}
 	}
 
 	private startRound()

@@ -54,17 +54,17 @@ export class Tournament {
 
 	public addPlayerToTournament(alias: string, socket?: WebSocket): void
 	{
-		if (this.status !== TournamentStatus.CREATED)
-			throw new TournamentError(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament already started or ended`);
+		if (this.status !== TournamentStatus.CREATED && this.status !== TournamentStatus.FULL)
+			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi a déjà débuté ou est terminé`);
 		
 		if (this.players.size === this.maxPlayers)
-			throw new TournamentError(`addPlayerToTournament: cannot add ${alias} to tournament ${this.name}: tournament full`);
+			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est complet`);
 		
 		try {
 			this.db.addPlayerToTournament(alias, this.id, this.name);
 			const player = this.db.getPlayer(alias);
 			if (!player)
-				throw new TournamentError(`addPlayerToTournament: cannot find player with alias ${alias} in tournament ${this.name}`);
+				throw new TournamentError(`Impossible de trouver le joueur ${alias} dans le tournoi ${this.name}`);
 			this.players.set(player.alias, {
 				 id: player.id,
 				 alias,
@@ -72,9 +72,12 @@ export class Tournament {
 				 socket
 				});
 			if (this.players.size === this.maxPlayers)
+			{
 				this.status = TournamentStatus.FULL;
+				this.db.setTournamentStatus(TournamentStatus.FULL, this.id);
+			}
 		} catch (error) {
-			console.error(`addPlayerToTournament: error while adding ${alias} to ${this.name}: `, error);
+			console.error(`Erreur lors de l'ajout de ${alias} au tournoi ${this.name}: `, error);
 			throw error;
 		}
 	}
@@ -82,10 +85,12 @@ export class Tournament {
 	public removePlayerFromTournament(name: string)
 	{
 		if (this.players.has(name) === false)
-			throw new TournamentError(`removePlayerFromTournament: cannot remove player ${name} : player not in tournament`);
+			throw new TournamentError(`Impossible de retirer le joueur ${name} : le joueur n'est pas dans le tournoi`);
 		
 		this.players.delete(name);
 		this.db.removePlayerFromTournament(name, this.id, this.name);
+		this.status = TournamentStatus.CREATED;
+		this.db.setTournamentStatus(TournamentStatus.CREATED, this.id);
 	}
 
 	public restorePlayer(player: Player): void
@@ -101,13 +106,13 @@ export class Tournament {
 	public runTournament()
 	{
 		if (this.status !== TournamentStatus.CREATED)
-			throw new TournamentError(`runTournament: cannot run tournament ${this.name}: tournament already started or finished`);
+			throw new TournamentError(`Impossible de lancer le tournoi ${this.name}: le tournoi est a déjà commencé ou est terminé`);
 
 		this.db.setTournamentStatus(TournamentStatus.RUNNING, this.id);
 		try {
 			this.bracket = this.bracketService.generateBracket();
 		} catch (error) {
-			console.error(`runTournament: cannot start tournament ${this.name}: `, error);
+			console.error(`Impossible de lancer le tournoi ${this.name}: `, error);
 			throw error;
 		}
 		this.maxRound = this.bracket.length;

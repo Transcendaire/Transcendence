@@ -1,5 +1,6 @@
 import fastify from 'fastify'
 import websocket from '@fastify/websocket'
+import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import path from 'path'
 import { fileURLToPath } from 'url'
@@ -10,6 +11,13 @@ import { Tournament } from './services/tournament.js'
 import { inputParserClass } from '../../client/src/inputParser.js'
 import { getDatabase } from './db/databaseSingleton.js'
 import { DatabaseError } from './errors.js'
+
+import { Player } from './types.js'
+declare module 'fastify' {
+  interface FastifyRequest {
+	player?: Player;
+  }
+}
 
 
 (async () => {
@@ -51,6 +59,18 @@ import { DatabaseError } from './errors.js'
   })
   
 
+  await server.register(fastifyCookie);
+
+
+
+  server.addHook('preHandler', async (req, res) => {
+	const id = req.cookies.player_id;
+	if (!id)
+		return ;
+	const player = db.getPlayerBy('id', id);
+	if (player)
+		req.player = player;
+  })
   /*******************************
    * WEBSOCKET ROUTES
    *******************************/
@@ -82,6 +102,10 @@ import { DatabaseError } from './errors.js'
   ('/api/players/check-playerNameInTournament',
     async(req, res) => {
       const { playerName } = req.query;
+	  const id = req.cookies.player_id;
+
+	  if (id && db.getPlayerBy('id', id))
+		return res.code(200).send({ taken: false })
       console.log('🔍 Checking if player exists:', playerName);
       if (db.playerExistsInTournament(playerName))
       {
@@ -92,7 +116,6 @@ import { DatabaseError } from './errors.js'
       return res.code(200).send({ taken: false });
     }
   )
-
 
   /*******************************
    * TOURNAMENT API ROUTES
@@ -124,15 +147,23 @@ import { DatabaseError } from './errors.js'
 
 		const playerName = req.params.playerName.trim();
 		inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
-
 		const tournamentOfPlayer = tournamentManager.findTournamentOfPlayer(playerName);
-		if (tournamentOfPlayer !== undefined)
-			res.code(200).send( {tournamentId: tournamentOfPlayer.id} );
-		else
-			res.code(404).send( { tournamentId: undefined} );
+
+		if (!tournamentOfPlayer)
+			return res.code(200).send({ tournamentId: undefined });
+
+		const cookiePlayerId = req.cookies.player_id;
+		if (cookiePlayerId)
+		{
+			const player = db.getPlayerBy('id', cookiePlayerId);
+			if (player && player.alias === playerName)
+				return res.code(200).send({ tournamentId: tournamentOfPlayer!.id })
+		}
+
+		return res.code(404).send({ tournamentId: tournamentOfPlayer!.id });
 	}
   )
-
+170
   server.post<{ Body: { name: string; maxPlayers: number; creatorName: string } }>
   ('/api/tournaments', 
     async (req, res) => {
@@ -148,8 +179,19 @@ import { DatabaseError } from './errors.js'
         if (!tournament)
           return res.code(500).send({ error: 'Erreur lors de la création du tournoi 1'});
 
+		const otherTournament = tournamentManager.findTournamentOfPlayer(creatorName);
+		if (otherTournament)
+			return res.code(409).send({ error: `Impossible de créer le tournoi. Le joueur est déjà présent dans le tournoi ${otherTournament.name}`})
         tournament.addPlayerToTournament(creatorName, undefined);
-      
+		const player = db.getPlayer(creatorName);
+		if (player)
+		{
+			res.setCookie('player_id', player.id, {
+				path: '/',
+				httpOnly: true,
+				maxAge: 24 * 60 * 60
+			});
+		}
         return res.code(201).send({
             success: true,
             id: tournamentId,
@@ -185,7 +227,18 @@ import { DatabaseError } from './errors.js'
     try {
     tournament!.addPlayerToTournament(playerName, undefined);
 
+	const player = db.getPlayer(playerName);
+	if (player)
+	{
+		res.setCookie('player_id', player.id, {
+			path: '/',
+			httpOnly: true,
+			maxAge: 24 * 60 * 60
+		});
+	}
+
     const updatedTournament = tournamentManager.getTournament(tournamentId);
+
     return res.code(200).send({
     success: true,
     tournamentId: tournamentId,
@@ -209,9 +262,6 @@ import { DatabaseError } from './errors.js'
       const tournamentId = req.params.id;
       const { playerName } = req.body;
       const tournament = tournamentManager.getTournament(tournamentId);
-
-	  inputParser.parseTournamentWithHTTPResponse(tournament, res);
-	  inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
 
       try {
           tournament!.removePlayerFromTournament(playerName);

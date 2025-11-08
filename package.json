@@ -18,6 +18,7 @@
     "start": "cd server && npm start"
   },
   "devDependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@types/jest": "^30.0.0",
     "concurrently": "^9.2.1",
     "nodemon": "^3.1.10",

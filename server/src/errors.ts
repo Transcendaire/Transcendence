@@ -18,9 +18,12 @@ export class DatabaseError extends Error
 
 export class UserError extends Error
 {
-	constructor(message: string)
+	code: string | undefined;
+	constructor(message: string, code?: string)
 	{
 		super(message);
+		this.name = '';
+		this.code = code;
 	}
 }
 

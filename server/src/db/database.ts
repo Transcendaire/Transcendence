@@ -478,7 +478,7 @@ export class DatabaseService {
 	 * @param tournamentId UUID of the tournament to update
 	 * @throws Error if tournament not found or database operation fails
 	 */
-	public setTournamentStatus(status: 'created' | 'running' | 'completed', tournamentId: string): void 
+	public setTournamentStatus(status: 'created' | 'full' | 'running' | 'completed', tournamentId: string): void 
 	{
 		this.db.prepare("UPDATE tournaments SET status = ? WHERE id = ?").run(status, tournamentId);
 	}

@@ -98,6 +98,14 @@ declare module 'fastify' {
    * PLAYER API ROUTES
    *******************************/
 
+server.get('/api/debug/players', async (req, res) => {
+    const players = db.getAllPlayers();
+    return res.send({
+        total: players.length,
+        players: players.map(p => ({ id: p.id, alias: p.alias }))
+    });
+});
+
   server.get<{ Querystring: { playerName: string}}>
   ('/api/players/check-playerNameInTournament',
     async(req, res) => {
@@ -150,17 +158,17 @@ declare module 'fastify' {
 		const tournamentOfPlayer = tournamentManager.findTournamentOfPlayer(playerName);
 
 		if (!tournamentOfPlayer)
-			return res.code(200).send({ tournamentId: undefined });
+			return res.code(200).send({ canConnect: true, tournamentId: undefined });
 
 		const cookiePlayerId = req.cookies.player_id;
 		if (cookiePlayerId)
 		{
 			const player = db.getPlayerBy('id', cookiePlayerId);
 			if (player && player.alias === playerName)
-				return res.code(200).send({ tournamentId: tournamentOfPlayer!.id })
+				return res.code(200).send({ canConnect: true, tournamentId: tournamentOfPlayer!.id })
 		}
 
-		return res.code(404).send({ tournamentId: tournamentOfPlayer!.id });
+		return res.code(200).send({ canConnect: false, tournamentId: tournamentOfPlayer!.id });
 	}
   )
 170

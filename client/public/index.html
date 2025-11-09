@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="UTF-8">
-    <title>Pong</title>
+    <title>Transcendaire</title>
     <link rel="icon" type="image/png" href="./assets/Transcendaire.png">
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -11,7 +12,7 @@
                 extend: {
                     colors: {
                         'sonpi16-orange': '#ff6000',
-                        'sonpi16-black' : '#0d0600',
+                        'sonpi16-black': '#0d0600',
                     }
                 }
             }
@@ -22,124 +23,122 @@
             font-family: 'QuencyPixel-Regular';
             src: url('./assets/fonts/QuencyPixel-Regular.otf') format('opentype');
         }
+        body {
+            font-family: 'QuencyPixel-Regular', sans-serif;
+        }
         .hidden {
             display: none;
         }
     </style>
 </head>
+
 <body class="bg-sonpi16-orange h-screen m-0 p-0">
+    <!-- Name Entry Screen -->
+    <div id="nameEntry" class="flex flex-col justify-center items-center h-screen">
+        <div class="text-center space-y-8">
+            <h1 class="text-8xl font-bold text-sonpi16-black mb-8">TRANSCENDAIRE</h1>
+            <div class="bg-sonpi16-black p-8 rounded-2xl w-96">
+                <input type="text" id="playerName" placeholder="ENTREZ VOTRE NOM" 
+                       class="w-full bg-sonpi16-orange text-sonpi16-black px-6 py-4 rounded-xl text-center font-bold text-xl placeholder-sonpi16-black placeholder-opacity-70 mb-4" 
+                       maxlength="20">
+                <button id="validateNameButton" class="w-full bg-sonpi16-orange text-sonpi16-black px-6 py-4 rounded-xl font-bold text-xl hover:opacity-80 transition-opacity">
+                    VALIDER
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Lobby Screen -->
-    <div id="lobby" class="flex flex-col justify-center items-center h-screen">
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mb-8">
-        <div class="bg-sonpi16-black p-8 rounded-lg text-center">
-            <h1 class="text-4xl font-bold text-sonpi16-orange mb-6" style="font-family: QuencyPixel-Regular;">Transcendaire</h1>
-            <div id="lobby-content">
-                <input type="text" id="playerName" placeholder="Entrez votre nom" 
-                       class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded mb-4 text-center font-bold" 
-                       style="font-family: QuencyPixel-Regular;" maxlength="20">
-                <br>
-                <div class="flex gap-4 justify-center">
-                    <button id="lobbyJoinGameButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">REJOINDRE UNE PARTIE</button>
-                    <button id="lobbyJoinTournamentListButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity"
-                            style="font-family: QuencyPixel-Regular;">REJOINDRE UN TOURNOI</button>
-                    <button id="lobbyCreateTournamentButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">CRÉER UN TOURNOI</button>
-                    <button id="lobbyJoinAIButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">JOUER CONTRE IA</button>
+    <div id="lobby" class="hidden flex flex-col justify-center items-center h-screen">
+        <div class="text-center space-y-8">
+            <h1 class="text-8xl font-bold text-sonpi16-black mb-8">TRANSCENDAIRE</h1>
+            <div id="lobby-content" class="bg-sonpi16-black p-8 rounded-2xl">
+                <div class="flex flex-col gap-4 w-96">
+                    <button id="lobbyJoinAIButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-4 rounded-xl font-bold text-lg hover:opacity-80 transition-opacity">
+                        JOUER CONTRE IA
+                    </button>
+                    <button id="lobbyJoinGameButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-4 rounded-xl font-bold text-lg hover:opacity-80 transition-opacity">
+                        REJOINDRE UNE PARTIE
+                    </button>
+                    <button id="lobbyJoinTournamentListButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-4 rounded-xl font-bold text-lg hover:opacity-80 transition-opacity">
+                        REJOINDRE UN TOURNOI
+                    </button>
+                    <button id="lobbyCreateTournamentButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-4 rounded-xl font-bold text-lg hover:opacity-80 transition-opacity">
+                        CRÉER UN TOURNOI
+                    </button>
                 </div>
             </div>
-            <div id="waiting" class="hidden">
-                <p class="text-sonpi16-orange text-xl mb-4" style="font-family: QuencyPixel-Regular;">En attente d'un adversaire...</p>
-                <p class="text-sonpi16-orange text-sm" style="font-family: QuencyPixel-Regular;">Joueurs connectés: <span id="playerCount">1</span>/2</p>
-                <button id="cancelWait" class="bg-red-600 text-white px-4 py-2 rounded mt-4 font-bold hover:opacity-80 transition-opacity" 
-                        style="font-family: QuencyPixel-Regular;">ANNULER</button>
+            <div id="waiting" class="hidden bg-sonpi16-black p-8 rounded-2xl">
+                <p class="text-sonpi16-orange text-2xl mb-4">EN ATTENTE D'UN ADVERSAIRE...</p>
+                <p class="text-sonpi16-orange text-lg mb-4">JOUEURS CONNECTÉS: <span id="playerCount">1</span>/2</p>
+                <button id="cancelWait" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">
+                    ANNULER
+                </button>
             </div>
         </div>
     </div>
 
     <!-- Game Screen -->
     <div id="gameScreen" class="hidden flex justify-center items-center h-screen">
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mr-8">
         <div class="relative">
-            <canvas id="pong" width="800" height="800" class="border-2 border-sonpi16-black"></canvas>
-            <div id="gameInfo" class="absolute top-4 left-4 text-sonpi16-orange" style="font-family: QuencyPixel-Regular;">
-                <p>Vous: <span id="yourRole"></span></p>
-                <p>Ping: <span id="ping">--</span>ms</p>
+            <canvas id="pong" width="800" height="800" class="border-4 border-sonpi16-black rounded-xl"></canvas>
+            <div id="gameInfo" class="absolute top-4 left-4 text-sonpi16-black bg-sonpi16-orange px-4 py-2 rounded-lg">
+                <p>VOUS: <span id="yourRole"></span></p>
+                <p>PING: <span id="ping">--</span>MS</p>
             </div>
         </div>
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs ml-8 scale-x-[-1]">
     </div>
 
     <!-- Tournament List Screen -->
-    <div id="tournamentList" class="hidden flex flex-col justify-center items-center h-screen">
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mb-8">
-        <div class="bg-sonpi16-black p-8 rounded-lg text-center max-w-2xl w-full">
-            <h1 class="text-4xl font-bold text-sonpi16-orange mb-6" style="font-family: QuencyPixel-Regular;">
-                Tournois Disponibles
-            </h1>
-            
-            <!-- Tournament list container -->
-            <div id="tournamentListContainer" class="space-y-3 max-h-96 overflow-y-auto mb-6">
-                <!-- Tournaments will be inserted here by JavaScript -->
-                <p class="text-sonpi16-orange" style="font-family: QuencyPixel-Regular;">
-                    Chargement...
-                </p>
-            </div>
-            
-            <!-- Buttons -->
-            <div class="flex gap-4">
-                <button id="tournamentListCreateButton" 
-                        class="flex-1 bg-green-600 text-white px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                        style="font-family: QuencyPixel-Regular;">
-                    CRÉER UN TOURNOI
-                </button>
-                <button id="tournamentListRefreshButton" 
-                        class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                        style="font-family: QuencyPixel-Regular;">
-                    ACTUALISER
-                </button>
-                <button id="tournamentListBackButton" 
-                        class="flex-1 bg-red-600 text-white px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                        style="font-family: QuencyPixel-Regular;">
-                    RETOUR
-                </button>
+    <div id="tournamentList" class="hidden flex flex-col justify-center items-center h-screen p-8">
+        <div class="text-center space-y-8 w-full max-w-4xl">
+            <h1 class="text-6xl font-bold text-sonpi16-black mb-8">TOURNOIS DISPONIBLES</h1>
+            <div class="bg-sonpi16-black p-8 rounded-2xl">
+                <div id="tournamentListContainer" class="space-y-4 max-h-96 overflow-y-auto mb-6">
+                    <!-- Tournament cards will be inserted here -->
+                </div>
+                <div class="flex gap-4 justify-center flex-wrap">
+                    <button id="tournamentListRefreshButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">
+                        ACTUALISER
+                    </button>
+                    <button id="tournamentListCreateButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">
+                        CRÉER UN TOURNOI
+                    </button>
+                    <button id="tournamentListBackButton" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">
+                        RETOUR
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Tournament Setup Screen -->
     <div id="tournamentSetup" class="hidden flex flex-col justify-center items-center h-screen">
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mb-8">
-        <div class="bg-sonpi16-black p-8 rounded-lg text-center max-w-md">
-            <h1 class="text-4xl font-bold text-sonpi16-orange mb-6" style="font-family: QuencyPixel-Regular;">Créer un Tournoi</h1>
-            
-            <div class="space-y-4">
-                <!-- Tournament Name Input -->
-                <div>
-                    <label class="block text-sonpi16-orange text-sm mb-2" style="font-family: QuencyPixel-Regular;">Nom du tournoi</label>
-                    <input type="text" id="tournamentName" placeholder="Mon Tournoi" 
-                           class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded text-center font-bold" 
-                           style="font-family: QuencyPixel-Regular;" maxlength="30">
-                </div>
-                
-                <!-- Number of players -->
-                <div>
-                    <label class="block text-sonpi16-orange text-sm mb-2" style="font-family: QuencyPixel-Regular;">Nombre de joueurs</label>
-                    <input type="number" id="tournamentPlayerCount" placeholder="Entrez un nombre pair" min="2" max="64" step="2"
-                           class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded text-center font-bold" 
-                           style="font-family: QuencyPixel-Regular;" value="4">
-                    <p class="text-sonpi16-orange text-xs mt-1" style="font-family: QuencyPixel-Regular;">
-                        Nombre pair entre 2 et 64 (ex: 4, 6, 8, 16, 32)
-                    </p>
-                </div>
-                
-                <!-- Buttons -->
-                <div class="flex gap-4 mt-6">
-                    <button id="tournamentSetupSubmitButton" class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">CRÉER</button>
-                    <button id="tournamentSetupCancelButton" class="flex-1 bg-red-600 text-white px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">ANNULER</button>
+        <div class="text-center space-y-8">
+            <h1 class="text-6xl font-bold text-sonpi16-black mb-8">CRÉER UN TOURNOI</h1>
+            <div class="bg-sonpi16-black p-8 rounded-2xl w-96">
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sonpi16-orange text-lg mb-2">NOM DU TOURNOI</label>
+                        <input type="text" id="tournamentName" placeholder="MON TOURNOI" 
+                               class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-3 rounded-xl text-center font-bold placeholder-sonpi16-black placeholder-opacity-70" 
+                               maxlength="30">
+                    </div>
+                    <div>
+                        <label class="block text-sonpi16-orange text-lg mb-2">NOMBRE DE JOUEURS</label>
+                        <input type="number" id="tournamentPlayerCount" placeholder="4" min="2" max="64" step="2"
+                               class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-3 rounded-xl text-center font-bold" 
+                               value="4">
+                        <p class="text-sonpi16-orange text-sm mt-2">NOMBRE PAIR ENTRE 2 ET 64</p>
+                    </div>
+                    <div class="flex gap-4 mt-6">
+                        <button id="tournamentSetupSubmitButton" class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">
+                            CRÉER
+                        </button>
+                        <button id="tournamentSetupCancelButton" class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">
+                            ANNULER
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

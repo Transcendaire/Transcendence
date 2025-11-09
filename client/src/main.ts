@@ -47,6 +47,7 @@ const keys = {
 function initLobby(): void
 {
     wsClient = new WebSocketClient();
+	setUpNameEntryListener();
     setupWebSocketHandlers();
     setupLobbyEventListeners();
 	setupTournamentListEventListeners();
@@ -117,11 +118,48 @@ async function checkIfPlayerIsInAnotherTournament(playerName: string)
 	const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/tournament`);
 	const data = await response.json();
 
-	if (!response.ok)
-	{
-		if (data.tournamentId)
-			throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errCode.ALREADY_IN_TOURNAMENT);
-	}
+	if (data.canConnect === false)
+		throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errCode.ALREADY_IN_TOURNAMENT);
+	// if (!response.ok)
+	// {
+	// 	if (data.tournamentId)
+	// 		throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errCode.ALREADY_IN_TOURNAMENT);
+	// }
+}
+
+function showLobby(): void
+{
+    document.getElementById('nameEntry')!.classList.add('hidden');
+    document.getElementById('lobby')!.classList.remove('hidden');
+}
+
+function setUpNameEntryListener(): void
+{
+	const validateNameButton = document.getElementById('validateNameButton') as HTMLButtonElement;
+	const playerNameInput = document.getElementById('playerName') as HTMLInputElement;
+
+	validateNameButton.addEventListener('click', async () => {
+		const playerName = playerNameInput.value.trim();
+
+		if (inputParser.parsePlayerName(playerName) === false)
+		{
+			showError("nn");
+			return ;
+		}
+		try {
+			await checkIfPlayerNameAlreadyTaken(playerName);
+
+			showLobby();
+		} catch (error) {
+			const message = String(error);
+			showError(message);
+		}
+	});
+
+	playerNameInput.addEventListener('keypress', (event) => {
+		if (event.key === 'Enter')
+			validateNameButton.click();
+	})
 }
 
 /**
@@ -269,7 +307,7 @@ function setupTournamentListEventListeners(): void
 		const playerName = getPlayerName();
 		const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/tournament`);
 		const data = await response.json();
-		if (!response.ok)
+		if (data.tournamentId)
 			handleLeaveTournament(data.tournamentId);
 		returnToLobby();
     });

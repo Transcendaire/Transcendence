@@ -56,16 +56,6 @@ re:
 	@make clean
 	@make run
 
-clean:
-	@echo "$(RED)Cleaning all resources...$(NC)"
-	@docker compose down -v --rmi all
-	@rm -rf client/public/dist server/dist
-	@echo "$(GREEN)Clean complete$(NC)"
-
-restart:
-	@echo "$(YELLOW)Restarting containers...$(NC)"
-	@docker compose restart
-
 logs:
 	@docker compose logs -f
 
@@ -73,7 +63,28 @@ ps:
 	@docker compose ps
 
 dev:
-	@echo "$(GREEN)Starting development mode...$(NC)"
-	@npm run dev
+	@echo "$(GREEN)Starting development mode with Docker...$(NC)"
+	@docker-compose -f docker-compose.dev.yml up --build
 
+dev-bg:
+	@echo "$(GREEN)Starting development mode with Docker (background)...$(NC)"
+	@docker-compose -f docker-compose.dev.yml up -d --build
+	@echo "$(GREEN)✅ Development servers started$(NC)"
+	@echo "  Client: $(YELLOW)http://localhost:8080$(NC)"
+	@echo "  Server: $(YELLOW)http://localhost:3000$(NC)"
 
+dev-logs: 
+	@docker-compose -f docker-compose.dev.yml logs -f
+
+dev-down:
+	@docker-compose -f docker-compose.dev.yml down
+
+dev-restart:
+	@docker-compose -f docker-compose.dev.yml restart
+
+dev-rebuild-shared:
+	@echo "$(YELLOW)Rebuilding shared in containers...$(NC)"
+	@docker-compose -f docker-compose.dev.yml exec client sh -c "cd /shared && npm run build && cp -r /shared/dist/* /app/public/dist/shared/"
+	@docker-compose -f docker-compose.dev.yml exec server sh -c "cd /shared && npm run build"
+	@docker-compose -f docker-compose.dev.yml restart
+	@echo "$(GREEN)✅ Shared rebuilt and services restarted$(NC)"

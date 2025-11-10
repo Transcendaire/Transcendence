@@ -41,9 +41,7 @@ down:
 	@echo "$(RED)Stopping containers...$(NC)"
 	@docker compose down
 
-restart:
-	@echo "$(YELLOW)Restarting containers...$(NC)"
-	@docker compose restart
+
 
 clean:
 	@echo "$(RED)Cleaning all resources...$(NC)"
@@ -55,12 +53,6 @@ re:
 	@echo "$(YELLOW)Rebuilding containers...$(NC)"
 	@make clean
 	@make run
-
-clean:
-	@echo "$(RED)Cleaning all resources...$(NC)"
-	@docker compose down -v --rmi all
-	@rm -rf client/public/dist server/dist
-	@echo "$(GREEN)Clean complete$(NC)"
 
 restart:
 	@echo "$(YELLOW)Restarting containers...$(NC)"
@@ -74,6 +66,12 @@ ps:
 
 dev:
 	@echo "$(GREEN)Starting development mode...$(NC)"
-	@npm run dev
+	@docker-compose -f docker-compose.dev.yml up --build
 
+dev-down:
+	@docker-compose -f docker-compose.dev.yml down -v
 
+dev-restart:
+	@echo "$(YELLOW)Restarting containers...$(NC)"
+	@docker compose -f docker-compose.dev.yml restart
+	

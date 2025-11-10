@@ -1,4 +1,4 @@
-// import { registerPageInitializer, navigate } from "../router.js";
+import { registerPageInitializer, navigate } from "../router.js";
 
 function getEl<T extends HTMLElement>(id: string): T
 {
@@ -42,4 +42,4 @@ function initHomePage(): void
     });
 }
 
-// registerPageInitializer('home', initHomePage);
+registerPageInitializer('home', initHomePage);

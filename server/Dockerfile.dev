@@ -1,0 +1,25 @@
+FROM node:20-alpine
+
+# Build shared
+WORKDIR /shared
+COPY shared/package*.json ./
+RUN npm install
+COPY shared/tsconfig.json ./
+COPY shared/src ./src
+RUN npm run build
+
+# Setup server
+WORKDIR /app
+
+# Installer dépendances server
+COPY server/package*.json ./
+RUN npm install
+
+# Copier le code
+COPY server/tsconfig.json ./
+COPY server/src ./src
+
+EXPOSE 8080
+
+# Lancer en watch mode
+CMD ["npm", "run", "dev"]

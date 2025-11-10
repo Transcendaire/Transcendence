@@ -5,6 +5,8 @@ const ROUTES: Record<Route, string> = {
     profile: '/page/profile.html'
 }
 
+export function registerPageInitializer(route: Route) : fonction {}
+
 export async function render(route: Route) {
   console.log('render() appelé avec route:', route);
   

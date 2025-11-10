@@ -7,10 +7,11 @@ import { fileURLToPath } from 'url'
 import { MatchmakingService } from './services/matchmaking.js'
 import fs from 'fs'
 import { TournamentManagerService } from './services/tournamentManager.js'
-import { Tournament } from './services/tournament.js'
+import { Tournament, TournamentStatus } from './services/tournament.js'
 import { inputParserClass } from '../../client/src/inputParser.js'
 import { getDatabase } from './db/databaseSingleton.js'
 import { DatabaseError } from './errors.js'
+import { TournamentError } from './errors.js'
 
 import { Player } from './types.js'
 declare module 'fastify' {
@@ -107,7 +108,7 @@ server.get('/api/debug/players', async (req, res) => {
 });
 
   server.get<{ Querystring: { playerName: string}}>
-  ('/api/players/check-playerNameInTournament',
+  ('/api/players/check-playerNameAvailability',
     async(req, res) => {
       const { playerName } = req.query;
 	  const id = req.cookies.player_id;
@@ -149,47 +150,106 @@ server.get('/api/debug/players', async (req, res) => {
   })
 
 
+  server.get('/api/players/me', async (req, res) => {
+
+	const cookieId = req.cookies.player_id;
+	let player = undefined;
+
+	if (!cookieId)
+		return res.code(401).send({ error: 'Joueur/Joueuse non authentifié(e)' });
+
+	try {
+			player = db.getPlayerBy('id', cookieId);
+			if (player)
+				return res.code(200).send({ playerName: player.alias, playerId: player.id });
+			else
+				return res.code(404).send( { error: 'Joueur/Joueuse inexistant(e)'});
+	} catch (error) {
+		const message = String(error);
+		console.error(message);
+	}
+
+  })
+
   server.get<{Params: { playerName: string} }>
   ('/api/players/:playerName/tournament',
 	async (req, res) => {
 
-		const playerName = req.params.playerName.trim();
-		inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
-		const tournamentOfPlayer = tournamentManager.findTournamentOfPlayer(playerName);
+		try {
 
-		if (!tournamentOfPlayer)
-			return res.code(200).send({ canConnect: true, tournamentId: undefined });
-
-		const cookiePlayerId = req.cookies.player_id;
-		if (cookiePlayerId)
-		{
-			const player = db.getPlayerBy('id', cookiePlayerId);
-			if (player && player.alias === playerName)
-				return res.code(200).send({ canConnect: true, tournamentId: tournamentOfPlayer!.id })
+			const playerName = req.params.playerName.trim();
+			inputParser.parsePlayerName(playerName);
+			const tournamentOfPlayer = tournamentManager.findTournamentOfPlayer(playerName);
+			
+			if (!tournamentOfPlayer || tournamentOfPlayer.getStatus() === TournamentStatus.COMPLETED)
+				return res.code(200).send({ canConnect: true, tournamentId: undefined });
+			
+			const cookiePlayerId = req.cookies.player_id;
+			if (cookiePlayerId)
+				{
+					const player = db.getPlayerBy('id', cookiePlayerId);
+					if (player && player.alias === playerName)
+						return res.code(200).send({ canConnect: true, tournamentId: tournamentOfPlayer!.id })
+				}
+				
+			return res.code(200).send({ canConnect: false, tournamentId: tournamentOfPlayer!.id });
+		} catch (error) {
+			const message = String(error);
+			console.error(message);
 		}
-
-		return res.code(200).send({ canConnect: false, tournamentId: tournamentOfPlayer!.id });
 	}
   )
-170
+
+
+  server.post<{ Body: { playerName: string } }>
+  ('/api/players', async (req, res) => {
+	const { playerName } = req.body;
+
+	
+	try {
+		inputParser.parsePlayerName(playerName);
+		const cookieId = req.cookies.player_id;
+		if (cookieId)
+		{
+			const existingPlayer = db.getPlayerBy('id', cookieId);
+			if (existingPlayer)
+				return res.code(200).send({ playerId: existingPlayer.id, playerAlias: existingPlayer.alias });
+		}
+
+		if (db.playerExists(playerName))
+			return res.code(409).send({ error: 'Le nom du joueur est déjà pris' });
+
+		const newPlayerId = db.createPlayer(playerName);
+		res.setCookie('player_id', newPlayerId, {
+			path: '/',
+			httpOnly: true,
+			maxAge: 24 * 60 * 60
+		});
+
+		return res.code(201).send({ newPlayerId, playerName });
+	} catch (error) {
+		const message = String(error);
+		return res.code(500).send({ error: message });
+	}
+  })
+
   server.post<{ Body: { name: string; maxPlayers: number; creatorName: string } }>
   ('/api/tournaments', 
     async (req, res) => {
-    try {
-      const { name, maxPlayers, creatorName } = req.body;
-    
-	  inputParser.parsePlayerNameWithHTTPResponse(creatorName, res);
-      
-      try {
-        const tournamentId = tournamentManager.createTournament(name, maxPlayers);
-    
-        const tournament = tournamentManager.getTournament(tournamentId);
-        if (!tournament)
-          return res.code(500).send({ error: 'Erreur lors de la création du tournoi 1'});
-
+	const { name, maxPlayers, creatorName } = req.body;
+	try {
+		inputParser.parsePlayerName(creatorName);
+		parseTournamentAtCreation(name, maxPlayers);
+	
 		const otherTournament = tournamentManager.findTournamentOfPlayer(creatorName);
 		if (otherTournament)
 			return res.code(409).send({ error: `Impossible de créer le tournoi. Le joueur est déjà présent dans le tournoi ${otherTournament.name}`})
+        
+		const tournamentId = tournamentManager.createTournament(name, maxPlayers);
+        const tournament = tournamentManager.getTournament(tournamentId);
+        if (!tournament)
+			return res.code(500).send({ error: 'Erreur lors de la création du tournoi'});
+
         tournament.addPlayerToTournament(creatorName, undefined);
 		const player = db.getPlayer(creatorName);
 		if (player)
@@ -205,21 +265,17 @@ server.get('/api/debug/players', async (req, res) => {
             id: tournamentId,
             name: name,
             maxPlayers: maxPlayers,
-            currentPlayers: tournament.getPlayerCount(),  // ✅ Use actual count
+            currentPlayers: tournament.getPlayerCount(),
             status: 'created',
-            message: 'Tournoi créé et vous avez rejoint automatiquement'
+            message: 'Tournoi créé et vous l\'avez rejoint automatiquement'
         });
       
         } catch (error) {
-            console.error('❌ Error auto-joining creator:', error);
 			const message = String(error);
+			if (error instanceof TournamentError)
+				return res.code(404).send({ error: message });
             return res.code(500).send({ error: message });
         }
-    } catch (error) {
-        console.error('❌ Error creating tournament:', error);
-		const message = String(error);
-        return res.code(500).send({ error: message })
-    }
   })
 
   server.post<{ Params: {id: string}, Body: {playerName: string}}>
@@ -229,10 +285,13 @@ server.get('/api/debug/players', async (req, res) => {
     const { playerName } = req.body;
     const tournament = tournamentManager.getTournament(tournamentId);
 
-    inputParser.parseTournamentWithHTTPResponse(tournament, res); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
-    inputParser.parsePlayerNameWithHTTPResponse(playerName, res);
-
-    try {
+	
+	const existingTournament = tournamentManager.findTournamentOfPlayer(playerName)
+	if (existingTournament && tournamentId !== existingTournament.id)
+		return res.code(409).send({ error: `Vous êtes déjà dans le tournoi ${existingTournament.name}`})
+	try {
+	inputParser.parseTournamentAtJoin(tournament); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
+	inputParser.parsePlayerName(playerName);
     tournament!.addPlayerToTournament(playerName, undefined);
 
 	const player = db.getPlayer(playerName);
@@ -342,3 +401,17 @@ server.get('/api/debug/players', async (req, res) => {
 
 
 /*******************************> > > > UTILS < < < <******************************/
+
+function parseTournamentAtCreation(tournamentName: string, maxPlayers: number)
+{
+	if (!tournamentName || tournamentName.length < 3)
+		throw new TournamentError("Le nom de tournoi doit comporter au moins 3 caractères");
+	else if (!/^[a-zA-Z0-9_-]+$/.test(tournamentName))
+		throw new TournamentError("Au moins un caractère invalide dans le nom de tournoi");
+	if (maxPlayers === undefined || typeof maxPlayers !== 'number')
+		throw new TournamentError('Le nombre de joueurs est requis');
+	if (maxPlayers % 2)
+		throw new TournamentError('Le tournoi doit comporter un nombre pair de joueurs');
+	if (maxPlayers < 2 || maxPlayers > 64)
+		throw new TournamentError('Le tournoi doit comporter entre 2 et 64 joueurs');
+}

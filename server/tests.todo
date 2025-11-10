@@ -1,0 +1,9 @@
+
+- Logging as a player already inside a tournament, and trying to join and create another
+	SHOULD : print an error accordingly and show the tournaments list
+
+- Creating a tournament with bad credentials  or a duplicate
+	SHOULD : print an error accordingly and NOT create the tournament
+
+- Trying to join multiple tournament
+	SHOULD : print error and block entrance into another tournament

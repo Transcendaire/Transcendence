@@ -25,7 +25,9 @@ let gameRunning = false;
 
 enum errCode {
 	DUPLICATE_NAME = 'DUPLICATE_NAME',
-	ALREADY_IN_TOURNAMENT = 'ALREADY_IN_TOURNAMENT'
+	ALREADY_IN_TOURNAMENT = 'ALREADY_IN_TOURNAMENT',
+	UNAUTHENTICATED_PLAYER = 'UNAUTHENTICATED_PLAYER',
+	NONEXISTING_PLAYER = 'NONEXISTING_PLAYER'
 };
 
 const keys = {
@@ -54,11 +56,16 @@ function initLobby(): void
 	setupTournamentSetupEventListeners();
 }
 
-function getPlayerName(): string
+async function getPlayerName(): Promise<string | undefined>
 {
-    const input = document.getElementById('playerName') as HTMLInputElement;
-    console.log(`PLAYER NAME IS ${input.value}`);
-	return input ? input.value.trim() : 'asasas';
+	const response = await fetch('/api/players/me');
+	const data = await response.json();
+
+	if (response.status === 200)
+		return data.playerName;
+	else if (response.status === 401)
+		throw new UserError(data.error, errCode.UNAUTHENTICATED_PLAYER);
+	throw new UserError(data.error, errCode.NONEXISTING_PLAYER);
 }
 
 /**
@@ -101,9 +108,9 @@ function setupWebSocketHandlers(): void
     };
 }
 
-async function checkIfPlayerNameAlreadyTaken(playerName: string)
+async function checkIfPlayerNameAlreadyTaken(playerName: string) //!rethink logic here? -> name of api is confusing
 {
-		const response = await fetch(`/api/players/check-playerNameInTournament?playerName=${playerName}`)
+		const response = await fetch(`/api/players/check-playerNameAvailability?playerName=${playerName}`)
 		const data = await response.json();
 	
 		if (!response.ok)
@@ -120,11 +127,6 @@ async function checkIfPlayerIsInAnotherTournament(playerName: string)
 
 	if (data.canConnect === false)
 		throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errCode.ALREADY_IN_TOURNAMENT);
-	// if (!response.ok)
-	// {
-	// 	if (data.tournamentId)
-	// 		throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errCode.ALREADY_IN_TOURNAMENT);
-	// }
 }
 
 function showLobby(): void
@@ -140,15 +142,21 @@ function setUpNameEntryListener(): void
 
 	validateNameButton.addEventListener('click', async () => {
 		const playerName = playerNameInput.value.trim();
-
-		if (inputParser.parsePlayerName(playerName) === false)
-		{
-			showError("nn");
-			return ;
-		}
 		try {
-			await checkIfPlayerNameAlreadyTaken(playerName);
-
+			inputParser.parsePlayerName(playerName)
+			const response = await fetch('/api/players', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					playerName: playerName
+				})
+			});
+			const data = await response.json();
+			if (!response.ok)
+			{
+				showError(data.error || 'Impossible de créer le joueur');
+				return ;
+			}
 			showLobby();
 		} catch (error) {
 			const message = String(error);
@@ -172,17 +180,13 @@ function setUpNameEntryListener(): void
  */
 function setupLobbyEventListeners(): void
 {
-    const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
-
-
     const joinGameButton = document.getElementById("lobbyJoinGameButton") as HTMLButtonElement;
 	joinGameButton.addEventListener('click', async () => { //! Didn't add a check to see if playerName already exists in database, since its a one match only situation
 
-		if (inputParser.parsePlayerName(getPlayerName()) === false)
-			return;
 		try {
             await wsClient.connect(`ws://${window.location.host}/game`);
-            wsClient.joinGame(getPlayerName());
+			const playerName = await getPlayerName();
+            wsClient.joinGame(playerName!);
         } catch (error) {
             showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
 			return ;
@@ -192,13 +196,10 @@ function setupLobbyEventListeners(): void
     const joinAIButton = document.getElementById("lobbyJoinAIButton") as HTMLButtonElement;
     if (joinAIButton) {
         joinAIButton.addEventListener('click', async () => {
-            const playerName = playerNameInput.value.trim();
-            if (inputParser.parsePlayerName(getPlayerName()) === false) {
-                return;
-            }
+            const playerName = await getPlayerName();
             try {
                 await wsClient.connect(`ws://${window.location.host}/game`);
-                wsClient.joinAIGame(playerName);
+                wsClient.joinAIGame(playerName!);
             } catch (error) {
 				showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
 				return ;
@@ -208,20 +209,11 @@ function setupLobbyEventListeners(): void
 
 	const showTournamentListButton = document.getElementById("lobbyJoinTournamentListButton") as HTMLButtonElement;
     showTournamentListButton.addEventListener('click', async () => {
-        if (inputParser.parsePlayerName(getPlayerName()) === false)
-            return;
 		try {
-			await checkIfPlayerNameAlreadyTaken(getPlayerName());
-			await checkIfPlayerIsInAnotherTournament(getPlayerName());
+			const playerName = await getPlayerName();
+			await checkIfPlayerNameAlreadyTaken(playerName!);
+			await checkIfPlayerIsInAnotherTournament(playerName!);
 		} catch (error) {
-			// if (error instanceof UserError) {
-			// 	showError(error.message);
-			// 	return ;
-			// }
-			// else if (error instanceof TournamentError) {
-			// 	showError(error.message);
-			// 	return ;
-			// }
 			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
 			return ;
 		}
@@ -231,23 +223,20 @@ function setupLobbyEventListeners(): void
 	const showCreateTournamentButton = document.getElementById("lobbyCreateTournamentButton") as HTMLButtonElement;
     showCreateTournamentButton?.addEventListener('click', async () => {
 
-		const playerName = getPlayerName()
-		if (inputParser.parsePlayerName(playerName) === false)
-            return;
 		try {
-			await checkIfPlayerNameAlreadyTaken(playerName);
-			await checkIfPlayerIsInAnotherTournament(getPlayerName());
+			const playerName = await getPlayerName();
+			await checkIfPlayerNameAlreadyTaken(playerName!);
+			await checkIfPlayerIsInAnotherTournament(playerName!);
 		} catch (error) {
 			if (error instanceof UserError) {
-				if (error.code === errCode.DUPLICATE_NAME) {
-					showError(error.message);
-					return ;
-				}
-				else if (error.code === errCode.ALREADY_IN_TOURNAMENT) {
+				if (error.code === errCode.ALREADY_IN_TOURNAMENT) {
 					showError(error.message);
 					showTournamentListScreen();
 					return ;
 				}
+				showError(error.message);
+				returnToLobby();
+				return ;
 			}
 			showError(error instanceof Error ? error.message : "Impossible de se connecter au serveur");
 			return ;
@@ -270,31 +259,26 @@ function setupTournamentListEventListeners(): void
 {
 	const createTournamentButton = document.getElementById('tournamentListCreateButton') as HTMLButtonElement;
 	createTournamentButton.addEventListener('click', async () => {
-		if (inputParser.parsePlayerName(getPlayerName()) === false)
-			return;
     	try {
-    	    await checkIfPlayerNameAlreadyTaken(getPlayerName());
-			await checkIfPlayerIsInAnotherTournament(getPlayerName());
+			const playerName = await getPlayerName();
+    	    await checkIfPlayerNameAlreadyTaken(playerName!);
+			await checkIfPlayerIsInAnotherTournament(playerName!);
     	} catch (error) {
+			const message = String(error);
 			if (error instanceof UserError) {
-				if (error.code === errCode.DUPLICATE_NAME) {
-					showError(error.message);
-					return ;
-				}
-				else if (error.code === errCode.ALREADY_IN_TOURNAMENT) {
-					showError(error.message);
+				if (error.code === errCode.ALREADY_IN_TOURNAMENT) {
+					showError(message);
 					showTournamentListScreen();
 					return ;
 				}
-			}
-			else if (error instanceof TournamentError) {
-				showError(error.message || "Erreur lors de la création du tournoi");
+				showError(message);
+				returnToLobby();
 				return ;
 			}
-    	    showError(error instanceof Error ? 'Impossible de créer le tournoi' : "Impossible de se connecter au serveur");
-    	    return;
+			showError(message || "Erreur lors de la création du tournoi");
+			return ;
     	}
-			showTournamentSetupScreen();
+		showTournamentSetupScreen();
 	});
 
 	const refreshButton = document.getElementById('tournamentListRefreshButton') as HTMLButtonElement;
@@ -304,12 +288,18 @@ function setupTournamentListEventListeners(): void
 
     const backButton = document.getElementById('tournamentListBackButton') as HTMLButtonElement;
     backButton.addEventListener('click', async () => {
-		const playerName = getPlayerName();
-		const response = await fetch(`/api/players/${encodeURIComponent(playerName)}/tournament`);
-		const data = await response.json();
-		if (data.tournamentId)
-			handleLeaveTournament(data.tournamentId);
-		returnToLobby();
+
+		try {
+			const playerName = await getPlayerName();
+			const response = await fetch(`/api/players/${encodeURIComponent(playerName!)}/tournament`);
+			const data = await response.json();
+			if (data.tournamentId)
+				handleLeaveTournament(data.tournamentId);
+			returnToLobby();
+
+		} catch (error) {
+
+		}
     });
 
     const container = document.getElementById('tournamentListContainer')!;
@@ -338,20 +328,17 @@ function setupTournamentSetupEventListeners(): void {
     submitButton.addEventListener('click', async () => {
 		const nameInput = document.getElementById('tournamentName') as HTMLInputElement;
         const countInput = document.getElementById('tournamentPlayerCount') as HTMLInputElement;
-		const playerNameInput = document.getElementById('playerName') as HTMLInputElement;
 
         const tournamentName = nameInput.value.trim();
         const nbPlayers = Number(countInput.value.trim());
-		const playerName = playerNameInput.value.trim();
+		const playerName = await getPlayerName();
 
-        if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
-            return;
-		if (inputParser.parsePlayerName(playerName) === false)
-            return;
-
+		
 		try {
-			await checkIfPlayerNameAlreadyTaken(playerName);
-			await checkIfPlayerIsInAnotherTournament(playerName);
+			if (nbPlayers % 2 || nbPlayers < 2 || nbPlayers > 64)
+				throw new TournamentError('Le nombre de joueurs doit être pair et compris entre 2 et 64')
+			await checkIfPlayerNameAlreadyTaken(playerName!);
+			await checkIfPlayerIsInAnotherTournament(playerName!);
 			const response = await fetch('/api/tournaments', {
 				method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -364,7 +351,9 @@ function setupTournamentSetupEventListeners(): void {
             
             const data = await response.json();
             if (!response.ok) {
-				showError(data.error || 'Impossible de créer le tournoi'); //not here
+				showError(data.error || 'Impossible de créer le tournoi');
+				if (response.status === 409) //* player is already in another tournament
+					showTournamentListScreen();
                 return;
             }
             
@@ -581,14 +570,12 @@ function updateGameState(gameState: GameState): void
 
 async function loadTournamentList(): Promise<void> {
     const container = document.getElementById('tournamentListContainer')!;
-
-	const playerName = (document.getElementById('playerName') as HTMLInputElement).value.trim();
 	
     try {
-        const response = await fetch(`/api/tournaments?playerName=${encodeURIComponent(playerName)}`);
+		const playerName = await getPlayerName();
+        const response = await fetch(`/api/tournaments?playerName=${encodeURIComponent(playerName!)}`);
         const data = await response.json();
-        console.log(data);
-        
+
         if (!response.ok)
             throw new Error('Failed to load tournaments');
         
@@ -643,14 +630,10 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 {
 	console.log(`Joining tournament ${tournamentName}`);
 
-	const input = document.getElementById('playerName') as HTMLInputElement;
-	const playerName = input.value.trim();
-	if (inputParser.parsePlayerName(playerName) === false) //? necessary ? name should already be parsed here
-		return ;
-
 	try {
-		await checkIfPlayerNameAlreadyTaken(playerName);
-		await checkIfPlayerIsInAnotherTournament(playerName);
+		const playerName = await getPlayerName();
+		await checkIfPlayerNameAlreadyTaken(playerName!);
+		await checkIfPlayerIsInAnotherTournament(playerName!);
 		const response = await fetch(`/api/tournaments/${tournamentId}/join`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
@@ -681,10 +664,8 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 
 async function handleLeaveTournament(tournamentId: string): Promise<void>
 {
-	const input = document.getElementById('playerName') as HTMLInputElement;
-	const playerName = input.value.trim();
-
 	try {
+		const playerName = await getPlayerName();
 		const response = await fetch(`/api/tournaments/${tournamentId}/leave`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'Application/json' },

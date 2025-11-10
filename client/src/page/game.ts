@@ -6,9 +6,6 @@
 // import { inputParserClass } from "./inputParser.js"
 // import { paddleSize, paddleOffset } from "@shared/consts.js";
 
-
-
-
 // const canvas = document.getElementById("pong") as HTMLCanvasElement;
 // const ctx = canvas.getContext("2d")!;
 // const inputParser = new inputParserClass();

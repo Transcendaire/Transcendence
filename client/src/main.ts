@@ -144,6 +144,7 @@ function setUpNameEntryListener(): void
 		const playerName = playerNameInput.value.trim();
 		try {
 			inputParser.parsePlayerName(playerName)
+			checkIfPlayerNameAlreadyTaken(playerName);
 			const response = await fetch('/api/players', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },

@@ -64,6 +64,7 @@ declare module 'fastify' {
 
 
 
+  //* code that runs BEFORE each route handler
   server.addHook('preHandler', async (req, res) => {
 	const id = req.cookies.player_id;
 	if (!id)
@@ -208,24 +209,29 @@ server.get('/api/debug/players', async (req, res) => {
 	
 	try {
 		inputParser.parsePlayerName(playerName);
+
+		const existingPlayerByName = db.getPlayer(playerName);
 		const cookieId = req.cookies.player_id;
-		if (cookieId)
+		const existingPlayerByCookie = cookieId ? db.getPlayerBy('id', cookieId): undefined;
+
+		if (existingPlayerByCookie && existingPlayerByCookie.alias === playerName) //*cookie exists and player corresponds to the request name
+			return res.code(200).send({ PlayerId: existingPlayerByCookie.id, playerAlias: existingPlayerByCookie.alias})
+		
+		if (existingPlayerByCookie && existingPlayerByCookie.alias !== playerName) //* cookie exists and player doesnt correspond
 		{
-			const existingPlayer = db.getPlayerBy('id', cookieId);
-			if (existingPlayer)
-				return res.code(200).send({ playerId: existingPlayer.id, playerAlias: existingPlayer.alias });
+			db.updatePlayerAlias(existingPlayerByCookie.id, playerName);
+			return res.code(200).send({ playerId: existingPlayerByCookie.id, NewPlayerAlias: playerName })
 		}
 
-		if (db.playerExists(playerName))
-			return res.code(409).send({ error: 'Le nom du joueur est déjà pris' });
-
+		if (existingPlayerByName)
+			return res.code(409).send({ error: 'Le nom du joueur est déjà pris'});
+		
 		const newPlayerId = db.createPlayer(playerName);
 		res.setCookie('player_id', newPlayerId, {
 			path: '/',
 			httpOnly: true,
 			maxAge: 24 * 60 * 60
 		});
-
 		return res.code(201).send({ newPlayerId, playerName });
 	} catch (error) {
 		const message = String(error);
@@ -251,15 +257,6 @@ server.get('/api/debug/players', async (req, res) => {
 			return res.code(500).send({ error: 'Erreur lors de la création du tournoi'});
 
         tournament.addPlayerToTournament(creatorName, undefined);
-		const player = db.getPlayer(creatorName);
-		if (player)
-		{
-			res.setCookie('player_id', player.id, {
-				path: '/',
-				httpOnly: true,
-				maxAge: 24 * 60 * 60
-			});
-		}
         return res.code(201).send({
             success: true,
             id: tournamentId,
@@ -289,20 +286,19 @@ server.get('/api/debug/players', async (req, res) => {
 	const existingTournament = tournamentManager.findTournamentOfPlayer(playerName)
 	if (existingTournament && tournamentId !== existingTournament.id)
 		return res.code(409).send({ error: `Vous êtes déjà dans le tournoi ${existingTournament.name}`})
+	else if (existingTournament && tournamentId === existingTournament.id)
+		    return res.code(200).send({
+		success: true,
+		tournamentId: tournamentId,
+		tournamentName: existingTournament.name,
+		currentPlayers: existingTournament.getPlayerCount(),
+		maxPlayers: existingTournament.maxPlayers,
+		status: existingTournament.getStatus()
+    })
 	try {
 	inputParser.parseTournamentAtJoin(tournament); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
 	inputParser.parsePlayerName(playerName);
     tournament!.addPlayerToTournament(playerName, undefined);
-
-	const player = db.getPlayer(playerName);
-	if (player)
-	{
-		res.setCookie('player_id', player.id, {
-			path: '/',
-			httpOnly: true,
-			maxAge: 24 * 60 * 60
-		});
-	}
 
     const updatedTournament = tournamentManager.getTournament(tournamentId);
 

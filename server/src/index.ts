@@ -8,11 +8,11 @@ import { MatchmakingService } from './services/matchmaking.js'
 import fs from 'fs'
 import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament, TournamentStatus } from './services/tournament.js'
-import { inputParserClass } from '../../client/src/inputParser.js'
+import { inputParserClass } from '../../shared/inputParser.js'
 import { getDatabase } from './db/databaseSingleton.js'
 import { DatabaseError } from './errors.js'
 import { TournamentError } from './errors.js'
-
+import { UserError } from './errors.js'
 import { Player } from './types.js'
 declare module 'fastify' {
   interface FastifyRequest {
@@ -20,16 +20,17 @@ declare module 'fastify' {
   }
 }
 
+const server = fastify({
+	logger: false // Enable logging
+})
 
+export const app = server;
 (async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const server = fastify({
-    logger: false // Enable logging
-  })
-  const matchmaking = new MatchmakingService()
-  const tournamentManager = new TournamentManagerService(matchmaking);
-  const inputParser = new inputParserClass();
-  const db = getDatabase();
+	const __dirname = path.dirname(fileURLToPath(import.meta.url))
+	const matchmaking = new MatchmakingService()
+	const tournamentManager = new TournamentManagerService(matchmaking);
+	const inputParser = new inputParserClass();
+	const db = getDatabase();
 
   const serverCwd = process.cwd();
   const publicPath = path.join(serverCwd, '../client/public')
@@ -235,6 +236,8 @@ server.get('/api/debug/players', async (req, res) => {
 		return res.code(201).send({ newPlayerId, playerName });
 	} catch (error) {
 		const message = String(error);
+		if (error instanceof UserError)
+			return res.code(400).send({ error: message });
 		return res.code(500).send({ error: message });
 	}
   })

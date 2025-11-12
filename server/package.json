@@ -5,12 +5,15 @@
   "main": "dist/index.js",
   "type": "module",
   "scripts": {
-    "build": "npm run build:client && npm run build:server",
+    "build": "tsc",
     "build:client": "cd ../client && npm run build",
     "build:server": "tsc",
     "dev": "concurrently \"tsc --watch\" \"nodemon --watch dist dist/index.js\"",
     "start": "node dist/server/src/index.js",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+	"test": "vitest",
+	"test:ui": "vitest --ui",
+	"test:run": "vitest run"
   },
   "dependencies": {
     "@fastify/static": "^6.12.0",
@@ -24,11 +27,14 @@
     "@fastify/cookie": "^9.4.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.5.2",
+    "@types/supertest": "^6.0.3",
     "@types/ws": "^8.18.1",
     "concurrently": "^9.2.1",
     "jest": "^30.2.0",
     "nodemon": "^3.1.10",
+    "supertest": "^7.1.4",
     "ts-jest": "^29.4.5",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.2",
+    "vitest": "^4.0.8"
   }
 }

@@ -3,7 +3,7 @@ import { Ball } from "./Ball.js";
 import { COLORS, FONTS } from "./constants.js";
 import { WebSocketClient } from "./WebSocketClient.js";
 import { GameState, GameInput } from "../../server/src/types.js";
-import { inputParserClass } from "./inputParser.js"
+import { inputParserClass } from "../../shared/inputParser.js"
 import { paddleSize, paddleOffset } from "../../server/src/consts.js";
 import { TournamentError, UserError } from "../../server/src/errors.js";
 

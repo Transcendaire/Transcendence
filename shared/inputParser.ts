@@ -1,4 +1,4 @@
-
+import { UserError } from "../server/src/errors";
 
 function showError(message: string): void
 {
@@ -89,11 +89,11 @@ export class inputParserClass {
 	public parsePlayerName(playerName: string): void
 	{
 		if (!playerName || playerName === undefined)
-			throw new Error('Nom du joueur requis');
+			throw new UserError('Nom du joueur requis');
     	if (playerName.trim().length < 3)
-			throw new Error('Le nom doit faire au moins 3 caractères')
+			throw new UserError('Le nom doit faire au moins 3 caractères')
     	if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
-			throw new Error('Au moins un caractère invalide dans le nom du joueur')
+			throw new UserError('Au moins un caractère invalide dans le nom du joueur')
 	}
 
 	

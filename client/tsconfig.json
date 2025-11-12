@@ -4,6 +4,7 @@
         "module": "ES2020",
         "moduleResolution": "node",
         "outDir": "./dist",
+		"rootDir": "../",
         "baseUrl": "./",
         "paths": {
             "../server/src/models/*": ["../server/src/models/*"]
@@ -30,8 +31,9 @@
     },
     "include": [
         "src/**/*",
-        "../server/src/models/**/*"
-    ],
+        // "../server/src/models/**/*"
+		"../shared/**/*"    
+	],
     "exclude": [
         "node_modules",
         "dist"

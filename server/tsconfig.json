@@ -4,7 +4,7 @@
     "module": "ES2020",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "rootDir": "../",
+    "rootDir": "..",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -22,14 +22,16 @@
     "noImplicitOverride": true,
     "allowUnusedLabels": false,
     "allowUnreachableCode": false,
-    "exactOptionalPropertyTypes": true,
-    "types": ["jest", "node"]
+    "exactOptionalPropertyTypes": true
   },
   "include": [
-    "src/**/*"
+    "src/**/*",
+	"../shared/**/*"
   ],
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "tests",
+	"../client/**/*"
   ]
 }

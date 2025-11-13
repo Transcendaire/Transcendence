@@ -123,7 +123,6 @@ export class DatabaseService {
 		if (!alias || alias === undefined)
 			return false;
 		const check = (this.db.prepare("SELECT 1 FROM players WHERE alias= ?").get(alias)) !== undefined
-		console.log(`check is ${check}`);
 		return (this.db.prepare("SELECT 1 FROM players WHERE alias= ?").get(alias)) !== undefined
 	}
 
@@ -137,7 +136,6 @@ export class DatabaseService {
 		if (!alias || alias === undefined)
 			return false;
 		const check = (this.db.prepare("SELECT 1 FROM tournament_players WHERE alias= ?").get(alias)) !== undefined
-		console.log(`check is ${check}`);
 		return (this.db.prepare("SELECT 1 FROM tournament_players WHERE alias= ?").get(alias)) !== undefined
 	}
 

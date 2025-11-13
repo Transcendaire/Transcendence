@@ -109,24 +109,24 @@ server.get('/api/debug/players', async (req, res) => {
     });
 });
 
-  server.get<{ Querystring: { playerName: string}}>
-  ('/api/players/check-playerNameAvailability',
-    async(req, res) => {
-      const { playerName } = req.query;
-	  const id = req.cookies.player_id;
+server.get<{ Querystring: { playerName: string } }>
+('/api/players/check-playerNameAvailability',
+	async (req, res) => {
+		const { playerName } = req.query;
+		const id = req.cookies.player_id;
+		
+		if (id)
+		{
+			const player = db.getPlayerBy('id', id);
+			if (player && playerName  === player.alias)
+				return res.code(200).send({ taken: false });
+		}
 
-	  if (id && db.getPlayerBy('id', id))
-		return res.code(200).send({ taken: false })
-      console.log('🔍 Checking if player exists:', playerName);
-      if (db.playerExistsInTournament(playerName))
-      {
-        console.log(`🚫 [SERVER] Sending 409 - name taken`);	
-        return res.code(409).send({ taken: true, error: 'Le nom du joueur est déjà pris' });
-      }
-      console.log(`✅ [SERVER] Sending 200 - name available`);
-      return res.code(200).send({ taken: false });
-    }
-  )
+		if (db.playerExists(playerName))
+			return res.code(409).send({ taken: true, error: 'Le nom du joueur est déjà pris' });
+
+		return res.code(200).send({ taken: false });
+	})
 
   /*******************************
    * TOURNAMENT API ROUTES
@@ -216,12 +216,12 @@ server.get('/api/debug/players', async (req, res) => {
 		const existingPlayerByCookie = cookieId ? db.getPlayerBy('id', cookieId): undefined;
 
 		if (existingPlayerByCookie && existingPlayerByCookie.alias === playerName) //*cookie exists and player corresponds to the request name
-			return res.code(200).send({ PlayerId: existingPlayerByCookie.id, playerAlias: existingPlayerByCookie.alias})
+			return res.code(200).send({ playerId: existingPlayerByCookie.id, playerAlias: existingPlayerByCookie.alias})
 		
 		if (existingPlayerByCookie && existingPlayerByCookie.alias !== playerName) //* cookie exists and player doesnt correspond
 		{
 			db.updatePlayerAlias(existingPlayerByCookie.id, playerName);
-			return res.code(200).send({ playerId: existingPlayerByCookie.id, NewPlayerAlias: playerName })
+			return res.code(200).send({ playerId: existingPlayerByCookie.id, newPlayerAlias: playerName })
 		}
 
 		if (existingPlayerByName)

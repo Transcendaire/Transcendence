@@ -3,17 +3,28 @@ export type GameInput = {
 	keys: {
 		up: boolean;
 		down: boolean;
+		slot1?: boolean;
+		slot2?: boolean;
+		slot3?: boolean;
 	};
 }
+
+export type PowerUpType = 'Son' | 'Pi' | '16' | null;
 
 export type GameState = {
 	player1: {
 		paddle: { y: number };
 		score: number;
+		itemSlots?: PowerUpType[];
+		pendingPowerUps?: PowerUpType[];
+		selectedSlots?: boolean[];
 	};
 	player2: {
 		paddle: { y: number };
 		score: number;
+		itemSlots?: PowerUpType[];
+		pendingPowerUps?: PowerUpType[];
+		selectedSlots?: boolean[];
 	};
 	ball: {
 		x: number;
@@ -25,7 +36,9 @@ export type GameState = {
 
 export type WebSocketMessage = 
 | { type: "join"; playerName: string }
+| { type: "joinCustom"; playerName: string }
 | { type: "joinAI"; playerName: string }
+| { type: "joinCustomAI"; playerName: string }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
 | { type: "gameStart"; playerRole: 'player1' | 'player2' }

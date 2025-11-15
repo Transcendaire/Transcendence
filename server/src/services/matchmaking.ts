@@ -18,8 +18,10 @@ interface GameRoom
 	player2: Player;
 	gameService: GameService;
 	gameLoop: NodeJS.Timeout | null;
-	player1Input: { up: boolean; down: boolean };
-	player2Input: { up: boolean; down: boolean };
+	player1Input: { up: boolean; down: boolean; slot1?: boolean;
+		slot2?: boolean; slot3?: boolean };
+	player2Input: { up: boolean; down: boolean; slot1?: boolean;
+		slot2?: boolean; slot3?: boolean };
 }
 
 /**
@@ -41,11 +43,19 @@ export class MatchmakingService
 		switch (message.type) {
 			case 'join':
 				if (message.playerName)
-					this.addPlayer(socket, message.playerName)
+					this.addPlayer(socket, message.playerName, false)
+				break
+			case 'joinCustom':
+				if (message.playerName)
+					this.addPlayer(socket, message.playerName, true)
 				break
 			case 'joinAI':
 				if (message.playerName)
-					this.addAIGame(socket, message.playerName)
+					this.addAIGame(socket, message.playerName, false)
+				break
+			case 'joinCustomAI':
+				if (message.playerName)
+					this.addAIGame(socket, message.playerName, true)
 				break
 			case 'input':
 				if (message.data)
@@ -57,7 +67,8 @@ export class MatchmakingService
 		}
 	}
 
-	private addAIGame(socket: WebSocket, playerName: string): void
+	private addAIGame(socket: WebSocket, playerName: string,
+		isCustom: boolean): void
 	{
 		const player: Player = {
 			socket,
@@ -65,13 +76,13 @@ export class MatchmakingService
 			id: Math.random().toString(36).substr(2, 9)
 		}
 		this.playerSockets.set(socket, player)
-		this.createAIGame(player)
+		this.createAIGame(player, isCustom)
 	}
 
-	private createAIGame(player1: Player): void
+	private createAIGame(player1: Player, isCustom: boolean): void
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
-		const gameService = new GameService(canvasWidth, canvasHeight)
+		const gameService = new GameService(canvasWidth, canvasHeight, isCustom)
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId)
 		}, 16)
@@ -94,8 +105,10 @@ export class MatchmakingService
 	 * @brief Add player to matchmaking queue
 	 * @param socket Player's WebSocket connection
 	 * @param playerName Player's display name
+	 * @param isCustom Enable custom mode with power-ups
 	 */
-	private addPlayer(socket: WebSocket, playerName: string): void
+	private addPlayer(socket: WebSocket, playerName: string,
+		isCustom: boolean): void
 	{
 		const player: Player = {
 			socket,
@@ -107,7 +120,7 @@ export class MatchmakingService
 		if (this.waitingPlayers.length >= 1) {
 			const player1 = this.waitingPlayers.pop()!;
 			
-			this.createGame(player1, player);
+			this.createGame(player1, player, isCustom);
 		} else {
 			this.waitingPlayers.push(player);
 			this.sendMessage(socket, {
@@ -164,11 +177,13 @@ export class MatchmakingService
 	 * @brief Create new game room for two players
 	 * @param player1 First player
 	 * @param player2 Second player
+	 * @param isCustom Enable custom mode with power-ups
 	 */
-	private createGame(player1: Player, player2: Player): void
+	private createGame(player1: Player, player2: Player,
+		isCustom: boolean): void
 	{
 		const gameId = Math.random().toString(36).substr(2, 9);
-		const gameService = new GameService(canvasWidth, canvasHeight);
+		const gameService = new GameService(canvasWidth, canvasHeight, isCustom);
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId);
 		}, 16);
@@ -194,15 +209,25 @@ export class MatchmakingService
 	private updateGame(gameId: string): void
 	{
 		const room = this.activeGames.get(gameId);
+		
+		if (!room)
+			return;
+		room.gameService.updateGame(16, room.player1Input, room.player2Input);
 		const gameState = room?.gameService.getGameState();
 		const stateMessage: GameState = {
 			player1: {
 				paddle: { y: gameState!.player1.paddle.positionY },
-				score: gameState!.player1.score
+				score: gameState!.player1.score,
+				itemSlots: gameState!.player1.itemSlots,
+				pendingPowerUps: gameState!.player1.pendingPowerUps,
+				selectedSlots: gameState!.player1.selectedSlots
 			},
 			player2: {
 				paddle: { y: gameState!.player2.paddle.positionY },
-				score: gameState!.player2.score
+				score: gameState!.player2.score,
+				itemSlots: gameState!.player2.itemSlots,
+				pendingPowerUps: gameState!.player2.pendingPowerUps,
+				selectedSlots: gameState!.player2.selectedSlots
 			},
 			ball: {
 				x: gameState!.ball.positionX,
@@ -212,9 +237,6 @@ export class MatchmakingService
 			}
 		};
 
-		if (!room)
-			return;
-		room.gameService.updateGame(16, room.player1Input, room.player2Input);
 		if (room.player1.socket)
 			this.sendMessage(room.player1.socket, { type: "gameState", data: stateMessage });
 		if (room.player2.socket)

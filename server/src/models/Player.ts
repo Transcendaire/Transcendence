@@ -1,1 +1,1 @@
-export { Player } from "../../../shared/models/Player.js";
+export { Player, PowerUp } from "../../../shared/models/Player.js";

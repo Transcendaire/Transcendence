@@ -31,7 +31,10 @@ const keys = {
     ArrowUp: false,
     ArrowDown: false,
     ArrowLeft: false,
-    ArrowRight: false
+    ArrowRight: false,
+    Digit1: false,
+    Digit2: false,
+    Digit3: false
 };
 
 /**
@@ -145,6 +148,44 @@ function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput
             }
         });
     }
+    const joinCustomButton = document.getElementById("joinCustom") as HTMLButtonElement;
+    
+    console.log('[INIT] joinCustom button:', joinCustomButton);
+    if (joinCustomButton) {
+        joinCustomButton.addEventListener('click', async () => {
+            console.log('[CUSTOM] Button clicked!');
+            if (inputParser.parsePlayerName(getPlayerName()) === false)
+                return;
+            try {
+                console.log('[CUSTOM] Connecting to server...');
+                await wsClient.connect(`ws://${window.location.host}/game`);
+                console.log('[CUSTOM] Joining custom game...');
+                wsClient.joinCustomGame(getPlayerName());
+            } catch (error) {
+                console.error('[CUSTOM] Error:', error);
+                showError("Impossible de se connecter au serveur");
+            }
+        });
+    }
+    const joinCustomAIButton = document.getElementById("joinCustomAI") as HTMLButtonElement;
+    
+    console.log('[INIT] joinCustomAI button:', joinCustomAIButton);
+    if (joinCustomAIButton) {
+        joinCustomAIButton.addEventListener('click', async () => {
+            console.log('[CUSTOM AI] Button clicked!');
+            if (inputParser.parsePlayerName(getPlayerName()) === false)
+                return;
+            try {
+                console.log('[CUSTOM AI] Connecting to server...');
+                await wsClient.connect(`ws://${window.location.host}/game`);
+                console.log('[CUSTOM AI] Joining custom AI game...');
+                wsClient.joinCustomAIGame(getPlayerName());
+            } catch (error) {
+                console.error('[CUSTOM AI] Error:', error);
+                showError("Impossible de se connecter au serveur");
+            }
+        });
+    }
     cancelButton.addEventListener('click', () => {
         wsClient.disconnect();
         returnToLobby();
@@ -208,42 +249,44 @@ function sendInputToServer(): void
         playerId: currentPlayerRole,
         keys: {
             up: keys.KeyQ || keys.KeyW || keys.KeyZ || keys.KeyA || keys.ArrowUp || keys.ArrowRight,
-            down: keys.KeyD || keys.KeyS || keys.ArrowDown || keys.ArrowLeft
+            down: keys.KeyD || keys.KeyS || keys.ArrowDown || keys.ArrowLeft,
+            slot1: keys.Digit1,
+            slot2: keys.Digit2,
+            slot3: keys.Digit3
         }
     };
 
     wsClient.sendInput(input);
+    if (keys.Digit1) keys.Digit1 = false;
+    if (keys.Digit2) keys.Digit2 = false;
+    if (keys.Digit3) keys.Digit3 = false;
 }
 
 function updateGameState(gameState: GameState): void
 {
     if (!player1 || !player2 || !ball) return;
-
-    // Vérifier si quelqu'un a marqué un point
     const oldScore1 = player1.score;
     const oldScore2 = player2.score;
 
     player1.paddle.positionY = gameState.player1.paddle.y;
     player1.score = gameState.player1.score;
-    
     player2.paddle.positionY = gameState.player2.paddle.y;
     player2.score = gameState.player2.score;
-    
     ball.positionX = gameState.ball.x;
     ball.positionY = gameState.ball.y;
     ball.velocityX = gameState.ball.vx;
     ball.velocityY = gameState.ball.vy;
-
-    // Logger les changements de score
-    if (player1.score > oldScore1) {
+    if (player1.score > oldScore1)
         console.log(`[GAME] POINT POUR PLAYER 1! Score: ${player1.score} - ${player2.score}`);
-    }
-    if (player2.score > oldScore2) {
+    if (player2.score > oldScore2)
         console.log(`[GAME] POINT POUR PLAYER 2! Score: ${player1.score} - ${player2.score}`);
-    }
-
-    // Logger toutes les informations de la partie (moins fréquent)
-    if (Math.random() < 0.05) { // 5% de chance à chaque frame
+    if (gameState.player1.itemSlots)
+        renderPowerUps('player1', gameState.player1.itemSlots, 
+            gameState.player1.selectedSlots, gameState.player1.pendingPowerUps);
+    if (gameState.player2.itemSlots)
+        renderPowerUps('player2', gameState.player2.itemSlots,
+            gameState.player2.selectedSlots, gameState.player2.pendingPowerUps);
+    if (Math.random() < 0.05) {
         console.log('[GAME] Etat du jeu:', {
             score: `${player1.score} - ${player2.score}`,
             ball: {
@@ -344,6 +387,80 @@ function renderScore(): void
     ctx.font = `bold 48px ${FONTS.QUENCY_PIXEL}`;
     ctx.textAlign = "center";
     ctx.fillText(`${player1.score} - ${player2.score}`, canvas.width / 2, 60);
+}
+
+/**
+ * @brief Render power-up slots for a player
+ * @param player Player identifier
+ * @param itemSlots Array of power-ups in slots
+ * @param selectedSlots Array indicating which slots are selected
+ * @param pendingPowerUps Array of power-ups pending activation
+ */
+function renderPowerUps(player: 'player1' | 'player2',
+    itemSlots: (string | null)[],
+    selectedSlots?: boolean[],
+    pendingPowerUps?: (string | null)[]): void
+{
+    const container = document.getElementById(
+        `powerUpsPlayer${player === 'player1' ? '1' : '2'}`
+    );
+    const iconMap: { [key: string]: string } = {
+        'Son': './assets/images/son.png',
+        'Pi': './assets/images/pi.png',
+        '16': './assets/images/16.png'
+    };
+
+    if (!container)
+        return;
+    container.innerHTML = '';
+    itemSlots.forEach((powerUp, index) => {
+        const slotDiv = document.createElement('div');
+        const isSelected = selectedSlots?.[index] || false;
+
+        slotDiv.className = `w-12 h-12 border-2 bg-sonpi16-black rounded flex items-center justify-center`;
+        slotDiv.style.fontFamily = FONTS.QUENCY_PIXEL;
+        if (isSelected) {
+            slotDiv.style.border = '4px solid #ff6000';
+            slotDiv.style.boxShadow = '0 0 15px #ff6000, inset 0 0 10px rgba(255, 96, 0, 0.3)';
+        } else {
+            slotDiv.style.border = '2px solid #ff6000';
+        }
+        if (powerUp && iconMap[powerUp]) {
+            const img = document.createElement('img');
+
+            img.src = iconMap[powerUp];
+            img.className = 'w-10 h-10';
+            img.alt = powerUp;
+            slotDiv.appendChild(img);
+        } else {
+            const keyLabel = document.createElement('span');
+
+            keyLabel.textContent = (index + 1).toString();
+            keyLabel.className = 'text-sonpi16-orange text-xs';
+            slotDiv.appendChild(keyLabel);
+        }
+        container.appendChild(slotDiv);
+    });
+    if (pendingPowerUps && pendingPowerUps.length > 0) {
+        const pendingContainer = document.createElement('div');
+
+        pendingContainer.className = 'mt-2 flex gap-1';
+        pendingPowerUps.forEach(powerUp => {
+            if (powerUp && iconMap[powerUp]) {
+                const pendingDiv = document.createElement('div');
+
+                pendingDiv.className = 'w-8 h-8 border-4 border-sonpi16-orange bg-sonpi16-black rounded flex items-center justify-center';
+                const img = document.createElement('img');
+
+                img.src = iconMap[powerUp];
+                img.className = 'w-6 h-6';
+                img.alt = powerUp;
+                pendingDiv.appendChild(img);
+                pendingContainer.appendChild(pendingDiv);
+            }
+        });
+        container.appendChild(pendingContainer);
+    }
 }
 
 initLobby();

@@ -128,6 +128,36 @@ export class WebSocketClient
     }
 
     /**
+     * @brief Join custom game with power-ups
+     * @param playerName Player's display name
+     */
+    public joinCustomGame(playerName: string): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinCustom',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
+     * @brief Join custom game against AI with power-ups
+     * @param playerName Player's display name
+     */
+    public joinCustomAIGame(playerName: string): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinCustomAI',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
      * @brief Send player input to server
      * @param input Player's input state
      */

@@ -24,13 +24,21 @@
                        class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded mb-4 text-center font-bold" 
                        style="font-family: QuencyPixel-Regular;" maxlength="20">
                 <br>
-                <div class="flex gap-4 justify-center">
-                    <button id="joinGame" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">REJOINDRE UNE PARTIE</button>
-					<button id="joinTournament" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                	        style="font-family: QuencyPixel-Regular;">REJOINDRE UN TOURNOI</button>
-                	    <button id="joinAI" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">JOUER CONTRE IA</button>
+                <div class="flex flex-col gap-3 justify-center">
+                    <div class="flex gap-2 justify-center">
+                        <button id="joinGame" class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded font-bold hover:opacity-80 transition-opacity text-sm" 
+                                style="font-family: QuencyPixel-Regular;">PARTIE</button>
+                        <button id="joinCustom" class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded font-bold hover:opacity-80 transition-opacity text-sm" 
+                                style="font-family: QuencyPixel-Regular;">PARTIE CUSTOM</button>
+                    </div>
+                    <div class="flex gap-2 justify-center">
+                        <button id="joinAI" class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded font-bold hover:opacity-80 transition-opacity text-sm" 
+                                style="font-family: QuencyPixel-Regular;">CONTRE IA</button>
+                        <button id="joinCustomAI" class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded font-bold hover:opacity-80 transition-opacity text-sm" 
+                                style="font-family: QuencyPixel-Regular;">IA CUSTOM</button>
+                    </div>
+                    <button id="joinTournament" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
+                            style="font-family: QuencyPixel-Regular;">TOURNOI</button>
                 </div>
             </div>
             <div id="waiting" class="hidden">
@@ -50,6 +58,10 @@
             <div id="gameInfo" class="absolute top-4 left-4 text-sonpi16-orange" style="font-family: QuencyPixel-Regular;">
                 <p>Vous: <span id="yourRole"></span></p>
                 <p>Ping: <span id="ping">--</span>ms</p>
+            </div>
+            <div id="powerUpsPlayer1" class="absolute top-20 left-4 flex gap-2">
+            </div>
+            <div id="powerUpsPlayer2" class="absolute top-20 right-4 flex gap-2">
             </div>
         </div>
         <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs ml-8 scale-x-[-1]">

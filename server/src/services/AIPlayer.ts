@@ -59,7 +59,7 @@ export class AIPlayer
         }, 1000);
         this.movementIntervalId = setInterval(() => {
             this.updateMovement();
-        }, 16);
+        }, (1000/60));
     }    /**
      * @brief AI decision-making algorithm
      * @param oldBallX Previous ball X position

@@ -34,10 +34,12 @@ import fs from 'fs'
   
   await server.register(fastifyStatic, {
     root: distPath,
-    prefix: '/dist',
+    prefix: '/dist/',
+    index: false,
     decorateReply: false
   })
   
+
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
     fastify.get('/game', { websocket: true }, (connection, req) => {

@@ -32,16 +32,14 @@ import fs from 'fs'
     index: false
   })
   
-  // await server.register(fastifyStatic, {
-  //   root: distPath,
-  //   prefix: '/dist',
-  //   decorateReply: false,
-  //   index: false
-  // })
+  await server.register(fastifyStatic, {
+    root: distPath,
+    prefix: '/dist/',
+    index: false,
+    decorateReply: false
+  })
   
-  //* Because of websocket: true -> this route doesnt serve an html page anymore, but is a websocket endpoint.
-  //* Fastify automatically creates server-side WebSocket when it receives the upgrade request
-  //* ONE connexion but two websockets (client and server)
+
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
     fastify.get('/game', { websocket: true }, (connection, req) => {

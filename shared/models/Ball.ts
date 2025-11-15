@@ -1,3 +1,7 @@
+import { Paddle } from "./Paddle.js";
+
+export const velYfactor = 500;
+
 /**
  * @brief Game ball physics and movement
  */
@@ -19,7 +23,7 @@ export class Ball
     {
         const randomY = Math.random();
         
-        this.velocityY = (randomY - 0.5) * 500;
+        this.velocityY = (randomY - 0.5) * velYfactor;
         if (start) {
             const randomX = Math.random();
             
@@ -75,6 +79,25 @@ export class Ball
     public bounceHorizontal(): void
     {
         this.velocityX = -this.velocityX * this.speedIncrement;
+    }
+
+    /**
+     * @brief Bounce on paddle with angle based on hit position
+     * @param paddle Paddle that was hit
+     * @details Normalizes velocity vector to maintain constant speed
+     */
+    public bounce(paddle: Paddle): void
+    {
+        const currentSpeed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
+        const hitPosition = (this.positionY - paddle.positionY) / paddle.height - 0.5;
+        
+        this.velocityX = -this.velocityX * this.speedIncrement;
+        this.velocityY = velYfactor * hitPosition;
+        const newSpeed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
+        const ratio = (currentSpeed * this.speedIncrement) / newSpeed;
+        
+        this.velocityX *= ratio;
+        this.velocityY *= ratio;
     }
 
     /**

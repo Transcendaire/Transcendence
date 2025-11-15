@@ -2,21 +2,24 @@ import { GameService } from './main.js'
 import { Player } from '../models/Player.js'
 import { Ball } from '../models/Ball.js'
 import { Paddle } from '../models/Paddle.js'
-import { canvasWidth, canvasHeight, paddleSize, paddleOffset} from '../consts.js'
+import { canvasWidth, canvasHeight, paddleSize, paddleOffset } from '../consts.js'
 
 /**
  * @brief AI opponent for Pong game
- *
- * This class simulates a player by sending inputs to the server every second.
+ * @details Simulates player by making decisions every second and
+ * applying continuous movement at 60 FPS
+ * (informations still refreshs every second)
  */
 export class AIPlayer
 {
     private playerId: 'player1' | 'player2'
     private inputState: { up: boolean; down: boolean }
     private gameService: GameService
-    private intervalId: NodeJS.Timeout | null = null
-    private oldGameState: { player1: Player; player2: Player; ball: Ball } | null = null
-    private stopMoveTimeout: NodeJS.Timeout | null = null
+    private intervalId: NodeJS.Timeout | null
+    private movementIntervalId: NodeJS.Timeout | null
+    private oldBallX: number
+    private oldBallY: number
+    private targetY: number | null
 
     constructor(playerId: 'player1' | 'player2', gameService: GameService,
         inputState: { up: boolean; down: boolean })
@@ -24,69 +27,104 @@ export class AIPlayer
         this.playerId = playerId
         this.gameService = gameService
         this.inputState = inputState
+        this.intervalId = null
+        this.movementIntervalId = null
+        this.oldBallX = canvasWidth / 2
+        this.oldBallY = canvasHeight / 2
+        this.targetY = null
     }
 
     /**
-     * @brief Start AI decision loop with 1-second interval
+     * @brief Start AI decision and movement loops
+     * @details Decision loop runs at 1 Hz, movement update at 60 Hz
      */
-    start()
+    public start(): void
     {
+        console.log('[AIPlayer] AI started');
         this.intervalId = setInterval(() => {
-            const newGameState = this.gameService.getGameState()
-            const input = this.decide(this.oldGameState, newGameState)
-            
-            console.log('[AI] Ball position:', {
-                old: this.oldGameState?.ball.positionX, 
-                new: newGameState.ball.positionX,
-                oldY: this.oldGameState?.ball.positionY,
-                newY: newGameState.ball.positionY
-            })
-            console.log('[AI] Decision:', input, 'Paddle Y:', newGameState.player2.paddle.positionY)
-            
-            this.inputState.up = input.up
-            this.inputState.down = input.down
-            this.oldGameState = JSON.parse(JSON.stringify(newGameState))
-        }, 1000)
-    }
+            const gameState = this.gameService.getGameState();
+            const currentBallX = gameState.ball.positionX;
+            const currentBallY = gameState.ball.positionY;
+            const deltaX = Math.abs(currentBallX - this.oldBallX);
+            const deltaY = Math.abs(currentBallY - this.oldBallY);
 
-    /**
-     * @brief AI decision-making algorithm for paddle movement
-     * @param oldGameState Previous game state (null on first tick)
-     * @param newGameState Current game state
-     * @returns Input commands for paddle movement
-     * @details Decision tree:
-     * - If no previous state exists: return to middle position
-     * - If ball is moving towards AI (velocityX > 0):
-     *   - Calculate predicted ball Y position when it reaches paddle X
-     *   - If paddle is already at predicted position: hold position
-     *   - Otherwise: move towards predicted position
-     * - If ball is moving away: return to middle position
+            if (deltaX > 300 || deltaY > 300) {
+                console.log('[AIPlayer] Ball reset detected');
+                this.oldBallX = canvasWidth / 2;
+                this.oldBallY = canvasHeight / 2;
+            }
+            this.decide(this.oldBallX, this.oldBallY, currentBallX, currentBallY, gameState);
+            this.oldBallX = currentBallX;
+            this.oldBallY = currentBallY;
+        }, 1000);
+        this.movementIntervalId = setInterval(() => {
+            this.updateMovement();
+        }, (1000/60));
+    }    /**
+     * @brief AI decision-making algorithm
+     * @param oldBallX Previous ball X position
+     * @param oldBallY Previous ball Y position
+     * @param newBallX Current ball X position
+     * @param newBallY Current ball Y position
+     * @param gameState Current game state
+     * @details Decides target Y based on ball trajectory
      */
-    decide(oldGameState: { player1: Player; player2: Player; ball: Ball } | null,
-        newGameState: { player1: Player; player2: Player; ball: Ball })
+    decide(oldBallX: number, oldBallY: number, newBallX: number, newBallY: number,
+        gameState: { player1: Player; player2: Player; ball: Ball })
     {
-        if (!oldGameState)
-            return this.goToMiddle(newGameState.player2)
-        if (this.isBallComing(oldGameState.ball, newGameState.ball))
-            return this.goToPredictedBallPosition(oldGameState.ball, newGameState.ball, newGameState.player2)
-        else
-            return this.goToMiddle(newGameState.player2)
+        if (this.isBallComing(oldBallX, newBallX)) {
+            this.targetY = this.calculateOptimalPosition(oldBallX, oldBallY, newBallX, newBallY);
+            console.log('[AI] Ball coming, target Y:', this.targetY);
+        }
+        else {
+            this.targetY = canvasHeight / 2;
+            console.log('[AI] Ball going away, going to middle');
+        }
     }
 
     /**
-     * @brief Stop AI decision loop
+     * @brief Stop AI loops
      */
     stop()
     {
         if (this.intervalId)
             clearInterval(this.intervalId)
+        if (this.movementIntervalId)
+            clearInterval(this.movementIntervalId)
     }
 
     /**
-     * @brief Calculate distance from paddle center to target point
+     * @brief Update paddle movement continuously
+     * @details Runs at 60 FPS to apply inputs towards target position
+     */
+    private updateMovement(): void
+    {
+        const gameState = this.gameService.getGameState();
+        const paddle = this.playerId === 'player1' ? gameState.player1.paddle : gameState.player2.paddle;
+        const paddleCenter = paddle.positionY + paddleSize / 2;
+        const tolerance = 5;
+
+        if (this.targetY === null) {
+            this.inputState.up = false;
+            this.inputState.down = false;
+            return;
+        }
+        const distance = paddleCenter - this.targetY;
+
+        if (Math.abs(distance) < tolerance) {
+            this.inputState.up = false;
+            this.inputState.down = false;
+            return;
+        }
+        this.inputState.up = distance > 0;
+        this.inputState.down = distance < 0;
+    }
+
+    /**
+     * @brief Calculate distance from paddle center to target
      * @param paddle Paddle object
      * @param point Target Y coordinate
-     * @returns Signed distance (positive = paddle above target)
+     * @returns Signed distance (positive means paddle above target)
      */
     public distanceToPoint(paddle: Paddle, point: number): number
     {
@@ -94,48 +132,36 @@ export class AIPlayer
     }
 
     /**
-     * @brief Calculate time needed to reach target position
+     * @brief Calculate time to reach target
      * @param paddle Paddle object
      * @param targetY Target Y coordinate
-     * @returns Time in seconds (capped at 1.0)
+     * @returns Time in seconds
      */
     public calculateMoveTime(paddle: Paddle, targetY: number): number
     {
         const distance = Math.abs(this.distanceToPoint(paddle, targetY))
         const paddleSpeed = 400
         const timeNeeded = distance / paddleSpeed
-        
-        return Math.min(timeNeeded, 1.0)
+
+        return timeNeeded
     }
 
     /**
      * @brief Move paddle towards target point
      * @param paddle Paddle object
      * @param point Target Y coordinate
-     * @returns Input commands and schedules automatic stop
+     * @returns Input commands
      */
     public goToPoint(paddle: Paddle, point: number): { up: boolean; down: boolean }
     {
         const dist = this.distanceToPoint(paddle, point)
-        const tolerance = 5
-        
-        if (Math.abs(dist) < tolerance)
-            return { up: false, down: false }
-        const moveTime = this.calculateMoveTime(paddle, point)
-        
-        if (this.stopMoveTimeout)
-            clearTimeout(this.stopMoveTimeout)
-        this.stopMoveTimeout = setTimeout(() => {
-            this.inputState.up = false
-            this.inputState.down = false
-            console.log('[AI] Stopped moving')
-        }, moveTime * 1000)
-        console.log('[AI] Moving for', moveTime, 'seconds. Distance:', dist)
+
+        console.log('[AI] Moving towards', point, 'Distance:', dist.toFixed(2))
         return { up: dist > 0, down: dist < 0 }
     }
 
     /**
-     * @brief Move paddle to center of canvas
+     * @brief Move paddle to center
      * @param ai AI player object
      * @returns Input commands
      */
@@ -145,39 +171,39 @@ export class AIPlayer
     }
 
     /**
-     * @brief Check if ball is moving towards AI paddle
-     * @param oldBall Previous ball state
-     * @param newBall Current ball state
-     * @returns True if ball X velocity is positive
+     * @brief Check if ball is moving towards AI
+     * @param oldBallX Previous ball X position
+     * @param newBallX Current ball X position
+     * @returns True if ball moving right (towards player2)
      */
-    public isBallComing(oldBall: Ball, newBall: Ball): boolean
+    public isBallComing(oldBallX: number, newBallX: number): boolean
     {
-        return oldBall.positionX - newBall.positionX < 0
+        return oldBallX - newBallX < 0
     }
 
     /**
-     * @brief Predict ball Y position when it reaches paddle X
-     * @param oldBall Previous ball state
-     * @param newBall Current ball state
-     * @returns Predicted Y coordinate with bounce simulation
-     * @details Uses linear trajectory and modulo for wall bounces
+     * @brief Predict ball Y when it reaches paddle X
+     * @param oldBallX Previous ball X position
+     * @param oldBallY Previous ball Y position
+     * @param newBallX Current ball X position
+     * @param newBallY Current ball Y position
+     * @returns Predicted Y coordinate
      */
-    public calculateOptimalPosition(oldBall: Ball, newBall: Ball) : number
+    public calculateOptimalPosition(oldBallX: number, oldBallY: number,
+        newBallX: number, newBallY: number) : number
     {
-        const velX = newBall.positionX - oldBall.positionX
-        const velY = newBall.positionY - oldBall.positionY
+        const velX = newBallX - oldBallX
+        const velY = newBallY - oldBallY
         const targetX = canvasWidth - paddleOffset - 10
-        let predictedBallY = oldBall.positionY + (velY / velX) * (targetX - oldBall.positionX)
-        
+        let predictedBallY = oldBallY + (velY / velX) * (targetX - oldBallX)
+
         predictedBallY = Math.abs(predictedBallY) % (2 * canvasHeight)
-        if (predictedBallY > canvasHeight)
-            predictedBallY = 2 * canvasHeight - predictedBallY
         console.log('[AI] Predicted ball Y:', predictedBallY, 'velX:', velX, 'velY:', velY)
         return predictedBallY
     }
 
     /**
-     * @brief Move paddle to predicted ball interception point
+     * @brief Move to predicted ball position
      * @param oldBall Previous ball state
      * @param newBall Current ball state
      * @param ai AI player object
@@ -185,9 +211,8 @@ export class AIPlayer
      */
     public goToPredictedBallPosition(oldBall: Ball, newBall: Ball, ai: Player): { up: boolean; down: boolean }
     {
-        return this.goToPoint(ai.paddle, this.calculateOptimalPosition(oldBall, newBall))
+        return this.goToPoint(ai.paddle, this.calculateOptimalPosition(oldBall.positionX, oldBall.positionY, newBall.positionX, newBall.positionY))
     }
-
 }
 
 

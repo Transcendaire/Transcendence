@@ -70,7 +70,9 @@ export class GameService
         
         this.ball.update(deltaTime);
         this.checkCollisions();
-    }    /**
+    }
+
+    /**
      * @brief Check if ball is colliding with paddle
      * @param paddle Paddle to check collision with
      * @param ball Ball to check collision for
@@ -105,10 +107,11 @@ export class GameService
      */
     private checkPaddleTouch(player: Player, ball: Ball, antiDoubleTap: boolean): void
     {
-        if (antiDoubleTap && this.isTouchingPaddle(player.paddle, ball)) {
-            ball.bounceHorizontal();
-            if (this.needsReverseEffect(player.paddle, ball))
-                ball.bounceVertical();
+        if (antiDoubleTap && this.isTouchingPaddle(player.paddle, ball))
+        {
+            ball.bounce(player.paddle)
+            // if (this.needsReverseEffect(player.paddle, ball))
+            //     ball.bounceVertical();
         }
     }
 
@@ -150,7 +153,8 @@ export class GameService
      */
     private checkYCollisions(ball: Ball): void
     {
-        if (ball.positionY <= 0 || ball.positionY >= this.canvasHeight - ball.size)
+        if (ball.positionY <= 0 && ball.velocityY < 0 
+            || ball.positionY >= this.canvasHeight - ball.size && ball.velocityY > 0)
             ball.bounceVertical();
     }
 
@@ -163,5 +167,11 @@ export class GameService
         this.checkPaddleTouch(this.player1, this.ball, this.ball.velocityX < 0);
         this.checkPaddleTouch(this.player2, this.ball, this.ball.velocityX > 0);
         this.checkScoring(this.player1, this.player2, this.ball);
+    }
+
+
+    private winGame(): void
+    {
+
     }
 }

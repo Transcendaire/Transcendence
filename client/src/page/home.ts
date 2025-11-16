@@ -9,15 +9,15 @@ const inputParser = new inputParserClass();
 
 function initHomePage(): void
 {
-    const gameModeModal = getEl("gameModeModal");
-    const loginModal = getEl("loginModal");
-    const playButton = getEl("playButton");
+    const gameModeModal = getEl("gameModeModal") as HTMLDivElement;
+    const loginModal = getEl("loginModal") as HTMLDivElement;
+    const playButton = getEl("playButton") as HTMLButtonElement;
     
     getEl("loginButton").addEventListener('click', () => show(loginModal));
     getEl("cancelLoginButton").addEventListener('click', () => hide(loginModal));
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
     getEl("profileButton").addEventListener('click', () => navigate("profile"));
-    getEl("logoutButton").addEventListener('cick', () => {
+    getEl("logoutButton").addEventListener('click', () => {
         isLoggedIn = false;
         updateUI();
     });
@@ -29,6 +29,9 @@ function initHomePage(): void
             show(loginModal);
     });
 
+
+    setupGlobalEvents(loginModal, gameModeModal);
+
     initLoginModal(loginModal);
     initGameModeModal(gameModeModal);
 }
@@ -37,13 +40,11 @@ function initLoginModal(loginModal: HTMLElement)
 {
 
     loginModal.addEventListener('click', (event) => {
-        if (event.target === loginModal) {
-            console.log('[HOME] Fermeture du modal (clic extérieur)');
+        if (event.target === loginModal)
             show(loginModal);
-        }
     });
 
-    getEl("checkPlayerNameInput").addEventListener('click', () => 
+    const connectAsInvite = () => 
     {
         const playerInput = getPlayerName();
 
@@ -57,7 +58,11 @@ function initLoginModal(loginModal: HTMLElement)
             hide(loginModal)
             updateUI();
         }
-    });
+    }
+
+    getEl("checkPlayerNameInput").addEventListener('click', connectAsInvite);
+    getEl("checkPlayerNameInput").addEventListener('keydown', (event: KeyboardEvent) => connectAsInvite);
+
 }
 
 function initGameModeModal(gameModeModal: HTMLElement)
@@ -68,7 +73,7 @@ function initGameModeModal(gameModeModal: HTMLElement)
         }
     });
 
-    getEl("joinGameButton").addEventListener('click', async () => {
+    const join1v1 = async () => {
         try {
             await wsClient.connect(`ws://${window.location.host}/ws`);            
             wsClient.joinGame(playerName);
@@ -76,9 +81,9 @@ function initGameModeModal(gameModeModal: HTMLElement)
         } catch (error) {
             alert("Impossible de se connecter au serveur");
         }
-    });
+    }
 
-    getEl("joinAIButton").addEventListener('click', async () => {
+    const joinAI =  async () => {
         try {
             await wsClient.connect(`ws://${window.location.host}/ws`);
             wsClient.joinAIGame(playerName);
@@ -86,7 +91,10 @@ function initGameModeModal(gameModeModal: HTMLElement)
         } catch (error) {
             alert("Impossible de se connecter au serveur");
         }
-    });
+    }
+
+    getEl("joinGameButton").addEventListener('click', join1v1);
+    getEl("joinAIButton").addEventListener('click', joinAI);
 }
 
 function updateUI(): void {
@@ -105,6 +113,20 @@ function updateUI(): void {
         hide(logoutButton);
         console.log('[HOME] UI: Non connecté');
     }
+}
+
+function setupGlobalEvents(loginModal: HTMLDivElement, gameModeModal: HTMLDivElement){
+
+    document.addEventListener('keydown', (event: KeyboardEvent) => {
+    if (event.key === 'Escape') {
+        if (!loginModal.classList.contains('hidden')) {
+            hide(loginModal);
+        }
+        if (!gameModeModal.classList.contains('hidden')) {
+            hide(gameModeModal);
+        }
+    }
+    });
 }
 
 function getPlayerName(): string {

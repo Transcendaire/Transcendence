@@ -405,9 +405,9 @@ function renderPowerUps(player: 'player1' | 'player2',
         `powerUpsPlayer${player === 'player1' ? '1' : '2'}`
     );
     const iconMap: { [key: string]: string } = {
-        'Son': './assets/images/son.png',
-        'Pi': './assets/images/pi.png',
-        '16': './assets/images/16.png'
+        'Son': './assets/images/son-256x.png',
+        'Pi': './assets/images/pi-256x.png',
+        '16': './assets/images/16-256x.png'
     };
 
     if (!container)

@@ -51,7 +51,7 @@ export async function render(route: Route)
 
 export function navigate(route: Route) {
     console.log('Navigation vers:', route);
-    window.history.pushState({}, '', `/${route}`);
+    window.history.pushState({ route }, '', `/${route}`);
     render(route);
 }
 

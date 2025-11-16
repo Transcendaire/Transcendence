@@ -22,5 +22,4 @@ RUN npm run build
 RUN mkdir -p /output && \
     cp -r /app/public/* /output/
 
-# This container will exit after build, files stay in volume
 CMD ["echo", "Client build complete"]

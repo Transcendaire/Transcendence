@@ -1,6 +1,6 @@
 import { Player } from "/dist/shared/models/Player.js";
 import { Ball } from "/dist/shared/models/Ball.js";
-import { WebSocketClient } from "../components/WebSocketClient.js";
+import { wsClient } from "../components/WebSocketClient.js";
 import { GameState, GameInput } from "/dist/shared/types.js";
 import { inputParserClass } from "../components/inputParser.js"
 import { paddleSize, paddleOffset} from "/dist/shared/consts.js";
@@ -15,7 +15,6 @@ let lastTime = 0;
 let player1: Player;
 let player2: Player;
 let ball: Ball;
-let wsClient = new WebSocketClient();
 let currentPlayerRole: 'player1' | 'player2' | null = null;
 let gameRunning = false;
 
@@ -37,8 +36,32 @@ const keys = {
  */
 function initGame(): void
 {
-    canvas = document.getElementById("pong") as HTMLCanvasElement;
-    ctx = canvas.getContext("2d")!;
+    console.log('[GAME] initGame() appelé');
+    
+    requestAnimationFrame(() => {
+        canvas = document.getElementById("pong") as HTMLCanvasElement;
+        if (!canvas) {
+            console.error('[GAME] Canvas #pong non trouvé!');
+            return;
+        }
+        console.log('[GAME] Canvas trouvé, dimensions:', canvas.width, 'x', canvas.height);
+        ctx = canvas.getContext("2d")!;
+        
+        setupWebSocketCallbacks();
+        console.log('[GAME] Initialisation terminée');
+        
+        if (wsClient.isConnected()) {
+            console.log('[GAME] WebSocket déjà connecté, vérification du status...');
+        }
+    });
+}
+
+/**
+ * @brief Setup WebSocket callbacks
+ */
+function setupWebSocketCallbacks(): void
+{
+    console.log('[GAME] Configuration des callbacks WebSocket...');
 
     wsClient.onWaitingForPlayer = () => {
         showWaitingScreen();
@@ -47,9 +70,12 @@ function initGame(): void
         updatePlayerCount(playerCount);
     };
     wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
+        console.log('[GAME] Callback onGameStart assigné et appelé avec role:', playerRole);
         currentPlayerRole = playerRole;
         startGame(playerRole);
     };
+    console.log('[GAME] Callback onGameStart assigné');
+    
     wsClient.onGameState = (gameState: GameState) => {
         updateGameState(gameState);
     };
@@ -60,6 +86,7 @@ function initGame(): void
     wsClient.onError = (error: string) => {
         alert(error);
     };
+    console.log('[GAME] Tous les callbacks configurés');
 }
 
 /**
@@ -113,7 +140,6 @@ function updateGameState(gameState: GameState): void
 {
     if (!player1 || !player2 || !ball) return;
 
-    // Vérifier si quelqu'un a marqué un point
     const oldScore1 = player1.score;
     const oldScore2 = player2.score;
 
@@ -128,7 +154,6 @@ function updateGameState(gameState: GameState): void
     ball.velocityX = gameState.ball.vx;
     ball.velocityY = gameState.ball.vy;
 
-    // Logger les changements de score
     if (player1.score > oldScore1) {
         console.log(`[GAME] POINT POUR PLAYER 1! Score: ${player1.score} - ${player2.score}`);
     }
@@ -136,8 +161,7 @@ function updateGameState(gameState: GameState): void
         console.log(`[GAME] POINT POUR PLAYER 2! Score: ${player1.score} - ${player2.score}`);
     }
 
-    // Logger toutes les informations de la partie (moins fréquent)
-    if (Math.random() < 0.05) { // 5% de chance à chaque frame
+    if (Math.random() < 0.05) { 
         console.log('[GAME] Etat du jeu:', {
             score: `${player1.score} - ${player2.score}`,
             ball: {
@@ -170,19 +194,33 @@ function updatePlayerCount(playerCount: number): void
 
 function startGame(playerRole: 'player1' | 'player2'): void
 {
-    const gameScreen = document.getElementById("gameScreen")!;
-    const yourRoleSpan = document.getElementById("yourRole")!;
+    console.log('[GAME] startGame() appelé, role:', playerRole);
+    console.log('[GAME] Canvas disponible?', !!canvas, 'Dimensions:', canvas?.width, 'x', canvas?.height);
+    
+    if (!canvas || !ctx) {
+        console.error('[GAME] Canvas ou contexte non disponible!');
+        return;
+    }
+    
+    const gameScreen = document.getElementById("gameScreen");
+    const yourRoleSpan = document.getElementById("yourRole");
+    
+    if (!gameScreen || !yourRoleSpan) {
+        console.error('[GAME] Éléments DOM manquants!');
+        return;
+    }
     
     gameScreen.classList.remove("hidden");
     yourRoleSpan.textContent = playerRole === 'player1' ? 'Joueur 1 (Gauche)' : 'Joueur 2 (Droite)';
     
-
+    console.log('[GAME] Initialisation des objets du jeu...');
     player1 = new Player("Player 1", paddleOffset);
     player2 = new Player("Player 2", canvas.width - paddleOffset - 10);
     ball = new Ball(canvas.width / 2, canvas.height / 2);
     setupGameEventListeners();
 
     gameRunning = true;
+    console.log('[GAME] Démarrage de la boucle de rendu');
     gameLoop(0);
 }
 

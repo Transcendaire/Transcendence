@@ -1,12 +1,11 @@
 import { registerPageInitializer, navigate } from "../router.js";
 import { inputParserClass } from "../components/inputParser.js";
-import { WebSocketClient } from "../components/WebSocketClient.js";
+import { wsClient } from "../components/WebSocketClient.js";
 import { getEl } from "../app.js";
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
 const inputParser = new inputParserClass();
-const wsClient = new WebSocketClient();
 
 function initHomePage(): void
 {
@@ -71,7 +70,7 @@ function initGameModeModal(gameModeModal: HTMLElement)
 
     getEl("joinGameButton").addEventListener('click', async () => {
         try {
-            await wsClient.connect(`ws://${window.location.host}/game`);            
+            await wsClient.connect(`ws://${window.location.host}/ws`);            
             wsClient.joinGame(playerName);
             navigate('game');
         } catch (error) {
@@ -81,7 +80,7 @@ function initGameModeModal(gameModeModal: HTMLElement)
 
     getEl("joinAIButton").addEventListener('click', async () => {
         try {
-            await wsClient.connect(`ws://${window.location.host}/game`);
+            await wsClient.connect(`ws://${window.location.host}/ws`);
             wsClient.joinAIGame(playerName);
             navigate('game');
         } catch (error) {

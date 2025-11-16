@@ -1,5 +1,7 @@
 FROM node:20-alpine
 
+RUN apk add --no-cache python3 make g++
+
 # Build shared
 WORKDIR /shared
 COPY shared/package*.json ./
@@ -13,7 +15,11 @@ WORKDIR /app
 
 # Installer dépendances server
 COPY server/package*.json ./
-RUN npm install
+
+# Install shared as a local package (like production)
+RUN npm install /shared
+
+RUN npm ci
 
 # Copier le code
 COPY server/tsconfig.json ./

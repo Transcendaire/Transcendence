@@ -14,8 +14,12 @@ function initApp(): void {
     render(initialRoute);
     
     window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.route !== undefined) {
+            console.log('[APP] Ignoring programmatic navigation');
+            return;
+        }
         const route = getCurrentRoute();
-        console.log('[APP] Popstate détecté, navigation vers:', route);
+        console.log('[APP] Popstate détecté (back button), navigation vers:', route);
         render(route);
     });
     

@@ -44,7 +44,7 @@ import fs from 'fs'
   //* ONE connexion but two websockets (client and server)
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
-    fastify.get('/game', { websocket: true }, (connection, req) => {
+    fastify.get('/ws', { websocket: true }, (connection, req) => {
       const ws = connection.socket
       ws.on('message', (message) => {
         try {

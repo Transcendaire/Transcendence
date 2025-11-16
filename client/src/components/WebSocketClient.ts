@@ -1,4 +1,4 @@
-import { GameState, GameInput, WebSocketMessage } from "../../shared/types.js";
+import { GameState, GameInput, WebSocketMessage } from "/dist/shared/types.js";
 
 /**
  * @brief WebSocket client for real-time game communication
@@ -11,13 +11,28 @@ export class WebSocketClient
     private reconnectDelay = 1000;
     private lastPingTime = 0;
     private latency = 0;
+    private pendingGameStart: 'player1' | 'player2' | null = null;
+    private _isCustomGame = false;
     
     public onGameState?: (gameState: GameState) => void;
     public onWaitingForPlayer?: () => void;
-    public onGameStart?: (playerRole: 'player1' | 'player2') => void;
+    private _onGameStart: ((playerRole: 'player1' | 'player2') => void) | null = null;
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
+    
+    public get onGameStart() {
+        return this._onGameStart;
+    }
+    
+    public set onGameStart(callback: ((playerRole: 'player1' | 'player2') => void) | null) {
+        this._onGameStart = callback;
+        if (callback && this.pendingGameStart) {
+            console.log('[WEBSOCKET] Appel du callback gameStart en attente avec role:', this.pendingGameStart);
+            callback(this.pendingGameStart);
+            this.pendingGameStart = null;
+        }
+    }
 
     /**
      * @brief Connect to WebSocket server
@@ -77,7 +92,12 @@ export class WebSocketClient
             case 'gameStart':
                 if (message.playerRole) {
                     console.log(`[WEBSOCKET] Jeu demarre! Vous etes: ${message.playerRole}`);
-                    this.onGameStart?.(message.playerRole);
+                    if (this._onGameStart) {
+                        this._onGameStart(message.playerRole);
+                    } else {
+                        console.log('[WEBSOCKET] Callback onGameStart pas encore défini, mise en attente...');
+                        this.pendingGameStart = message.playerRole;
+                    }
                 }
                 break;
                 
@@ -103,6 +123,7 @@ export class WebSocketClient
      */
     public joinGame(playerName: string): void
     {
+        this._isCustomGame = false;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'join',
@@ -118,6 +139,7 @@ export class WebSocketClient
      */
     public joinAIGame(playerName: string): void
     {
+        this._isCustomGame = false;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'joinAI',
@@ -133,6 +155,7 @@ export class WebSocketClient
      */
     public joinCustomGame(playerName: string): void
     {
+        this._isCustomGame = true;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'joinCustom',
@@ -148,6 +171,7 @@ export class WebSocketClient
      */
     public joinCustomAIGame(playerName: string): void
     {
+        this._isCustomGame = true;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'joinCustomAI',
@@ -206,7 +230,7 @@ export class WebSocketClient
         console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
-            this.connect(`ws://${window.location.host}/game`).catch(console.error);
+            this.connect(`ws://${window.location.host}/ws`).catch(console.error);
         }, this.reconnectDelay * this.reconnectAttempts);
     }
 
@@ -222,4 +246,11 @@ export class WebSocketClient
     {
         return this.ws !== undefined && this.ws.readyState === WebSocket.OPEN;
     }
+
+    public isCustomGame(): boolean
+    {
+        return this._isCustomGame;
+    }
 }
+
+export const wsClient = new WebSocketClient();

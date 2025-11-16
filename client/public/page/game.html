@@ -1,0 +1,15 @@
+  <div id="gameScreen" class="flex justify-center items-center h-screen">
+        <img src="/assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mr-8">
+        <div class="relative">
+            <canvas id="pong" width="800" height="800" class="border-2 border-sonpi16-black"></canvas>
+            <div id="gameInfo" class="absolute top-4 left-4 text-sonpi16-orange" style="font-family: QuencyPixel-Regular;">
+                <p>Vous: <span id="yourRole"></span></p>
+                <p>Ping: <span id="ping">--</span>ms</p>
+            </div>
+            <div id="powerUpsPlayer1" class="absolute top-20 left-4 flex gap-2">
+            </div>
+            <div id="powerUpsPlayer2" class="absolute top-20 right-4 flex gap-2">
+            </div>
+        </div>
+        <img src="/assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs ml-8 scale-x-[-1]">
+    </div>

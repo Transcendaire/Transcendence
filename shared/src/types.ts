@@ -47,6 +47,13 @@ export type WebSocketMessage =
 | { type: "ping" }
 | { type: "pong" }
 
+/**
+ * Provide minimal DOM element type aliases in case the TypeScript project
+ * does not include the DOM lib (lib.dom.d.ts).
+ */
+declare type HTMLButtonElement = any;
+declare type HTMLInputElement = any;
+
 export interface TournamentHTMLElements {
 	tournamentSetupScreen: HTMLButtonElement;
 	joinTournamentButton: HTMLButtonElement;

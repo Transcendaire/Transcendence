@@ -1,1 +1,0 @@
-export { Player, PowerUp } from "../../../shared/models/Player.js";

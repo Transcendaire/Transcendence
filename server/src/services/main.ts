@@ -1,7 +1,7 @@
-import { Player, PowerUp } from "../models/Player.js";
-import { Paddle } from "../models/Paddle.js";
-import { Ball } from "../models/Ball.js";
-import { paddleSize, paddleOffset } from "../consts.js";
+import { Player, PowerUp } from "@app/shared/models/Player.js";
+import { Paddle } from "@app/shared/models/Paddle.js";
+import { Ball } from "@app/shared/models/Ball.js";
+import { paddleSize, paddleOffset } from "@app/shared/consts.js";
 
 /**
  * @brief Game logic service handling gameplay mechanics
@@ -137,7 +137,7 @@ export class GameService
                 
                 if (pendingPowerUps.length > 0) {
                     console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
-                    pendingPowerUps.forEach(powerUp => {
+                    pendingPowerUps.forEach((powerUp: PowerUp) => {
                         this.activatePowerUp(player, powerUp);
                     });
                 }

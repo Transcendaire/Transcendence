@@ -13,6 +13,7 @@ try {
     let p = database.createPlayer("PiAIR");
     let c = database.createPlayer("16R");
     
+    
     console.log("s:", s);
     console.log("p:", p);
     console.log("c:", c);

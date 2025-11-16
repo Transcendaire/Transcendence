@@ -1,0 +1,17 @@
+{
+  "name": "@app/shared",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "./dist/types.js",
+  "types": "./dist/types.d.ts",
+  "exports": {
+    "./*": "./dist/*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

@@ -6,11 +6,10 @@ import { GameState, GameInput, TournamentHTMLElements } from "../../shared/types
 import { inputParserClass } from "./inputParser.js"
 import { paddleSize, paddleOffset } from "../../shared/consts.js";
 
+console.log('[MAIN] Module main.ts chargé');
 
-
-
-const canvas = document.getElementById("pong") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d")!;
+let canvas: HTMLCanvasElement;
+let ctx: CanvasRenderingContext2D;
 const inputParser = new inputParserClass();
 
 let lastTime = 0;
@@ -42,17 +41,22 @@ const keys = {
  */
 function initLobby(): void
 {
+    console.log('[INIT LOBBY] Début de l\'initialisation');
     const lobbyScreen = document.getElementById("lobby")!;
     const gameScreen = document.getElementById("gameScreen")!;
     const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
     const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
 
+    console.log('[INIT LOBBY] Elements récupérés');
 	const tournamentButtons: TournamentHTMLElements = getTournamentElementsAsHTML();
 
+    console.log('[INIT LOBBY] Création du WebSocketClient');
     wsClient = new WebSocketClient();
     setupWebSocketHandlers();
+    console.log('[INIT LOBBY] Setup des event listeners');
     setupLobbyEventListeners(joinButton, playerNameInput, cancelButton, lobbyScreen, gameScreen, tournamentButtons);
+    console.log('[INIT LOBBY] Initialisation terminée');
 }
 
 function getTournamentElementsAsHTML(): TournamentHTMLElements {
@@ -71,6 +75,10 @@ function getTournamentElementsAsHTML(): TournamentHTMLElements {
  */
 function initGame(): void
 {
+    console.log('[INIT GAME] Initialisation du jeu');
+    canvas = document.getElementById("pong") as HTMLCanvasElement;
+    ctx = canvas.getContext("2d")!;
+    
     const paddleY = canvas.height / 2 - paddleSize / 2;
 
     player1 = new Player("Player 1", paddleOffset, paddleY);
@@ -463,4 +471,6 @@ function renderPowerUps(player: 'player1' | 'player2',
     }
 }
 
+console.log('[MAIN] Appel de initLobby()');
 initLobby();
+console.log('[MAIN] initLobby() terminé');

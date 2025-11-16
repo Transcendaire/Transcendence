@@ -1,49 +1,123 @@
 import { registerPageInitializer, navigate } from "../router.js";
-import { Player } from "@shared/type"
+import { inputParserClass } from "../components/inputParser.js";
+import { WebSocketClient } from "../components/WebSocketClient.js";
+import { getEl } from "../app.js";
 
-function getEl<T extends HTMLElement>(id: string): T
-{
-    const el = document.getElementById(id);
-    if (!el) 
-        throw new Error(`Element with id="${id}" not found`);
-    else
-        console.log(`id = "${id}" bien charger`);
-    return el as T;
-}
+export let isLoggedIn: boolean = false;
+export let playerName: string = "";
+const inputParser = new inputParserClass();
+const wsClient = new WebSocketClient();
 
 function initHomePage(): void
 {
-    console.log("appel de inithomepage");
-
-    // const playButton = getEl<HTMLElement>("playButton");
-    const loginButton = getEl<HTMLElement>("loginButton");
-    const profileButton = getEl<HTMLElement>("profileButton");
-    const invitePlayer = getEl<HTMLElement>("invitePlayer");
-    const loginModal = getEl<HTMLElement>("loginModal");
-    const cancelButton = getEl<HTMLElement>("cancelButton");
-
-    // playButton.addEventListener('click', () => {
-    //     navigate('game');
-    // })
-
-    loginButton.addEventListener('click', () => {
-        console.log('[HOME] Ouverture du modal de connexion');
-        loginModal.classList.remove('hidden');
+    const gameModeModal = getEl("gameModeModal");
+    const loginModal = getEl("loginModal");
+    const playButton = getEl("playButton");
+    
+    getEl("loginButton").addEventListener('click', () => show(loginModal));
+    getEl("cancelLoginButton").addEventListener('click', () => hide(loginModal));
+    getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
+    getEl("profileButton").addEventListener('click', () => navigate("profile"));
+    getEl("logoutButton").addEventListener('cick', () => {
+        isLoggedIn = false;
+        updateUI();
     });
 
-    cancelButton.addEventListener('click', () => {
-        console.log('[HOME] Fermeture du modal');
-        loginModal.classList.add('hidden');
+    playButton.addEventListener('click', () => {
+        if (isLoggedIn)
+            show(gameModeModal);
+        else
+            show(loginModal);
     });
 
-    // Fermer le modal en cliquant sur l'arrière-plan
+    initLoginModal(loginModal);
+    initGameModeModal(gameModeModal);
+}
+
+function initLoginModal(loginModal: HTMLElement)
+{
+
     loginModal.addEventListener('click', (event) => {
-        // Si on clique directement sur le fond noir (pas sur le contenu)
         if (event.target === loginModal) {
             console.log('[HOME] Fermeture du modal (clic extérieur)');
-            loginModal.classList.add('hidden');
+            show(loginModal);
         }
     });
+
+    getEl("checkPlayerNameInput").addEventListener('click', () => 
+    {
+        const playerInput = getPlayerName();
+
+        console.log(`playerInput = ${playerInput}`)
+        if (inputParser.parsePlayerName(playerInput) === false) 
+            alert(`${playerInput} n'est pas un nom valide`);
+        else 
+        {
+            playerName = playerInput;
+            isLoggedIn = true;
+            hide(loginModal)
+            updateUI();
+        }
+    });
+}
+
+function initGameModeModal(gameModeModal: HTMLElement)
+{
+    gameModeModal.addEventListener('click', (event) => {
+        if (event.target === gameModeModal) {
+            hide(gameModeModal);
+        }
+    });
+
+    getEl("joinGameButton").addEventListener('click', async () => {
+        try {
+            await wsClient.connect(`ws://${window.location.host}/game`);            
+            wsClient.joinGame(playerName);
+            navigate('game');
+        } catch (error) {
+            alert("Impossible de se connecter au serveur");
+        }
+    });
+
+    getEl("joinAIButton").addEventListener('click', async () => {
+        try {
+            await wsClient.connect(`ws://${window.location.host}/game`);
+            wsClient.joinAIGame(playerName);
+            navigate('game');
+        } catch (error) {
+            alert("Impossible de se connecter au serveur");
+        }
+    });
+}
+
+function updateUI(): void {
+    const loginButton = getEl("loginButton");
+    const logoutButton = getEl("logoutButton");
+    const profileButton = getEl("profileButton");
+    
+    if (isLoggedIn) {
+        hide(loginButton);
+        show(logoutButton);
+        show(profileButton);
+        console.log('[HOME] UI: Connecté');
+    } else {
+        hide(profileButton);
+        show(loginButton);
+        hide(logoutButton);
+        console.log('[HOME] UI: Non connecté');
+    }
+}
+
+function getPlayerName(): string {
+    return (document.getElementById("playerNameInput") as HTMLInputElement).value;
+}
+
+function show(element: HTMLElement): void {
+    element.classList.remove('hidden');
+}
+
+function hide(element: HTMLElement): void {
+    element.classList.add('hidden');
 }
 
 registerPageInitializer('home', initHomePage);

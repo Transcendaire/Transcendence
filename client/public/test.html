@@ -1,13 +1,25 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="UTF-8">
+    <title>Pong</title>
+    <link rel="icon" type="image/png" href="./assets/Transcendaire.png">
+    <link href="./config/tools.css" rel="stylesheet" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="./config/config-tailwind.js"></script>
+</head>
+<body class="min-h-screen bg-sonpi16-orange">  
   <main class="flex flex-col m-0 p-0">
 
     <div class="flex flex-col md:flex-row items-center justify-center">
-      <img src="/assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs md:max-w-md mb-4 sm:mb-0">
+      <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs md:max-w-md mb-4 sm:mb-0">
       <div class="flex flex-col items-center md:items-start md:ml-8">
 
         <h1 class="text-sonpi16-black font-semibold text-4xl font-quency">Transcendaire</h1>
         <h2 class="text-sonpi16-black font-semibold text-2xl font-quency">la quintessence du pong</h2>
 
-        <button id="loginButton" class="border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
+        <button id="loginButton" class="hidden border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
           <p class="text-2xl pb-1 font-bold">Se Connecter</p>
         </button>
 
@@ -19,7 +31,6 @@
             <p class="text-2xl pb-1 font-bold font-quency">Logout</p>
           </button>
         </div>
-
       </div>
     </div>
 
@@ -132,3 +143,5 @@
         </div>
     </div>
 </main>
+</body>
+</html>

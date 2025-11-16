@@ -2,7 +2,7 @@ import { render, navigate, getCurrentRoute, Route } from './router.js';
 
 import './page/home.js';
 import './page/profile.js';
-// import './page/game.js'; // Plus tard
+import './page/game.js';
 
 console.log('[APP] Application chargée');
 
@@ -29,12 +29,18 @@ function setupGlobalEvents(): void {
             modals.forEach(modal => modal.classList.add('hidden'));
         }
     });
-    
+
     window.addEventListener('storage', (e) => {
         if (e.key === 'logout') {
             navigate('home');
         }
     });
+}
+
+export function getEl(id: string): HTMLElement {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`#${id} not found`);
+    return el;
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

@@ -51,4 +51,14 @@ export class Paddle
         this.positionY = Math.min(canvasHeight - this.height, this.positionY + this.speed * (deltaTime / 1000));
         this.dir = false;
     }
+
+    public render(ctx: CanvasRenderingContext2D, color: string): void
+    {
+        const x = Math.floor(this.positionX);
+        const y = Math.floor(this.positionY);
+        
+        ctx.fillStyle = color;
+        ctx.fillRect(x, y, 10, this.height);
+        ctx.fillRect(x + 2, y-4 , 6, this.height+8);
+    }
 }

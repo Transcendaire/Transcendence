@@ -7,7 +7,7 @@ export class Player
 {
     public score: number;
     public paddle: Paddle;
-    public readonly name: string;
+    public name: string;
 
     /**
      * @brief Constructor

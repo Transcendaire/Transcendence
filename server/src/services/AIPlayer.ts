@@ -1,8 +1,8 @@
 import { GameService } from './main.js'
-import { Player } from '../models/Player.js'
-import { Ball } from '../models/Ball.js'
-import { Paddle } from '../models/Paddle.js'
-import { canvasWidth, canvasHeight, paddleSize, paddleOffset } from '../consts.js'
+import { Player } from '@app/shared/models/Player.js'
+import { Ball } from '@app/shared/models/Ball.js'
+import { Paddle } from '@app/shared/models/Paddle.js'
+import { canvasWidth, canvasHeight, paddleSize, paddleOffset} from '@app/shared/consts.js'
 
 /**
  * @brief AI opponent for Pong game

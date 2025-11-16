@@ -1,0 +1,55 @@
+services:
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: transcendence-nginx-dev
+    ports:
+      - "8080:8080"
+    depends_on:
+      - client
+      - server
+    volumes:
+      - client-build:/usr/share/nginx/html:ro
+    networks:
+      - transcendence
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: ./server/Dockerfile.dev
+    container_name: transcendence-server-dev
+    expose:
+      - "8080"
+    volumes:
+      # Permet de modifier server/src/ et voir les changements
+      - ./server/src:/app/src:ro
+      - /app/node_modules
+    networks:
+      - transcendence
+    environment:
+      - NODE_ENV=development
+      - PORT=8080
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+      dockerfile: ./client/Dockerfile.dev
+    container_name: transcendence-client-dev
+    volumes:
+      # Permet de modifier client/src/ et voir les changements
+      - ./client/src:/app/src:ro
+      - client-build:/output
+      - /app/node_modules
+      - /app/public  # Protège le dossier public qui contient shared
+    networks:
+      - transcendence
+
+volumes:
+  client-build:
+
+networks:
+  transcendence:
+    driver: bridge

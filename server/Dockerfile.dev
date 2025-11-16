@@ -2,6 +2,7 @@ FROM node:20-alpine
 
 RUN apk add --no-cache python3 make g++
 
+# Build shared
 WORKDIR /shared
 COPY shared/package*.json ./
 RUN npm install
@@ -9,18 +10,24 @@ COPY shared/tsconfig.json ./
 COPY shared/src ./src
 RUN npm run build
 
+# Setup server
 WORKDIR /app
+
+# Installer dépendances server
 COPY server/package*.json ./
 
+# Install shared as a local package (like production)
 RUN npm install /shared
 
 RUN npm ci
 
+# Copier le code
 COPY server/tsconfig.json ./
 COPY server/src ./src
+
 RUN npm run build:server
 
-RUN npm prune --production
-
 EXPOSE 8080
-CMD ["node", "dist/index.js"]
+
+# Lancer en watch mode
+CMD ["npm", "run", "dev"]

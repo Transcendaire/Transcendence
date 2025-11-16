@@ -9,87 +9,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="./config/config-tailwind.js"></script>
 </head>
-<!-- <body class="min-h-screen bg-sonpi16-orange">
+<body class="min-h-screen bg-sonpi16-orange">
     <div id="app"></div>
     <script src="/dist/app.js" type="module"></script>
-  </body> -->
-<body class="bg-sonpi16-orange h-screen m-0 p-0">
-    <!-- Lobby Screen -->
-    <div id="lobby" class="flex flex-col justify-center items-center h-screen">
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mb-8">
-        <div class="bg-sonpi16-black p-8 rounded-lg text-center">
-            <h1 class="text-4xl font-bold text-sonpi16-orange mb-6" style="font-family: QuencyPixel-Regular;">Transcendaire</h1>
-            <div id="lobby-content">
-                <input type="text" id="playerName" placeholder="Entrez votre nom" 
-                       class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded mb-4 text-center font-bold" 
-                       style="font-family: QuencyPixel-Regular;" maxlength="20">
-                <br>
-                <div class="flex gap-4 justify-center">
-                    <button id="joinGame" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">REJOINDRE UNE PARTIE</button>
-					<button id="joinTournament" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                	        style="font-family: QuencyPixel-Regular;">REJOINDRE UN TOURNOI</button>
-                	    <button id="joinAI" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-                            style="font-family: QuencyPixel-Regular;">JOUER CONTRE IA</button>
-                </div>
-            </div>
-            <div id="waiting" class="hidden">
-                <p class="text-sonpi16-orange text-xl mb-4" style="font-family: QuencyPixel-Regular;">En attente d'un adversaire...</p>
-                <p class="text-sonpi16-orange text-sm" style="font-family: QuencyPixel-Regular;">Joueurs connectés: <span id="playerCount">1</span>/2</p>
-                <button id="cancelWait" class="bg-red-600 text-white px-4 py-2 rounded mt-4 font-bold hover:opacity-80 transition-opacity" 
-                        style="font-family: QuencyPixel-Regular;">ANNULER</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Game Screen -->
-    <div id="gameScreen" class="hidden flex justify-center items-center h-screen">
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mr-8">
-        <div class="relative">
-            <canvas id="pong" width="800" height="800" class="border-2 border-sonpi16-black"></canvas>
-            <div id="gameInfo" class="absolute top-4 left-4 text-sonpi16-orange" style="font-family: QuencyPixel-Regular;">
-                <p>Vous: <span id="yourRole"></span></p>
-                <p>Ping: <span id="ping">--</span>ms</p>
-            </div>
-        </div>
-        <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs ml-8 scale-x-[-1]">
-    </div>
-	<!-- Tournament Setup Screen -->
-	<div id="tournamentSetup" class="hidden flex flex-col justify-center items-center h-screen">
-	    <img src="./assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs mb-8">
-	    <div class="bg-sonpi16-black p-8 rounded-lg text-center max-w-md">
-	        <h1 class="text-4xl font-bold text-sonpi16-orange mb-6" style="font-family: QuencyPixel-Regular;">Créer un Tournoi</h1>
-		
-	        <div class="space-y-4">
-	            <!-- Tournament Name Input -->
-	            <div>
-	                <label class="block text-sonpi16-orange text-sm mb-2" style="font-family: QuencyPixel-Regular;">Nom du tournoi</label>
-	                <input type="text" id="tournamentName" placeholder="Mon Tournoi" 
-	                       class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded text-center font-bold" 
-	                       style="font-family: QuencyPixel-Regular;" maxlength="30">
-	            </div>
-			
-				<!-- Number of players -->
-			<div>
-			    <label class="block text-sonpi16-orange text-sm mb-2" style="font-family: QuencyPixel-Regular;">Nombre de joueurs</label>
-			    <input type="number" id="tournamentPlayerCount" placeholder="Entrez un nombre pair" min="2" max="64" step="2"
-			           class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded text-center font-bold" 
-			           style="font-family: QuencyPixel-Regular;" value="4">
-			    <p class="text-sonpi16-orange text-xs mt-1" style="font-family: QuencyPixel-Regular;">
-			        Nombre pair entre 2 et 64 (ex: 4, 6, 8, 16, 32)
-			    </p>
-			</div>
-			
-	            <!-- Buttons -->
-	            <div class="flex gap-4 mt-6">
-	                <button id="createTournament" class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-	                        style="font-family: QuencyPixel-Regular;">CRÉER</button>
-	                <button id="cancelTournament" class="flex-1 bg-red-600 text-white px-6 py-3 rounded font-bold hover:opacity-80 transition-opacity" 
-	                        style="font-family: QuencyPixel-Regular;">ANNULER</button>
-	            </div>
-	        </div>
-	    </div>
-</div>
-    <script type="module" src="/dist/app/src/main.js"></script>
 </body>
 </html>

@@ -1,14 +1,14 @@
-import { Player } from "@shared/models/Player.js";
-import { Ball } from "@shared/models/Ball.js";
+import { Player } from "/dist/shared/models/Player.js";
+import { Ball } from "/dist/shared/models/Ball.js";
 import { WebSocketClient } from "../components/WebSocketClient.js";
-import { GameState, GameInput } from "@shared/types.js";
+import { GameState, GameInput } from "/dist/shared/types.js";
 import { inputParserClass } from "../components/inputParser.js"
-import { paddleSize, paddleOffset} from "@shared/consts.js";
+import { paddleSize, paddleOffset} from "/dist/shared/consts.js";
 import { COLORS, FONTS } from "../components/consts.js";
 import { registerPageInitializer , navigate } from "../router.js";
 
-const canvas = document.getElementById("pong") as HTMLCanvasElement;
-const ctx = canvas.getContext("2d")!;
+let canvas: HTMLCanvasElement;
+let ctx: CanvasRenderingContext2D;
 const inputParser = new inputParserClass();
 
 let lastTime = 0;
@@ -37,6 +37,9 @@ const keys = {
  */
 function initGame(): void
 {
+    canvas = document.getElementById("pong") as HTMLCanvasElement;
+    ctx = canvas.getContext("2d")!;
+
     wsClient.onWaitingForPlayer = () => {
         showWaitingScreen();
     };

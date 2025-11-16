@@ -1,7 +1,7 @@
-import { Player } from "@shared/models/Player.js";
-import { Paddle } from "@shared/models/Paddle.js";
-import { Ball } from "@shared/models/Ball.js";
-import { paddleSize, paddleOffset } from "@shared/consts.js";
+import { Player } from "@app/shared/models/Player.js";
+import { Paddle } from "@app/shared/models/Paddle.js";
+import { Ball } from "@app/shared/models/Ball.js";
+import { paddleSize, paddleOffset } from "@app/shared/consts.js";
 
 /**
  * @brief Game logic service handling gameplay mechanics

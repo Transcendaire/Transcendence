@@ -2,7 +2,7 @@ import { WebSocket } from 'ws'
 import { GameService } from './main.js'
 import { GameState, GameInput, WebSocketMessage } from '../types.js'
 import { AIPlayer } from './AIPlayer.js'
-import { canvasWidth, canvasHeight } from '@shared/consts.js'
+import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 
 interface Player
 {

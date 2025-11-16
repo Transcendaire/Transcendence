@@ -1,4 +1,4 @@
-import { GameState, GameInput, WebSocketMessage } from "@shared/types.js";
+import { GameState, GameInput, WebSocketMessage } from "/dist/shared/types.js";
 
 /**
  * @brief WebSocket client for real-time game communication

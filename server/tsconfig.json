@@ -6,7 +6,7 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "paths": {
-      "@shared/*": ["node_modules/@shared/*"]
+      "@app/shared/*": ["../shared/dist/*"]
     },
     "strict": true,
     "esModuleInterop": true,

@@ -1,5 +1,8 @@
 import { Paddle } from "./Paddle.js";
 import { canvasHeight, paddleSize } from "../consts.js"
+
+export type PowerUp = 'Son' | 'Pi' | '16' | null;
+
 /**
  * @brief Player representation with score and paddle
  */
@@ -7,19 +10,25 @@ export class Player
 {
     public score: number;
     public paddle: Paddle;
-    public name: string;
+    public readonly name: string;
+    public hitStreak: number;
+    public itemSlots: PowerUp[];
+    public pendingPowerUps: PowerUp[];
+    public selectedSlots: boolean[];
 
     /**
      * @brief Constructor
      * @param name Player display name
      * @param paddleX X position for the player's paddle
-     * @param paddleY Y position for the player's paddle
      */
     constructor(name: string, paddleX: number)
     {
         this.name = name;
         this.score = 0;
-        
+        this.hitStreak = 0;
+        this.itemSlots = [null, null, null];
+        this.pendingPowerUps = [];
+        this.selectedSlots = [false, false, false];
         this.paddle = new Paddle(paddleX, canvasHeight / 2 - paddleSize / 2);
     }
 
@@ -37,5 +46,93 @@ export class Player
     public resetScore(): void
     {
         this.score = 0;
+    }
+
+    /**
+     * @brief Increment hit streak counter
+     */
+    public incrementHitStreak(): void
+    {
+        this.hitStreak++;
+    }
+
+    /**
+     * @brief Reset hit streak to zero
+     */
+    public resetHitStreak(): void
+    {
+        this.hitStreak = 0;
+    }
+
+    /**
+     * @brief Check if player has specific power-up
+     * @param powerUp Power-up to check
+     * @returns True if player has this power-up
+     */
+    public hasPowerUp(powerUp: PowerUp): boolean
+    {
+        return this.itemSlots.includes(powerUp);
+    }
+
+    /**
+     * @brief Add power-up to first available slot
+     * @param powerUp Power-up to add
+     * @returns True if successfully added
+     */
+    public addPowerUp(powerUp: PowerUp): boolean
+    {
+        if (this.hasPowerUp(powerUp))
+            return false;
+        const emptyIndex = this.itemSlots.findIndex(slot => slot === null);
+
+        if (emptyIndex === -1)
+            return false;
+        this.itemSlots[emptyIndex] = powerUp;
+        return true;
+    }
+
+    /**
+     * @brief Select power-up slot for activation (registers for next bounce)
+     * @param slotIndex Slot index (0, 1, or 2)
+     * @returns Power-up that was selected, or null if slot empty
+     */
+    public activatePowerUp(slotIndex: number): PowerUp
+    {
+        if (slotIndex < 0 || slotIndex >= 3)
+            return null;
+        const powerUp = this.itemSlots[slotIndex] || null;
+
+        if (powerUp && !this.selectedSlots[slotIndex]) {
+            this.selectedSlots[slotIndex] = true;
+            if (!this.pendingPowerUps.includes(powerUp))
+                this.pendingPowerUps.push(powerUp);
+        }
+        return powerUp;
+    }
+
+    /**
+     * @brief Apply and clear all pending power-ups
+     * @returns Array of power-ups to apply
+     */
+    public consumePendingPowerUps(): PowerUp[]
+    {
+        const powerUps = [...this.pendingPowerUps];
+
+        this.selectedSlots.forEach((selected, index) => {
+            if (selected)
+                this.itemSlots[index] = null;
+        });
+        this.pendingPowerUps = [];
+        this.selectedSlots = [false, false, false];
+        return powerUps;
+    }
+
+    /**
+     * @brief Clear pending power-ups without applying them
+     */
+    public clearPendingPowerUps(): void
+    {
+        this.pendingPowerUps = [];
+        this.selectedSlots = [false, false, false];
     }
 }

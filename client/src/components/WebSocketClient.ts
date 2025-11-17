@@ -12,6 +12,7 @@ export class WebSocketClient
     private lastPingTime = 0;
     private latency = 0;
     private pendingGameStart: 'player1' | 'player2' | null = null;
+    private _isCustomGame = false;
     
     public onGameState?: (gameState: GameState) => void;
     public onWaitingForPlayer?: () => void;
@@ -122,6 +123,7 @@ export class WebSocketClient
      */
     public joinGame(playerName: string): void
     {
+        this._isCustomGame = false;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'join',
@@ -137,9 +139,42 @@ export class WebSocketClient
      */
     public joinAIGame(playerName: string): void
     {
+        this._isCustomGame = false;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'joinAI',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
+     * @brief Join custom game with power-ups
+     * @param playerName Player's display name
+     */
+    public joinCustomGame(playerName: string): void
+    {
+        this._isCustomGame = true;
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinCustom',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
+     * @brief Join custom game against AI with power-ups
+     * @param playerName Player's display name
+     */
+    public joinCustomAIGame(playerName: string): void
+    {
+        this._isCustomGame = true;
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinCustomAI',
                 playerName
             }
             this.ws.send(JSON.stringify(message))
@@ -210,6 +245,11 @@ export class WebSocketClient
     public isConnected(): boolean
     {
         return this.ws !== undefined && this.ws.readyState === WebSocket.OPEN;
+    }
+
+    public isCustomGame(): boolean
+    {
+        return this._isCustomGame;
     }
 }
 

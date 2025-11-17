@@ -28,7 +28,10 @@ const keys = {
     ArrowUp: false,
     ArrowDown: false,
     ArrowLeft: false,
-    ArrowRight: false
+    ArrowRight: false,
+    Digit1: false,
+    Digit2: false,
+    Digit3: false
 };
 
 /**
@@ -133,7 +136,18 @@ function sendInputToServer(): void
         }
     };
 
+    // Only send slot inputs for custom games with power-ups
+    if (wsClient.isCustomGame()) {
+        input.keys.slot1 = keys.Digit1;
+        input.keys.slot2 = keys.Digit2;
+        input.keys.slot3 = keys.Digit3;
+    }
+
     wsClient.sendInput(input);
+    
+    if (keys.Digit1) keys.Digit1 = false;
+    if (keys.Digit2) keys.Digit2 = false;
+    if (keys.Digit3) keys.Digit3 = false;
 }
 
 function updateGameState(gameState: GameState): void
@@ -159,6 +173,17 @@ function updateGameState(gameState: GameState): void
     }
     if (player2.score > oldScore2) {
         console.log(`[GAME] POINT POUR PLAYER 2! Score: ${player1.score} - ${player2.score}`);
+    }
+
+    if (wsClient.isCustomGame()) {
+        if (gameState.player1.itemSlots) {
+            renderPowerUps('player1', gameState.player1.itemSlots, 
+                gameState.player1.selectedSlots, gameState.player1.pendingPowerUps);
+        }
+        if (gameState.player2.itemSlots) {
+            renderPowerUps('player2', gameState.player2.itemSlots,
+                gameState.player2.selectedSlots, gameState.player2.pendingPowerUps);
+        }
     }
 
     if (Math.random() < 0.05) { 
@@ -257,6 +282,69 @@ function renderScore(): void
     ctx.font = `bold 48px ${FONTS.QUENCY_PIXEL}`;
     ctx.textAlign = "center";
     ctx.fillText(`${player1.score} - ${player2.score}`, canvas.width / 2, 60);
+}
+
+/**
+ * @brief Render power-up slots for a player
+ * @param player Player identifier
+ * @param itemSlots Array of power-ups in slots
+ * @param selectedSlots Array indicating which slots are selected
+ * @param pendingPowerUps Array of power-ups pending activation
+ */
+function renderPowerUps(player: 'player1' | 'player2',
+    itemSlots: (string | null)[],
+    selectedSlots?: boolean[],
+    pendingPowerUps?: (string | null)[]): void
+{
+    const container = document.getElementById(
+        `powerUpsPlayer${player === 'player1' ? '1' : '2'}`
+    );
+    const iconMap: { [key: string]: string } = {
+        'Son': './assets/images/son-256x.png',
+        'Pi': './assets/images/pi-256x.png',
+        '16': './assets/images/16-256x.png'
+    };
+
+    if (!container)
+        return;
+    
+    container.innerHTML = '';
+    itemSlots.forEach((powerUp, index) => {
+        const slotDiv = document.createElement('div');
+        const isSelected = selectedSlots?.[index] || false;
+
+        slotDiv.className = `w-12 h-12 border-2 bg-sonpi16-black rounded flex items-center justify-center`;
+        slotDiv.style.fontFamily = FONTS.QUENCY_PIXEL;
+        
+        if (isSelected) {
+            slotDiv.style.borderColor = COLORS.SONPI16_ORANGE;
+            slotDiv.style.borderWidth = '3px';
+        } else {
+            slotDiv.style.borderColor = COLORS.SONPI16_ORANGE;
+        }
+
+        if (powerUp && iconMap[powerUp]) {
+            const img = document.createElement('img');
+            img.src = iconMap[powerUp];
+            img.className = 'w-10 h-10';
+            img.alt = powerUp;
+            slotDiv.appendChild(img);
+        } else {
+            slotDiv.textContent = (index + 1).toString();
+            slotDiv.style.color = COLORS.SONPI16_ORANGE;
+        }
+        
+        container.appendChild(slotDiv);
+    });
+
+    if (pendingPowerUps && pendingPowerUps.length > 0) {
+        const pendingContainer = document.createElement('div');
+        pendingContainer.className = 'mt-2 text-xs';
+        pendingContainer.style.color = COLORS.SONPI16_ORANGE;
+        pendingContainer.style.fontFamily = FONTS.QUENCY_PIXEL;
+        pendingContainer.textContent = `Pending: ${pendingPowerUps.filter(p => p !== null).length}`;
+        container.appendChild(pendingContainer);
+    }
 }
 
 registerPageInitializer('game', initGame);

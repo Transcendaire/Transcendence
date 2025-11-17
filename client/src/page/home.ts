@@ -12,6 +12,9 @@ function initHomePage(): void
     const gameModeModal = getEl("gameModeModal") as HTMLDivElement;
     const loginModal = getEl("loginModal") as HTMLDivElement;
     const playButton = getEl("playButton") as HTMLButtonElement;
+
+    console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
+    updateUI();
     
     getEl("loginButton").addEventListener('click', () => show(loginModal));
     getEl("cancelLoginButton").addEventListener('click', () => hide(loginModal));

@@ -66,10 +66,10 @@ ps:
 
 dev:
 	@echo "$(GREEN)Starting development mode...$(NC)"
-	@docker-compose -f docker-compose.dev.yml up --build
+	@docker compose -f docker-compose.dev.yml up --build
 
 dev-down:
-	@docker-compose -f docker-compose.dev.yml down -v
+	@docker compose -f docker-compose.dev.yml down -v
 
 dev-restart:
 	@echo "$(YELLOW)Restarting containers...$(NC)"

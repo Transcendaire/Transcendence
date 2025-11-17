@@ -1,7 +1,9 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, beforeAll } from 'vitest';
 import supertest from 'supertest';
 import { getDatabase } from '../src/db/databaseSingleton.js';
-import { app } from "../src/index.js"
+import { app, tournamentManager } from "../src/index.js"
+import { Tournament, TournamentStatus } from '../src/services/tournament.js';
+import { setMaxIdleHTTPParsers } from 'http';
 
 describe('Player API tests', () => {
 	let request: any;
@@ -133,7 +135,7 @@ describe('Player API tests', () => {
             expect(res.body.taken).toBe(true);
         });
 
-		it('should return take: false for an available name', async () => {
+		it('should return taken: false for an available name', async () => {
 
 			const availableName = secondaryPlayer;
 
@@ -143,4 +145,277 @@ describe('Player API tests', () => {
 		})
     })
 	})
+})
+
+
+describe('Tournament API tests', () => {
+	let request: any;
+	let anotherRequest: any;
+	let db: any;
+	let tournamentId: any;
+	let tournamentName = 'Tournament';
+	let secondTournamentName = 'TournamentNumberTwo'
+
+	beforeAll(async () => {
+		db = getDatabase();
+		db.deleteAll();
+		tournamentManager.clearAll();
+		request = supertest.agent(app.server);
+		anotherRequest = supertest.agent(app.server);
+
+		await request.post('/api/players').send({ playerName: 'TournamentCreator'}).expect(201);
+	});
+
+    describe('POST /api/tournaments - Creating tournaments', () => {
+        
+
+        it('should create a valid tournament', async () => {
+            const res = await request.post('/api/tournaments').send({
+                name: tournamentName,
+                maxPlayers: 4,
+                creatorName: 'TournamentCreator'
+            }).expect(201);
+
+            expect(res.body.success).toBe(true);
+            expect(res.body).toHaveProperty('id');
+            expect(res.body.name).toBe(tournamentName);
+            expect(res.body.maxPlayers).toBe(4);
+            expect(res.body.currentPlayers).toBe(1);
+            expect(res.body.status).toBe('created');
+
+            tournamentId = res.body.id;
+        });
+	});
+
+	describe('Conflict between tournaments', () => {
+
+		it('should refuse to create an already existing tournament', async () => {
+			const res = await request.post('/api/tournaments').send({
+				name: tournamentName, //*already created
+				maxPlayers: 4,
+				creatorName: 'creator'
+		}).expect(409);
+		//toDo check if tournament was still created?
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le tournoi Tournament existe déjà et ne peut pas être créé')
+		console.log('ERROR : ', res.body.error);
+	})
+
+	it('should refuse to create a tournament if the creator is inside another', async () => {
+		const res = await request.post('/api/tournaments').send({
+			name: 'TournamentNumberTwo',
+			maxPlayers: 4,
+			creatorName: 'TournamentCreator' //* already inside another tournament
+		}).expect(409);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le joueur est déjà présent dans le tournoi');
+		console.log('ERROR : ', res.body.error);
+	})
+	
+})
+
+	describe('Invalid tournament names', () => {
+
+		
+		it('should refuse to create a tournament with not a valid name (unauthorized characters)', async () => {
+			const res = await request.post('/api/tournaments').send({
+				name: 'Tourn@ment',
+				maxPlayers: 4,
+				creatorName: 'Soso'
+		}).expect(400);
+		
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Au moins un caractère invalide')
+		console.log('ERROR : ', res.body.error);
+	})
+
+	it('should refuse to create a tournament with not a valid name (no name)', async () => {
+		const res = await request.post('/api/tournaments').send({
+			name: undefined,
+			maxPlayers: 4,
+			creatorName: 'Soso'
+		}).expect(400);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le nom de tournoi doit comporter au moins 3 caractères')
+		console.log('ERROR : ', res.body.error);
+	})
+
+	it('should refuse to create a tournament with not a valid name (empty name)', async () => {
+		const res = await request.post('/api/tournaments').send({
+			name: '',
+			maxPlayers: 4,
+			creatorName: 'Soso'
+		}).expect(400);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le nom de tournoi doit comporter au moins 3 caractères')
+		console.log('ERROR : ', res.body.error);
+	})
+
+	it('should refuse to create a tournament with not a valid name (less than 3 characters)', async () => {
+		const res = await request.post('/api/tournaments').send({
+			name: 'Tr',
+			maxPlayers: 4,
+			creatorName: 'Soso'
+		}).expect(400);
+		
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le nom de tournoi doit comporter au moins 3 caractères')
+		console.log('ERROR : ', res.body.error);
+	})
+})
+	
+
+	describe('Invalid maxPlayers values', () => {
+
+		it('should refuse to create a tournament with not a valid number of players (< 2)', async () => {
+			const res = await request.post('/api/tournaments').send({
+			name: tournamentName,
+			maxPlayers: 0,
+			creatorName: 'Soso'
+		}).expect(400);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le tournoi doit comporter entre 2 et 64 joueurs')
+		console.log('ERROR : ', res.body.error);
+	})
+	
+	it('should refuse to create a tournament with not a valid number of players (> 64)', async () => {
+		const res = await request.post('/api/tournaments').send({
+			name: tournamentName,
+			maxPlayers: 65,
+			creatorName: 'Soso'
+		}).expect(400);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le tournoi doit comporter entre 2 et 64 joueurs')
+		console.log('ERROR : ', res.body.error);
+	})
+
+	it('should refuse to create a tournament with not a valid number of players (odd number)', async () => {
+		const res = await request.post('/api/tournaments').send({
+			name: tournamentName,
+			maxPlayers: 3,
+			creatorName: 'Soso'
+		}).expect(400);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('Le tournoi doit comporter un nombre pair de joueurs')
+		console.log('ERROR : ', res.body.error);
+	})
+
+
+	describe('POST /api/tournaments/:id/join - Joining tournaments', () => {
+
+
+	it('should let a player join an already existing tournament', async () => {
+		const newPlayer = supertest.agent(app.server);
+		await newPlayer.post('/api/players').send({ playerName: 'Soner' }).expect(201);
+
+		const res = await newPlayer.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'Soner'
+		}).expect(200);
+
+		expect(res.body.success).toBe(true);
+		expect(res.body.tournamentId).toBe(tournamentId);
+		expect(res.body.tournamentName).toBe(tournamentName);
+		expect(res.body.currentPlayers).toBe(2);
+		expect(res.body.maxPlayers).toBe(4);
+		expect(res.body.status).toBe('created');
+
+	})
+
+	it('return 200 if player is already inside the tournament', async () => {
+		const res = await request.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'Soner'
+		}).expect(200);
+
+		expect(res.body.success).toBe(true);
+		expect(res.body.tournamentId).toBe(tournamentId);
+		expect(res.body.tournamentName).toBe(tournamentName);
+		expect(res.body.currentPlayers).toBe(2);
+		expect(res.body.maxPlayers).toBe(4);
+		expect(res.body.status).toBe('created');
+
+	})
+
+	it('should refuse if player is already inside another tournament', async () => {
+
+		const otherPlayer = supertest.agent(app.server);
+		await otherPlayer.post('/api/players').send({ playerName: 'testPlayer'}).expect(201);
+	
+		await otherPlayer.post('/api/tournaments').send({
+			name: secondTournamentName,
+			maxPlayers: 4,
+			creatorName: 'testPlayer'
+		}).expect(201);
+
+		const res = await otherPlayer.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'testPlayer'
+		}).expect(409);
+            
+		expect(res.body).toHaveProperty('error');
+        expect(res.body.error).toContain('déjà dans le tournoi');
+	})
+
+	it('should refuse if the tournament is already full', async () => {
+
+		const player3 = supertest.agent(app.server);
+		await player3.post('/api/players').send({ playerName: 'player3'}).expect(201);
+		await player3.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'player3'
+		}).expect(200)
+		
+		const player4 = supertest.agent(app.server);
+		await player4.post('/api/players').send({ playerName: 'player4'}).expect(201);
+		await player4.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'player4'
+		}).expect(200)
+
+		const player5 = supertest.agent(app.server);
+		await player5.post('/api/players').send({ playerName: 'player5'}).expect(201);
+		const res = await player5.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'player5'
+		}).expect(409)
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('complet')
+	})
+
+	it('should refuse if tournament has already started', async () => {
+
+		let tournament = tournamentManager.getTournament(tournamentId);
+		tournament!.setStatus(TournamentStatus.RUNNING)
+		await anotherRequest.post('/api/players').send({ playerName: 'randomPlayer'}).expect(201);
+		const res = await anotherRequest.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'randomPlayer'
+		}).expect(409);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('commencé')
+
+		tournament!.setStatus(TournamentStatus.CREATED)
+
+	})
+
+	it('should refuse if tournament has already started', async () => {
+
+		let tournament = tournamentManager.getTournament(tournamentId);
+		tournament!.setStatus(TournamentStatus.COMPLETED)
+		// await anotherRequest.post('/api/players').send({ playerName: 'randomPlayer'}).expect(200);
+		const res = await anotherRequest.post(`/api/tournaments/${tournamentId}/join`).send({
+			playerName: 'randomPlayer'
+		}).expect(409);
+
+		expect(res.body).toHaveProperty('error');
+		expect(res.body.error).toContain('terminé')
+
+		tournament!.setStatus(TournamentStatus.CREATED)
+	})
+})
+
+})
+
 })

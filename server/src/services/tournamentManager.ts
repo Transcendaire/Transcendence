@@ -3,7 +3,7 @@ import { MatchmakingService } from './matchmaking.js'
 import crypto from 'crypto'
 import { match } from 'assert';
 import { getDatabase } from '../db/databaseSingleton.js';
-import { DatabaseError, TournamentError } from '../errors.js';
+import { DatabaseError, errTournament, TournamentError } from '../../../shared/errors.js';
 
 export class TournamentManagerService 
 {
@@ -19,6 +19,8 @@ export class TournamentManagerService
 	public createTournament(name: string, maxPlayers: number): string
 	{
 		try {
+			if (this.db.getTournament(undefined, name))
+				throw new TournamentError(`Le tournoi ${name} existe déjà et ne peut pas être créé`, errTournament.ALREADY_EXISTING)
 			this.db.createTournament(name, maxPlayers);
 
 			const tournamentData = this.db.getTournament(undefined, name);
@@ -135,5 +137,9 @@ export class TournamentManagerService
 			});
 		}
 		return list;
+	}
+
+	public clearAll(): void {
+		this.tournamentsMap.clear();
 	}
 }

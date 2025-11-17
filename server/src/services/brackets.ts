@@ -1,6 +1,6 @@
 import { getDatabase } from "../db/databaseSingleton.js";
 import { randomInt } from "crypto";
-import { BracketError } from "../errors.js";
+import { BracketError } from "../../../shared/errors.js";
 import { machine } from "os";
 import { match } from "assert";
 

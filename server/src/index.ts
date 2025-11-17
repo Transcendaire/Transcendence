@@ -10,9 +10,7 @@ import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament, TournamentStatus } from './services/tournament.js'
 import { inputParserClass } from '../../shared/inputParser.js'
 import { getDatabase } from './db/databaseSingleton.js'
-import { DatabaseError } from './errors.js'
-import { TournamentError } from './errors.js'
-import { UserError } from './errors.js'
+import { DatabaseError, errTournament, TournamentError, UserError } from '../../shared/errors.js'
 import { Player } from './types.js'
 declare module 'fastify' {
   interface FastifyRequest {
@@ -25,10 +23,11 @@ const server = fastify({
 })
 
 export const app = server;
+export let tournamentManager: TournamentManagerService; //!for testing
 (async () => {
 	const __dirname = path.dirname(fileURLToPath(import.meta.url))
 	const matchmaking = new MatchmakingService()
-	const tournamentManager = new TournamentManagerService(matchmaking);
+	tournamentManager = new TournamentManagerService(matchmaking);
 	const inputParser = new inputParserClass();
 	const db = getDatabase();
 
@@ -269,11 +268,16 @@ server.get<{ Querystring: { playerName: string } }>
             status: 'created',
             message: 'Tournoi créé et vous l\'avez rejoint automatiquement'
         });
-      
+
         } catch (error) {
 			const message = String(error);
 			if (error instanceof TournamentError)
-				return res.code(404).send({ error: message });
+			{
+				if (error.code === errTournament.ALREADY_EXISTING)
+					return res.code(409).send({ error: message });
+				else
+					return res.code(400).send({ error: message });
+			}
             return res.code(500).send({ error: message });
         }
   })
@@ -299,25 +303,36 @@ server.get<{ Querystring: { playerName: string } }>
 		status: existingTournament.getStatus()
     })
 	try {
-	inputParser.parseTournamentAtJoin(tournament); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
-	inputParser.parsePlayerName(playerName);
-    tournament!.addPlayerToTournament(playerName, undefined);
+		inputParser.parseTournamentAtJoin(tournament); //ToDo player name is parsed inside the function. Modify inputParser to do it and send the responses
+		inputParser.parsePlayerName(playerName);
+    	tournament!.addPlayerToTournament(playerName, undefined);
 
-    const updatedTournament = tournamentManager.getTournament(tournamentId);
+    	const updatedTournament = tournamentManager.getTournament(tournamentId);
 
-    return res.code(200).send({
-    success: true,
-    tournamentId: tournamentId,
-    tournamentName: updatedTournament?.name,
-    currentPlayers: updatedTournament?.getPlayerCount(),
-    maxPlayers: updatedTournament?.maxPlayers,
-    status: updatedTournament?.getStatus()
-    })
+    	return res.code(200).send({
+    	success: true,
+    	tournamentId: tournamentId,
+    	tournamentName: updatedTournament?.name,
+    	currentPlayers: updatedTournament?.getPlayerCount(),
+    	maxPlayers: updatedTournament?.maxPlayers,
+    	status: updatedTournament?.getStatus()
+    	})
 
     } catch (error) {
-    console.error(`Error adding player to tournament ${tournament!.name}`,error);
-	const message = String(error);
-    return res.code(500).send({error: message })
+    	console.error(`Error adding player to tournament ${tournament!.name}`,error);
+		const message = String(error);
+		if (error instanceof TournamentError)
+		{
+			switch (error.code) {
+				case errTournament.TOURNAMENT_FULL:
+				case errTournament.ALREADY_STARTED:
+				case errTournament.ALREADY_OVER:
+					return res.code(409).send({error: message});
+				case errTournament.NOT_EXISTING:
+					return res.code(404).send({error: message});
+			}
+		}
+    	return res.code(500).send({error: message })
     }
 
   })
@@ -409,8 +424,8 @@ function parseTournamentAtCreation(tournamentName: string, maxPlayers: number)
 		throw new TournamentError("Au moins un caractère invalide dans le nom de tournoi");
 	if (maxPlayers === undefined || typeof maxPlayers !== 'number')
 		throw new TournamentError('Le nombre de joueurs est requis');
-	if (maxPlayers % 2)
-		throw new TournamentError('Le tournoi doit comporter un nombre pair de joueurs');
 	if (maxPlayers < 2 || maxPlayers > 64)
 		throw new TournamentError('Le tournoi doit comporter entre 2 et 64 joueurs');
+	if (maxPlayers % 2)
+		throw new TournamentError('Le tournoi doit comporter un nombre pair de joueurs');
 }

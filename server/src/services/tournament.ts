@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { MatchmakingService } from './matchmaking.js';
 import { getDatabase } from '../db/databaseSingleton.js';
 import { Match, SingleEliminationBracket } from './brackets.js';
-import { TournamentError } from "../errors.js"
+import { errTournament, TournamentError } from "../../../shared/errors.js"
 import { Player } from '../types.js';
 import { WebsocketHandler } from '@fastify/websocket';
 import { sign } from 'crypto';
@@ -54,8 +54,11 @@ export class Tournament {
 
 	public addPlayerToTournament(alias: string, socket?: WebSocket): void
 	{
-		if (this.status !== TournamentStatus.CREATED && this.status !== TournamentStatus.FULL)
-			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi a déjà débuté ou est terminé`);
+		if (this.status === TournamentStatus.RUNNING)
+			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi a déjà débuté`, errTournament.ALREADY_STARTED);
+
+		if (this.status === TournamentStatus.COMPLETED)
+			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est terminé`, errTournament.ALREADY_OVER);
 		
 		if (this.players.size === this.maxPlayers)
 			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est complet`);

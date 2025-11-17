@@ -5,7 +5,7 @@ import { WebSocketClient } from "./WebSocketClient.js";
 import { GameState, GameInput } from "../../server/src/types.js";
 import { inputParserClass } from "../../shared/inputParser.js"
 import { paddleSize, paddleOffset } from "../../server/src/consts.js";
-import { TournamentError, UserError } from "../../server/src/errors.js";
+import { TournamentError, UserError, errClient } from "../../shared/errors.js";
 
 import { TournamentHTMLElements } from "../../server/src/types.js"
 import { getDatabase } from "../../server/src/db/databaseSingleton.js"
@@ -23,12 +23,7 @@ let wsClient: WebSocketClient;
 let currentPlayerRole: 'player1' | 'player2' | null = null;
 let gameRunning = false;
 
-enum errCode {
-	DUPLICATE_NAME = 'DUPLICATE_NAME',
-	ALREADY_IN_TOURNAMENT = 'ALREADY_IN_TOURNAMENT',
-	UNAUTHENTICATED_PLAYER = 'UNAUTHENTICATED_PLAYER',
-	NONEXISTING_PLAYER = 'NONEXISTING_PLAYER'
-};
+
 
 const keys = {
     KeyA: false,
@@ -64,8 +59,8 @@ async function getPlayerName(): Promise<string | undefined>
 	if (response.status === 200)
 		return data.playerName;
 	else if (response.status === 401)
-		throw new UserError(data.error, errCode.UNAUTHENTICATED_PLAYER);
-	throw new UserError(data.error, errCode.NONEXISTING_PLAYER);
+		throw new UserError(data.error, errClient.UNAUTHENTICATED_PLAYER);
+	throw new UserError(data.error, errClient.NONEXISTING_PLAYER);
 }
 
 /**
@@ -116,7 +111,7 @@ async function checkIfPlayerNameAlreadyTaken(playerName: string) //!rethink logi
 		if (!response.ok)
 			throw new UserError(data.error || 'Impossible de vérifier si le nom existe déjà');
 		if (data.taken === true)
-			throw new UserError(`Le nom ${playerName} est déjà pris`, errCode.DUPLICATE_NAME);
+			throw new UserError(`Le nom ${playerName} est déjà pris`, errClient.DUPLICATE_NAME);
 }
 
 
@@ -126,7 +121,7 @@ async function checkIfPlayerIsInAnotherTournament(playerName: string)
 	const data = await response.json();
 
 	if (data.canConnect === false)
-		throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errCode.ALREADY_IN_TOURNAMENT);
+		throw new UserError('Le joueur est déjà présent dans un tournoi. Merci de le quitter avant de créer un nouveau tournoi', errClient.ALREADY_IN_TOURNAMENT);
 }
 
 function showLobby(): void
@@ -230,7 +225,7 @@ function setupLobbyEventListeners(): void
 			await checkIfPlayerIsInAnotherTournament(playerName!);
 		} catch (error) {
 			if (error instanceof UserError) {
-				if (error.code === errCode.ALREADY_IN_TOURNAMENT) {
+				if (error.code === errClient.ALREADY_IN_TOURNAMENT) {
 					showError(error.message);
 					showTournamentListScreen();
 					return ;
@@ -267,7 +262,7 @@ function setupTournamentListEventListeners(): void
     	} catch (error) {
 			const message = String(error);
 			if (error instanceof UserError) {
-				if (error.code === errCode.ALREADY_IN_TOURNAMENT) {
+				if (error.code === errClient.ALREADY_IN_TOURNAMENT) {
 					showError(message);
 					showTournamentListScreen();
 					return ;
@@ -651,7 +646,7 @@ async function handleJoinTournament(tournamentId: string, tournamentName: string
 	} catch (error)
 	{
 		const message = String(error); //!issue here
-		if (error instanceof UserError && error.code === errCode.ALREADY_IN_TOURNAMENT)
+		if (error instanceof UserError && error.code === errClient.ALREADY_IN_TOURNAMENT)
 		{
 			showError(message);
 			showTournamentListScreen();

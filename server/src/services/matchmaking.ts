@@ -22,6 +22,8 @@ interface GameRoom
 		slot2?: boolean; slot3?: boolean };
 	player2Input: { up: boolean; down: boolean; slot1?: boolean;
 		slot2?: boolean; slot3?: boolean };
+	player1PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean };
+	player2PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean };
 }
 
 /**
@@ -93,7 +95,9 @@ export class MatchmakingService
 			gameService,
 			gameLoop,
 			player1Input: { up: false, down: false },
-			player2Input: { up: false, down: false }
+			player2Input: { up: false, down: false },
+			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
+			player2PrevSlots: { slot1: false, slot2: false, slot3: false }
 		}
 		const ai = new AIPlayer('player2', gameService, room.player2Input)
 		ai.start()
@@ -194,7 +198,9 @@ export class MatchmakingService
 			gameService,
 			gameLoop,
 			player1Input: { up: false, down: false },
-			player2Input: { up: false, down: false }
+			player2Input: { up: false, down: false },
+			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
+			player2PrevSlots: { slot1: false, slot2: false, slot3: false }
 		};
 
 		this.activeGames.set(gameId, room);
@@ -209,10 +215,40 @@ export class MatchmakingService
 	private updateGame(gameId: string): void
 	{
 		const room = this.activeGames.get(gameId);
-		
+
 		if (!room)
 			return;
-		room.gameService.updateGame(16, room.player1Input, room.player2Input);
+
+		const slot1Pressed = !!(room.player1Input.slot1 && !room.player1PrevSlots.slot1);
+		const slot2Pressed = !!(room.player1Input.slot2 && !room.player1PrevSlots.slot2);
+		const slot3Pressed = !!(room.player1Input.slot3 && !room.player1PrevSlots.slot3);
+		const p2slot1Pressed = !!(room.player2Input.slot1 && !room.player2PrevSlots.slot1);
+		const p2slot2Pressed = !!(room.player2Input.slot2 && !room.player2PrevSlots.slot2);
+		const p2slot3Pressed = !!(room.player2Input.slot3 && !room.player2PrevSlots.slot3);
+
+		room.player1PrevSlots.slot1 = room.player1Input.slot1 || false;
+		room.player1PrevSlots.slot2 = room.player1Input.slot2 || false;
+		room.player1PrevSlots.slot3 = room.player1Input.slot3 || false;
+		room.player2PrevSlots.slot1 = room.player2Input.slot1 || false;
+		room.player2PrevSlots.slot2 = room.player2Input.slot2 || false;
+		room.player2PrevSlots.slot3 = room.player2Input.slot3 || false;
+
+		const p1Input = {
+			up: room.player1Input.up,
+			down: room.player1Input.down,
+			...(slot1Pressed && { slot1: true }),
+			...(slot2Pressed && { slot2: true }),
+			...(slot3Pressed && { slot3: true })
+		};
+		const p2Input = {
+			up: room.player2Input.up,
+			down: room.player2Input.down,
+			...(p2slot1Pressed && { slot1: true }),
+			...(p2slot2Pressed && { slot2: true }),
+			...(p2slot3Pressed && { slot3: true })
+		};
+
+		room.gameService.updateGame(16, p1Input, p2Input);
 		const gameState = room?.gameService.getGameState();
 		const stateMessage: GameState = {
 			player1: {
@@ -220,14 +256,18 @@ export class MatchmakingService
 				score: gameState!.player1.score,
 				itemSlots: gameState!.player1.itemSlots,
 				pendingPowerUps: gameState!.player1.pendingPowerUps,
-				selectedSlots: gameState!.player1.selectedSlots
+				selectedSlots: gameState!.player1.selectedSlots,
+				hitStreak: gameState!.player1.hitStreak,
+				chargingPowerUp: gameState!.player1.chargingPowerUp
 			},
 			player2: {
 				paddle: { y: gameState!.player2.paddle.positionY },
 				score: gameState!.player2.score,
 				itemSlots: gameState!.player2.itemSlots,
 				pendingPowerUps: gameState!.player2.pendingPowerUps,
-				selectedSlots: gameState!.player2.selectedSlots
+				selectedSlots: gameState!.player2.selectedSlots,
+				hitStreak: gameState!.player2.hitStreak,
+				chargingPowerUp: gameState!.player2.chargingPowerUp
 			},
 			ball: {
 				x: gameState!.ball.positionX,

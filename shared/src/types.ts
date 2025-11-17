@@ -18,6 +18,8 @@ export type GameState = {
 		itemSlots?: PowerUpType[];
 		pendingPowerUps?: PowerUpType[];
 		selectedSlots?: boolean[];
+		hitStreak?: number;
+		chargingPowerUp?: PowerUpType;
 	};
 	player2: {
 		paddle: { y: number };
@@ -25,6 +27,8 @@ export type GameState = {
 		itemSlots?: PowerUpType[];
 		pendingPowerUps?: PowerUpType[];
 		selectedSlots?: boolean[];
+		hitStreak?: number;
+		chargingPowerUp?: PowerUpType;
 	};
 	ball: {
 		x: number;

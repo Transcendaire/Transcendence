@@ -15,6 +15,7 @@ export class Player
     public itemSlots: PowerUp[];
     public pendingPowerUps: PowerUp[];
     public selectedSlots: boolean[];
+    public chargingPowerUp: PowerUp;
 
     /**
      * @brief Constructor
@@ -29,6 +30,7 @@ export class Player
         this.itemSlots = [null, null, null];
         this.pendingPowerUps = [];
         this.selectedSlots = [false, false, false];
+        this.chargingPowerUp = null;
         this.paddle = new Paddle(paddleX, canvasHeight / 2 - paddleSize / 2);
     }
 
@@ -57,11 +59,32 @@ export class Player
     }
 
     /**
-     * @brief Reset hit streak to zero
+     * @brief Reset hit streak to zero and clear charging power-up
      */
     public resetHitStreak(): void
     {
         this.hitStreak = 0;
+        this.chargingPowerUp = null;
+    }
+
+    /**
+     * @brief Select random power-up to charge from empty slots
+     * @returns Selected power-up or null if all slots full
+     */
+    public selectRandomChargingPowerUp(): PowerUp
+    {
+        const availablePowerUps: PowerUp[] = [];
+
+        if (this.itemSlots[0] === null) availablePowerUps.push('Son');
+        if (this.itemSlots[1] === null) availablePowerUps.push('Pi');
+        if (this.itemSlots[2] === null) availablePowerUps.push('16');
+
+        if (availablePowerUps.length === 0)
+            return null;
+
+        const randomIndex = Math.floor(Math.random() * availablePowerUps.length);
+        this.chargingPowerUp = availablePowerUps[randomIndex];
+        return this.chargingPowerUp;
     }
 
     /**
@@ -94,7 +117,7 @@ export class Player
     /**
      * @brief Select power-up slot for activation (registers for next bounce)
      * @param slotIndex Slot index (0, 1, or 2)
-     * @returns Power-up that was selected, or null if slot empty
+     * @returns Power-up that was selected, or null if slot empty or cancelled
      */
     public activatePowerUp(slotIndex: number): PowerUp
     {
@@ -108,6 +131,31 @@ export class Player
                 this.pendingPowerUps.push(powerUp);
         }
         return powerUp;
+    }
+
+    /**
+     * @brief Cancel a pending power-up activation
+     * @param slotIndex Slot index (0, 1, or 2)
+     * @returns True if power-up was cancelled
+     */
+    public cancelPowerUp(slotIndex: number): boolean
+    {
+        if (slotIndex < 0 || slotIndex >= 3)
+            return false;
+        if (!this.selectedSlots[slotIndex])
+            return false;
+        const powerUp = this.itemSlots[slotIndex];
+
+        if (powerUp) {
+            this.selectedSlots[slotIndex] = false;
+            const pendingIndex = this.pendingPowerUps.indexOf(powerUp);
+
+            if (pendingIndex !== -1) {
+                this.pendingPowerUps.splice(pendingIndex, 1);
+            }
+            return true;
+        }
+        return false;
     }
 
     /**

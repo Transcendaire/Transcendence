@@ -107,11 +107,31 @@ export class GameService
         if (antiDoubleTap && CollisionDetector.isTouchingPaddle(player.paddle, ball))
         {
             ball.bounce(player.paddle)
+
+            if (ball.isCurving)
+            {
+                ball.removeCurve();
+            }
+
+            if (ball.isBoosted)
+            {
+                ball.removeSpeedBoost();
+            }
+
             if (this.isCustomMode) {
-                PowerUpManager.applyPendingPowerUps(player);
+                PowerUpManager.applyPendingPowerUps(player, ball);
                 
                 player.incrementHitStreak();
-                console.log(`[SERVER] ${player.name} hit streak: ${player.hitStreak} (${opponent.name} was at ${opponent.hitStreak})`);
+
+                if (player.hitStreak === 1 && !player.chargingPowerUp)
+                {
+                    const selected = player.selectRandomChargingPowerUp();
+                    if (selected)
+                        console.log(`[SERVER] ${player.name} started charging ${selected}`);
+                }
+
+                console.log(`[SERVER] ${player.name} hit streak: ${player.hitStreak} (charging: ${player.chargingPowerUp})`);
+
                 if (player.hitStreak >= 3) {
                     PowerUpManager.awardRandomPowerUp(player);
                     player.resetHitStreak();
@@ -167,18 +187,28 @@ export class GameService
     }
 
     /**
-     * @brief Handle power-up activation input
-     * @param player Player activating power-up
+     * @brief Handle power-up activation/cancellation input (toggle)
+     * @param player Player toggling power-up
      * @param slotIndex Slot index (0=Son, 1=Pi, 2=16)
      */
     public usePowerUpSlot(player: Player, slotIndex: number): void
     {
         if (!this.isCustomMode)
             return;
-        const powerUp = player.activatePowerUp(slotIndex);
 
-        if (powerUp) {
-            console.log(`[SERVER] ${player.name} registered ${powerUp} for next bounce. Pending: ${player.pendingPowerUps.join(', ')}`);
+        if (player.selectedSlots[slotIndex])
+        {
+            const cancelled = player.cancelPowerUp(slotIndex);
+
+            if (cancelled)
+                console.log(`[SERVER] ${player.name} cancelled power-up at slot ${slotIndex}. Pending: ${player.pendingPowerUps.join(', ')}`);
+        }
+        else
+        {
+            const powerUp = player.activatePowerUp(slotIndex);
+
+            if (powerUp)
+                console.log(`[SERVER] ${player.name} registered ${powerUp} for next bounce. Pending: ${player.pendingPowerUps.join(', ')}`);
         }
     }
 }

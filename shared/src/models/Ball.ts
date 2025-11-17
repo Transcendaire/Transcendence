@@ -14,6 +14,10 @@ export class Ball
     public rotation: number;
     public readonly size: number;
     public readonly speedIncrement: number;
+    public curveDirection: number;
+    public isCurving: boolean;
+    public isBoosted: boolean;
+    public previousSpeed: number;
 
     /**
      * @brief Initialize ball direction and velocity
@@ -47,6 +51,10 @@ export class Ball
         this.rotation = 0;
         this.size = 12;
         this.speedIncrement = 1.1;
+        this.curveDirection = 0;
+        this.isCurving = false;
+        this.isBoosted = false;
+        this.previousSpeed = 0;
         
         this.ballStart(true);
     }
@@ -60,6 +68,11 @@ export class Ball
         const dt = deltaTime / 1000;
         const speed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
         
+        if (this.isCurving)
+        {
+            this.velocityY += this.curveDirection * 300 * dt;
+        }
+
         this.positionX += this.velocityX * dt;
         this.positionY += this.velocityY * dt;
         this.rotation += speed * dt * 0.01;
@@ -101,6 +114,63 @@ export class Ball
     }
 
     /**
+     * @brief Activate curve effect on the ball
+     * @param direction Direction of curve (1 = down, -1 = up)
+     */
+    public applyCurve(direction: number): void
+    {
+        this.isCurving = true;
+        this.curveDirection = direction;
+        console.log(`[BALL] Curve applied: direction ${direction}`);
+    }
+
+    /**
+     * @brief Remove curve effect from ball
+     */
+    public removeCurve(): void
+    {
+        this.isCurving = false;
+        this.curveDirection = 0;
+        console.log(`[BALL] Curve removed`);
+    }
+
+    /**
+     * @brief Apply speed boost to ball
+     * @param multiplier Speed multiplier (e.g., 1.4)
+     */
+    public applySpeedBoost(multiplier: number): void
+    {
+        const currentSpeed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
+        
+        this.previousSpeed = currentSpeed;
+        this.velocityX *= multiplier;
+        this.velocityY *= multiplier;
+        this.isBoosted = true;
+        
+        console.log(`[BALL] Speed boost applied: ${currentSpeed.toFixed(0)} -> ${(currentSpeed * multiplier).toFixed(0)}`);
+    }
+
+    /**
+     * @brief Remove speed boost and restore previous speed with increment
+     */
+    public removeSpeedBoost(): void
+    {
+        if (!this.isBoosted || this.previousSpeed === 0)
+            return;
+
+        const currentSpeed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
+        const targetSpeed = this.previousSpeed * this.speedIncrement;
+        const ratio = targetSpeed / currentSpeed;
+        
+        this.velocityX *= ratio;
+        this.velocityY *= ratio;
+        this.isBoosted = false;
+        this.previousSpeed = 0;
+        
+        console.log(`[BALL] Speed boost removed: ${currentSpeed.toFixed(0)} -> ${targetSpeed.toFixed(0)}`);
+    }
+
+    /**
      * @brief Reset ball to center with opposite direction
      * @param canvasWidth Width of the game canvas
      * @param canvasHeight Height of the game canvas
@@ -110,6 +180,10 @@ export class Ball
         this.positionX = canvasWidth / 2;
         this.positionY = canvasHeight / 2;
         this.velocityX = this.velocityX > 0 ? -200 : 200;
+        this.isCurving = false;
+        this.curveDirection = 0;
+        this.isBoosted = false;
+        this.previousSpeed = 0;
         
         this.ballStart(false);
     }

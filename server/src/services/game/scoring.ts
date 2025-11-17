@@ -10,7 +10,7 @@ export class ScoringManager
     /**
      * @brief Handle scoring and reset game state
      * @param player Player who scored
-     * @param opponent Opponent player
+     * @param opponent Opponent player (who got scored on)
      * @param ball Ball object
      * @param canvasWidth Width of the game canvas
      * @param canvasHeight Height of the game canvas
@@ -26,17 +26,18 @@ export class ScoringManager
     ): void
     {
         const oldScore = player.score;
-        
+
         player.incrementScore();
         console.log(`[SERVER] POINT MARQUE! ${player.name}: ${oldScore} -> ${player.score}`);
         console.log(`[SERVER] Score actuel: ${player.name} ${player.score} - ${opponent.score} ${opponent.name}`);
-        
-        if (isCustomMode) {
+        if (isCustomMode)
+        {
             player.clearPendingPowerUps();
             opponent.clearPendingPowerUps();
+            opponent.resetHitStreak();
+            console.log(`[SERVER] ${opponent.name} hit streak reset to 0 (got scored on)`);
             console.log(`[SERVER] Pending power-ups cleared for both players`);
         }
-        
         ball.reset(canvasWidth, canvasHeight);
         player.paddle.positionY = canvasHeight / 2 - paddleSize / 2;
         opponent.paddle.positionY = canvasHeight / 2 - paddleSize / 2;

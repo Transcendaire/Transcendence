@@ -136,7 +136,6 @@ function sendInputToServer(): void
         }
     };
 
-    // Only send slot inputs for custom games with power-ups
     if (wsClient.isCustomGame()) {
         input.keys.slot1 = keys.Digit1;
         input.keys.slot2 = keys.Digit2;
@@ -144,10 +143,6 @@ function sendInputToServer(): void
     }
 
     wsClient.sendInput(input);
-    
-    if (keys.Digit1) keys.Digit1 = false;
-    if (keys.Digit2) keys.Digit2 = false;
-    if (keys.Digit3) keys.Digit3 = false;
 }
 
 function updateGameState(gameState: GameState): void
@@ -178,11 +173,13 @@ function updateGameState(gameState: GameState): void
     if (wsClient.isCustomGame()) {
         if (gameState.player1.itemSlots) {
             renderPowerUps('player1', gameState.player1.itemSlots, 
-                gameState.player1.selectedSlots, gameState.player1.pendingPowerUps);
+                gameState.player1.selectedSlots, gameState.player1.pendingPowerUps,
+                gameState.player1.hitStreak, gameState.player1.chargingPowerUp);
         }
         if (gameState.player2.itemSlots) {
             renderPowerUps('player2', gameState.player2.itemSlots,
-                gameState.player2.selectedSlots, gameState.player2.pendingPowerUps);
+                gameState.player2.selectedSlots, gameState.player2.pendingPowerUps,
+                gameState.player2.hitStreak, gameState.player2.chargingPowerUp);
         }
     }
 
@@ -290,31 +287,39 @@ function renderScore(): void
  * @param itemSlots Array of power-ups in slots
  * @param selectedSlots Array indicating which slots are selected
  * @param pendingPowerUps Array of power-ups pending activation
+ * @param hitStreak Current hit streak (0-3)
+ * @param chargingPowerUp Power-up currently charging
  */
 function renderPowerUps(player: 'player1' | 'player2',
     itemSlots: (string | null)[],
     selectedSlots?: boolean[],
-    pendingPowerUps?: (string | null)[]): void
+    pendingPowerUps?: (string | null)[],
+    hitStreak?: number,
+    chargingPowerUp?: string | null): void
 {
     const container = document.getElementById(
         `powerUpsPlayer${player === 'player1' ? '1' : '2'}`
     );
-    const iconMap: { [key: string]: string } = {
-        'Son': './assets/images/son-256x.png',
-        'Pi': './assets/images/pi-256x.png',
-        '16': './assets/images/16-256x.png'
-    };
+    const slotImages: string[] = [
+        './assets/images/son-256x.png',
+        './assets/images/pi-256x.png',
+        './assets/images/16-256x.png'
+    ];
+    const powerUpNames = ['Son', 'Pi', '16'];
 
     if (!container)
         return;
     
     container.innerHTML = '';
-    itemSlots.forEach((powerUp, index) => {
+    
+    for (let index = 0; index < 3; index++) {
         const slotDiv = document.createElement('div');
         const isSelected = selectedSlots?.[index] || false;
+        const hasItem = itemSlots[index] !== null;
+        const isCharging = chargingPowerUp === powerUpNames[index];
+        const chargingLevel = isCharging ? (hitStreak || 0) : 0;
 
         slotDiv.className = `w-12 h-12 border-2 bg-sonpi16-black rounded flex items-center justify-center`;
-        slotDiv.style.fontFamily = FONTS.QUENCY_PIXEL;
         
         if (isSelected) {
             slotDiv.style.borderColor = COLORS.SONPI16_ORANGE;
@@ -323,19 +328,33 @@ function renderPowerUps(player: 'player1' | 'player2',
             slotDiv.style.borderColor = COLORS.SONPI16_ORANGE;
         }
 
-        if (powerUp && iconMap[powerUp]) {
-            const img = document.createElement('img');
-            img.src = iconMap[powerUp];
-            img.className = 'w-10 h-10';
-            img.alt = powerUp;
-            slotDiv.appendChild(img);
-        } else {
-            slotDiv.textContent = (index + 1).toString();
-            slotDiv.style.color = COLORS.SONPI16_ORANGE;
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'w-10 h-10 relative';
+
+        const img = document.createElement('img');
+        img.src = slotImages[index]!;
+        img.className = 'w-10 h-10 absolute top-0 left-0';
+        img.alt = `Slot ${index + 1}`;
+        
+        if (!hasItem && !isCharging) {
+            img.style.filter = 'grayscale(100%) brightness(0.5)';
+        } else if (isCharging && chargingLevel < 3) {
+            const fillPercentage = (chargingLevel / 3) * 100;
+            img.style.clipPath = `inset(${100 - fillPercentage}% 0 0 0)`;
+            
+            const grayImg = document.createElement('img');
+            grayImg.src = slotImages[index]!;
+            grayImg.className = 'w-10 h-10 absolute top-0 left-0';
+            grayImg.style.filter = 'grayscale(100%) brightness(0.5)';
+            grayImg.style.clipPath = `inset(0 0 ${fillPercentage}% 0)`;
+            
+            imgContainer.appendChild(grayImg);
         }
         
+        imgContainer.appendChild(img);
+        slotDiv.appendChild(imgContainer);
         container.appendChild(slotDiv);
-    });
+    }
 
     if (pendingPowerUps && pendingPowerUps.length > 0) {
         const pendingContainer = document.createElement('div');

@@ -19,6 +19,7 @@ RUN npm ci
 
 # Copier le code CLIENT
 COPY client/tsconfig.json ./
+COPY client/tsconfig.build.json ./
 COPY client/src ./src
 COPY client/public ./public
 

@@ -14,6 +14,7 @@ COPY client/package*.json ./
 RUN npm ci
 
 COPY client/tsconfig.json ./
+COPY client/tsconfig.build.json ./
 COPY client/src ./src
 COPY client/public ./public
 

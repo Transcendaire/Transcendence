@@ -17,6 +17,7 @@ RUN npm install /shared
 RUN npm ci
 
 COPY server/tsconfig.json ./
+COPY server/tsconfig.build.json ./
 COPY server/src ./src
 RUN npm run build:server
 

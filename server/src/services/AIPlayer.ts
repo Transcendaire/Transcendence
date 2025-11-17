@@ -1,4 +1,4 @@
-import { GameService } from './main.js'
+import { GameService } from './game/game.js' 
 import { Player } from '@app/shared/models/Player.js'
 import { Ball } from '@app/shared/models/Ball.js'
 import { Paddle } from '@app/shared/models/Paddle.js'

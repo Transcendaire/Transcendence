@@ -1,7 +1,9 @@
-import { Player, PowerUp } from "@app/shared/models/Player.js";
-import { Paddle } from "@app/shared/models/Paddle.js";
+import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
-import { paddleSize, paddleOffset } from "@app/shared/consts.js";
+import { paddleOffset } from "@app/shared/consts.js";
+import { PowerUpManager } from "./powerup.js";
+import { CollisionDetector } from "./collision.js";
+import { ScoringManager } from "./scoring.js";
 
 /**
  * @brief Game logic service handling gameplay mechanics
@@ -93,33 +95,6 @@ export class GameService
     }
 
     /**
-     * @brief Check if ball is colliding with paddle
-     * @param paddle Paddle to check collision with
-     * @param ball Ball to check collision for
-     * @returns True if collision detected
-     */
-    private isTouchingPaddle(paddle: Paddle, ball: Ball): boolean
-    {
-        return (
-            ball.positionX < paddle.positionX + paddle.width &&
-            ball.positionX + ball.size > paddle.positionX &&
-            ball.positionY < paddle.positionY + paddle.height &&
-            ball.positionY + ball.size > paddle.positionY
-        );
-    }
-
-    /**
-     * @brief Check if paddle movement needs reverse effect on ball
-     * @param paddle Paddle that hit the ball
-     * @param ball Ball that was hit
-     * @returns True if reverse effect needed
-     */
-    private needsReverseEffect(paddle: Paddle, ball: Ball): boolean
-    {
-        return (paddle.dir && ball.velocityY > 0) || (!paddle.dir && ball.velocityY < 0);
-    }
-
-    /**
      * @brief Handle paddle collision with ball
      * @param player Player whose paddle is being checked
      * @param opponent Opponent player
@@ -129,22 +104,16 @@ export class GameService
     private checkPaddleTouch(player: Player, opponent: Player, ball: Ball,
         antiDoubleTap: boolean): void
     {
-        if (antiDoubleTap && this.isTouchingPaddle(player.paddle, ball))
+        if (antiDoubleTap && CollisionDetector.isTouchingPaddle(player.paddle, ball))
         {
             ball.bounce(player.paddle)
             if (this.isCustomMode) {
-                const pendingPowerUps = player.consumePendingPowerUps();
+                PowerUpManager.applyPendingPowerUps(player);
                 
-                if (pendingPowerUps.length > 0) {
-                    console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
-                    pendingPowerUps.forEach((powerUp: PowerUp) => {
-                        this.activatePowerUp(player, powerUp);
-                    });
-                }
                 player.incrementHitStreak();
                 console.log(`[SERVER] ${player.name} hit streak: ${player.hitStreak} (${opponent.name} was at ${opponent.hitStreak})`);
                 if (player.hitStreak >= 3) {
-                    this.awardRandomPowerUp(player);
+                    PowerUpManager.awardRandomPowerUp(player);
                     player.resetHitStreak();
                 }
             }
@@ -154,25 +123,21 @@ export class GameService
     /**
      * @brief Check if player scored and update score
      * @param player Player to award point to
+     * @param opponent Opponent player
      * @param ball Ball that went off screen
      * @param cond Condition for scoring
      */
-    private checkSide(player: Player, ball: Ball, cond: boolean): void
+    private checkSide(player: Player, opponent: Player, ball: Ball, cond: boolean): void
     {
-        if (cond) {
-            const oldScore = player.score;
-            
-            player.incrementScore();
-            console.log(`[SERVER] POINT MARQUE! ${player.name}: ${oldScore} -> ${player.score}`);
-            console.log(`[SERVER] Score actuel: ${this.player1.name} ${this.player1.score} - ${this.player2.score} ${this.player2.name}`);
-            if (this.isCustomMode) {
-                this.player1.clearPendingPowerUps();
-                this.player2.clearPendingPowerUps();
-                console.log(`[SERVER] Pending power-ups cleared for both players`);
-            }
-            ball.reset(this.canvasWidth, this.canvasHeight);
-            this.player1.paddle.positionY = this.canvasHeight / 2 - paddleSize / 2;
-            this.player2.paddle.positionY = this.canvasHeight / 2 - paddleSize / 2;
+        if (ScoringManager.checkScoreCondition(ball, cond)) {
+            ScoringManager.handleScore(
+                player,
+                opponent,
+                ball,
+                this.canvasWidth,
+                this.canvasHeight,
+                this.isCustomMode
+            );
         }
     }
 
@@ -184,19 +149,8 @@ export class GameService
      */
     private checkScoring(player1: Player, player2: Player, ball: Ball): void
     {
-        this.checkSide(player2, ball, ball.positionX < 0);
-        this.checkSide(player1, ball, ball.positionX > this.canvasWidth);
-    }
-
-    /**
-     * @brief Check ball collision with top and bottom walls
-     * @param ball Ball to check collision for
-     */
-    private checkYCollisions(ball: Ball): void
-    {
-        if (ball.positionY <= 0 && ball.velocityY < 0 
-            || ball.positionY >= this.canvasHeight - ball.size && ball.velocityY > 0)
-            ball.bounceVertical();
+        this.checkSide(player2, player1, ball, ball.positionX < 0);
+        this.checkSide(player1, player2, ball, ball.positionX > this.canvasWidth);
     }
 
     /**
@@ -204,58 +158,12 @@ export class GameService
      */
     private checkCollisions(): void
     {
-        this.checkYCollisions(this.ball);
+        CollisionDetector.checkYCollisions(this.ball, this.canvasHeight);
         this.checkPaddleTouch(this.player1, this.player2, this.ball,
             this.ball.velocityX < 0);
         this.checkPaddleTouch(this.player2, this.player1, this.ball,
             this.ball.velocityX > 0);
         this.checkScoring(this.player1, this.player2, this.ball);
-    }
-
-    /**
-     * @brief Award random power-up to player
-     * @param player Player to award power-up to
-     * @details Respects slot constraints and existing power-ups
-     */
-    private awardRandomPowerUp(player: Player): void
-    {
-        const availablePowerUps: PowerUp[] = [];
-
-        if (!player.hasPowerUp('Son'))
-            availablePowerUps.push('Son');
-        if (!player.hasPowerUp('Pi'))
-            availablePowerUps.push('Pi');
-        if (!player.hasPowerUp('16'))
-            availablePowerUps.push('16');
-        
-        console.log(`[SERVER] ${player.name} eligible for power-up. Available: ${availablePowerUps.join(', ')}`);
-        
-        if (availablePowerUps.length === 0) {
-            console.log(`[SERVER] ${player.name} has all power-ups already`);
-            return;
-        }
-        
-        const randomIndex = Math.floor(Math.random() *
-            availablePowerUps.length);
-        const powerUp = availablePowerUps[randomIndex];
-
-        if (powerUp) {
-            const success = player.addPowerUp(powerUp);
-            console.log(`[SERVER] ${player.name} awarded power-up: ${powerUp} (success: ${success})`);
-            console.log(`[SERVER] ${player.name} current slots: ${player.itemSlots.join(', ')}`);
-        }
-    }
-
-    /**
-     * @brief Activate power-up effect
-     * @param player Player using the power-up
-     * @param powerUp Power-up to activate
-     */
-    private activatePowerUp(player: Player, powerUp: PowerUp): void
-    {
-        if (!powerUp)
-            return;
-        console.log(`[GameService] ${player.name} activated ${powerUp}`);
     }
 
     /**
@@ -272,10 +180,5 @@ export class GameService
         if (powerUp) {
             console.log(`[SERVER] ${player.name} registered ${powerUp} for next bounce. Pending: ${player.pendingPowerUps.join(', ')}`);
         }
-    }
-
-    private winGame(): void
-    {
-
     }
 }

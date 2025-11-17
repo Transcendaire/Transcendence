@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws'
-import { GameService } from './main.js'
+import { GameService } from './game/game.js'
 import { GameState, GameInput, WebSocketMessage } from '../types.js'
 import { AIPlayer } from './AIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'

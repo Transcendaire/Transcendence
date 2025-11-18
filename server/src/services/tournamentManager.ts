@@ -114,6 +114,7 @@ export class TournamentManagerService
 				return 'Terminé';
 		}
 	}
+
 	public listTournaments(): Array<{
 	id: string;
 	name: string;
@@ -122,7 +123,6 @@ export class TournamentManagerService
 	status: string;
 	}>
 	{
-		console.log(`📋 Listing ${this.tournamentsMap.size} tournaments:`);
 		const list = [];
 		for (const [id, tournament] of this.tournamentsMap.entries())
 		{
@@ -139,7 +139,13 @@ export class TournamentManagerService
 		return list;
 	}
 
-	public clearAll(): void {
+	public clearAll(): void
+	{
 		this.tournamentsMap.clear();
+	}
+
+	public getNumberOfTournaments(): number
+	{
+		return this.tournamentsMap.size;
 	}
 }

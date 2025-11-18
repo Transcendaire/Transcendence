@@ -1,4 +1,4 @@
-import { UserError, TournamentError, errTournament } from "./errors"
+import { UserError, TournamentError, errTournament } from "./errors.js"
 
 function showError(message: string): void
 {

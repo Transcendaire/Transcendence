@@ -172,21 +172,23 @@ server.get<{ Querystring: { playerName: string } }>
 
   })
 
-  server.get<{Params: { playerName: string} }>
+  server.get<{Params: { playerName: string} }> //*to know if they can reconnect to their current tournament
   ('/api/players/:playerName/tournament',
 	async (req, res) => {
 
 		try {
 
 			const playerName = req.params.playerName.trim();
+			if (db.getPlayer(playerName) === undefined)
+				return res.code(404).send({ error: 'Le joueur n\'existe pas' });
 			inputParser.parsePlayerName(playerName);
+
 			const tournamentOfPlayer = tournamentManager.findTournamentOfPlayer(playerName);
-			
 			if (!tournamentOfPlayer || tournamentOfPlayer.getStatus() === TournamentStatus.COMPLETED)
-				return res.code(200).send({ canConnect: true, tournamentId: undefined });
-			
-			const cookiePlayerId = req.cookies.player_id;
-			if (cookiePlayerId)
+				return res.code(200).send({ canConnect: true, tournamentId: undefined }); //*free to join any tournament, since player's tournament is over or not in any tournament
+
+			const cookiePlayerId = req.cookies.player_id; 
+			if (cookiePlayerId) //*
 				{
 					const player = db.getPlayerBy('id', cookiePlayerId);
 					if (player && player.alias === playerName)
@@ -197,6 +199,7 @@ server.get<{ Querystring: { playerName: string } }>
 		} catch (error) {
 			const message = String(error);
 			console.error(message);
+			return res.code(500).send({ canConnect: false, tournamentId: undefined });
 		}
 	}
   )

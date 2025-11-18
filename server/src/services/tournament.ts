@@ -61,7 +61,7 @@ export class Tournament {
 			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est terminé`, errTournament.ALREADY_OVER);
 		
 		if (this.players.size === this.maxPlayers)
-			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est complet`);
+			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est complet`, errTournament.TOURNAMENT_FULL);
 		
 		try {
 			this.db.addPlayerToTournament(alias, this.id, this.name);

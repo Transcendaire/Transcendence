@@ -137,12 +137,13 @@ export class GameService
      * @param deltaTime Time elapsed since last update
      * @param player1Input Player 1 input state
      * @param player2Input Player 2 input state
+     * @returns True if game should end (max score reached)
      */
     public updateGame(deltaTime: number,
         player1Input: { up: boolean; down: boolean; slot1?: boolean;
             slot2?: boolean; slot3?: boolean },
         player2Input: { up: boolean; down: boolean; slot1?: boolean;
-            slot2?: boolean; slot3?: boolean }): void
+            slot2?: boolean; slot3?: boolean }): boolean
     {
         if (player1Input.up)
             this.player1.paddle.moveUp(deltaTime, this.canvasHeight);
@@ -169,8 +170,9 @@ export class GameService
         this.ball.update(deltaTime);
         this.updateCloneBalls(deltaTime);
         this.updateFruitSpawning(deltaTime);
-        this.checkCollisions();
+        const gameOver = this.checkCollisions();
         this.checkFruitCollisions();
+        return gameOver;
     }
 
     /**
@@ -248,15 +250,16 @@ export class GameService
      * @param opponent Opponent player
      * @param ball Ball that went off screen
      * @param cond Condition for scoring
+     * @returns True if game should end (max score reached)
      */
-    private checkSide(player: Player, opponent: Player, ball: Ball, cond: boolean): void
+    private checkSide(player: Player, opponent: Player, ball: Ball, cond: boolean): boolean
     {
         if (ScoringManager.checkScoreCondition(ball, cond))
         {
             if (this.cloneBalls.length > 0)
                 this.clearCloneBalls();
             this.ballTouched = false;
-            ScoringManager.handleScore(
+            return ScoringManager.handleScore(
                 player,
                 opponent,
                 ball,
@@ -265,6 +268,7 @@ export class GameService
                 this.isCustomMode
             );
         }
+        return false;
     }
 
     /**
@@ -272,24 +276,29 @@ export class GameService
      * @param player1 First player
      * @param player2 Second player
      * @param ball Ball to check position for
+     * @returns True if game should end (max score reached)
      */
-    private checkScoring(player1: Player, player2: Player, ball: Ball): void
+    private checkScoring(player1: Player, player2: Player, ball: Ball): boolean
     {
-        this.checkSide(player2, player1, ball, ball.positionX < 0);
-        this.checkSide(player1, player2, ball, ball.positionX > this.canvasWidth);
+        if (this.checkSide(player2, player1, ball, ball.positionX < 0))
+            return true;
+        if (this.checkSide(player1, player2, ball, ball.positionX > this.canvasWidth))
+            return true;
+        return false;
     }
 
     /**
      * @brief Check all game collisions
+     * @returns True if game should end (max score reached)
      */
-    private checkCollisions(): void
+    private checkCollisions(): boolean
     {
         CollisionDetector.checkYCollisions(this.ball, this.canvasHeight);
         this.checkPaddleTouch(this.player1, this.player2, this.ball,
             this.ball.velocityX < 0);
         this.checkPaddleTouch(this.player2, this.player1, this.ball,
             this.ball.velocityX > 0);
-        this.checkScoring(this.player1, this.player2, this.ball);
+        return this.checkScoring(this.player1, this.player2, this.ball);
     }
 
     /**

@@ -24,6 +24,8 @@ interface GameRoom
 		slot2?: boolean; slot3?: boolean };
 	player1PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean };
 	player2PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean };
+	ai?: AIPlayer;
+	isCustom: boolean;
 }
 
 /**
@@ -72,6 +74,11 @@ export class MatchmakingService
 	private addAIGame(socket: WebSocket, playerName: string,
 		isCustom: boolean): void
 	{
+		if (this.playerSockets.has(socket)) {
+			console.log(`[MATCHMAKING] Player already in game, removing from previous game`);
+			this.removePlayer(socket);
+		}
+
 		const player: Player = {
 			socket,
 			name: playerName,
@@ -88,6 +95,7 @@ export class MatchmakingService
 		const gameLoop = setInterval(() => {
 			this.updateGame(gameId)
 		}, 16)
+		const player2Input = { up: false, down: false }
 		const room: GameRoom = {
 			id: gameId,
 			player1,
@@ -95,13 +103,15 @@ export class MatchmakingService
 			gameService,
 			gameLoop,
 			player1Input: { up: false, down: false },
-			player2Input: { up: false, down: false },
+			player2Input: player2Input,
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
-			player2PrevSlots: { slot1: false, slot2: false, slot3: false }
+			player2PrevSlots: { slot1: false, slot2: false, slot3: false },
+			ai: new AIPlayer('player2', gameService, player2Input),
+			isCustom: isCustom
 		}
-		const ai = new AIPlayer('player2', gameService, room.player2Input)
-		ai.start()
+		room.ai!.start()
 		this.activeGames.set(gameId, room)
+		console.log(`[MATCHMAKING] AI game created: ${gameId} (custom: ${isCustom})`);
 		this.sendMessage(player1.socket, { type: "gameStart", playerRole: "player1" })
 	}
 
@@ -114,6 +124,11 @@ export class MatchmakingService
 	private addPlayer(socket: WebSocket, playerName: string,
 		isCustom: boolean): void
 	{
+		if (this.playerSockets.has(socket)) {
+			console.log(`[MATCHMAKING] Player already connected, removing from previous game`);
+			this.removePlayer(socket);
+		}
+
 		const player: Player = {
 			socket,
 			name: playerName,
@@ -146,17 +161,40 @@ export class MatchmakingService
 		const player = this.playerSockets.get(socket);
 		const index = this.waitingPlayers.findIndex(p => p.socket === socket);
 		
-		if (!player)
+		if (!player) {
+			console.log(`[MATCHMAKING] Player not found for removal`);
 			return;
-		if (index > -1)
+		}
+
+		console.log(`[MATCHMAKING] Removing player: ${player.name} (${player.id})`);
+
+		if (index > -1) {
+			console.log(`[MATCHMAKING] Removed from waiting queue`);
 			this.waitingPlayers.splice(index, 1);
+		}
+
 		for (const [gameId, room] of this.activeGames.entries()) {
 			if (room.player1.socket === socket || room.player2.socket === socket) {
+				const isPlayer1 = room.player1.socket === socket;
+				const opponent = isPlayer1 ? room.player2 : room.player1;
+
+				console.log(`[MATCHMAKING] Player disconnected from game ${gameId}`);
+
+				if (opponent.socket && opponent.id !== 'AI') {
+					console.log(`[MATCHMAKING] Notifying opponent: ${opponent.name}`);
+					this.sendMessage(opponent.socket, {
+						type: 'waiting',
+						message: 'Adversaire déconnecté'
+					});
+				}
+
 				this.endGame(gameId);
 				break;
 			}
 		}
+
 		this.playerSockets.delete(socket);
+		console.log(`[MATCHMAKING] Player removed successfully`);
 	}
 
 	/**
@@ -198,6 +236,7 @@ export class MatchmakingService
 			gameService,
 			gameLoop,
 			player1Input: { up: false, down: false },
+			isCustom: isCustom,
 			player2Input: { up: false, down: false },
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
 			player2PrevSlots: { slot1: false, slot2: false, slot3: false }
@@ -248,7 +287,35 @@ export class MatchmakingService
 			...(p2slot3Pressed && { slot3: true })
 		};
 
-		room.gameService.updateGame(16, p1Input, p2Input);
+		const gameOver = room.gameService.updateGame(16, p1Input, p2Input);
+		
+		if (gameOver) {
+			const gameState = room.gameService.getGameState();
+			const winner = gameState.player1.score > gameState.player2.score ? 'player1' : 'player2';
+			
+			console.log(`[MATCHMAKING] Game ${gameId} finished (max score reached)`);
+			
+			if (room.player1.socket) {
+				this.sendMessage(room.player1.socket, {
+					type: 'gameOver',
+					winner: winner,
+					score1: gameState.player1.score,
+					score2: gameState.player2.score
+				});
+			}
+			if (room.player2.socket && room.player2.id !== 'AI') {
+				this.sendMessage(room.player2.socket, {
+					type: 'gameOver',
+					winner: winner,
+					score1: gameState.player1.score,
+					score2: gameState.player2.score
+				});
+			}
+			
+			this.endGame(gameId);
+			return;
+		}
+
 		const gameState = room?.gameService.getGameState();
 		const stateMessage: GameState = {
 			player1: {
@@ -298,11 +365,25 @@ export class MatchmakingService
 	{
 		const room = this.activeGames.get(gameId);
 		
-		if (!room)
+		if (!room) {
+			console.log(`[MATCHMAKING] Game ${gameId} not found for cleanup`);
 			return;
-		if (room.gameLoop)
+		}
+
+		console.log(`[MATCHMAKING] Ending game ${gameId}`);
+
+		if (room.gameLoop) {
 			clearInterval(room.gameLoop);
+			console.log(`[MATCHMAKING] Game loop stopped`);
+		}
+
+		if (room.ai) {
+			room.ai.stop();
+			console.log(`[MATCHMAKING] AI stopped`);
+		}
+
 		this.activeGames.delete(gameId);
+		console.log(`[MATCHMAKING] Game ${gameId} cleaned up successfully`);
 	}
 
 	/**

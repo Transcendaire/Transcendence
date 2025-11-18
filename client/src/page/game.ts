@@ -19,6 +19,9 @@ let cloneBalls: Array<{ x: number; y: number; vx: number; vy: number }> = [];
 let fruits: PowerUpFruit[] = [];
 let currentPlayerRole: 'player1' | 'player2' | null = null;
 let gameRunning = false;
+let cleanupHandlers: (() => void)[] = [];
+let animationFrameId: number | null = null;
+let isReturningToLobby = false;
 
 const keys = {
     KeyA: false,
@@ -41,7 +44,11 @@ const keys = {
  */
 function initGame(): void
 {
-    console.log('[GAME] initGame() appelé');
+    console.log('[GAME] ========== initGame() appelé ==========');
+    console.log('[GAME] État actuel - gameRunning:', gameRunning, 'currentPlayerRole:', currentPlayerRole);
+    console.log('[GAME] WebSocket connecté?', wsClient.isConnected());
+    
+    cleanupPreviousHandlers();
     
     requestAnimationFrame(() => {
         canvas = document.getElementById("pong") as HTMLCanvasElement;
@@ -53,10 +60,12 @@ function initGame(): void
         ctx = canvas.getContext("2d")!;
         
         setupWebSocketCallbacks();
+        setupDisconnectionHandlers();
         console.log('[GAME] Initialisation terminée');
+        console.log('[GAME] Callbacks WebSocket configurés');
         
         if (wsClient.isConnected()) {
-            console.log('[GAME] WebSocket déjà connecté, vérification du status...');
+            console.log('[GAME] ⚠️ WebSocket déjà connecté depuis une session précédente');
         }
     });
 }
@@ -75,11 +84,26 @@ function setupWebSocketCallbacks(): void
         updatePlayerCount(playerCount);
     };
     wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
-        console.log('[GAME] Callback onGameStart assigné et appelé avec role:', playerRole);
+        console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole);
+        console.log('[GAME] Canvas disponible?', !!canvas, 'ctx disponible?', !!ctx);
         currentPlayerRole = playerRole;
-        startGame(playerRole);
+        
+        const attemptStart = () => {
+            const gameScreen = document.getElementById("gameScreen");
+            const yourRoleSpan = document.getElementById("yourRole");
+            
+            if (canvas && ctx && gameScreen && yourRoleSpan) {
+                console.log('[GAME] DOM prêt, démarrage du jeu');
+                startGame(playerRole);
+            } else {
+                console.log('[GAME] DOM pas encore prêt, retry dans 50ms...');
+                setTimeout(attemptStart, 50);
+            }
+        };
+        
+        attemptStart();
     };
-    console.log('[GAME] Callback onGameStart assigné');
+    console.log('[GAME] Callback onGameStart configuré');
     
     wsClient.onGameState = (gameState: GameState) => {
         updateGameState(gameState);
@@ -91,6 +115,9 @@ function setupWebSocketCallbacks(): void
     wsClient.onError = (error: string) => {
         alert(error);
     };
+    wsClient.onGameOver = (winner: 'player1' | 'player2', score1: number, score2: number) => {
+        showGameOver(winner, score1, score2);
+    };
     console.log('[GAME] Tous les callbacks configurés');
 }
 
@@ -99,14 +126,64 @@ function setupWebSocketCallbacks(): void
  */
 function setupGameEventListeners(): void
 {
-    document.addEventListener('keydown', (event) => {
-        if (event.code in keys)
-            keys[event.code as keyof typeof keys] = true;
+    window.addEventListener('keydown', (e) => {
+        keys[e.code as keyof typeof keys] = true;
     });
-    document.addEventListener('keyup', (event) => {
-        if (event.code in keys)
-            keys[event.code as keyof typeof keys] = false;
+    window.addEventListener('keyup', (e) => {
+        keys[e.code as keyof typeof keys] = false;
     });
+}
+
+/**
+ * @brief Setup disconnection handlers for page unload and visibility changes
+ */
+function setupDisconnectionHandlers(): void
+{
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+        if (gameRunning || wsClient.isConnected()) {
+            wsClient.disconnect();
+            console.log('[GAME] Déconnexion lors de la fermeture de la page');
+        }
+    };
+
+    const handleVisibilityChange = () => {
+        if (document.hidden && gameRunning) {
+            console.log('[GAME] Page cachée pendant une partie, déconnexion...');
+            wsClient.disconnect();
+            gameRunning = false;
+        }
+    };
+
+    const handleSurrender = () => {
+        if (confirm('Voulez-vous vraiment abandonner la partie ?')) {
+            console.log('[GAME] Abandon de la partie');
+            returnToLobby();
+        }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    const surrenderButton = document.getElementById('surrenderButton');
+    if (surrenderButton)
+        surrenderButton.addEventListener('click', handleSurrender);
+
+    cleanupHandlers.push(() => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        if (surrenderButton)
+            surrenderButton.removeEventListener('click', handleSurrender);
+    });
+}
+
+/**
+ * @brief Cleanup previous event handlers to prevent memory leaks
+ */
+function cleanupPreviousHandlers(): void
+{
+    for (const cleanup of cleanupHandlers)
+        cleanup();
+    cleanupHandlers = [];
 }
 
 /**
@@ -116,14 +193,15 @@ function setupGameEventListeners(): void
 function gameLoop(currentTime: number): void
 {
     const deltaTime = currentTime - lastTime;
-    
-    if (!gameRunning)
-        return;
     lastTime = currentTime;
-    sendInputToServer();
-    render();
-    updatePing();
-    requestAnimationFrame(gameLoop);
+    
+    if (gameRunning) {
+        sendInputToServer();
+        render();
+        updatePing();
+    }
+    
+    animationFrameId = requestAnimationFrame(gameLoop);
 }
 
 function sendInputToServer(): void
@@ -149,7 +227,10 @@ function sendInputToServer(): void
 
 function updateGameState(gameState: GameState): void
 {
-    if (!player1 || !player2 || !ball) return;
+    if (!player1 || !player2 || !ball) {
+        console.warn('[GAME] updateGameState appelé mais objets pas encore initialisés');
+        return;
+    }
 
     const oldScore1 = player1.score;
     const oldScore2 = player2.score;
@@ -219,10 +300,42 @@ function updatePlayerCount(playerCount: number): void
     playerCountSpan.textContent = playerCount.toString();
 }
 
+function showGameOver(winner: 'player1' | 'player2', score1: number, score2: number): void
+{
+    gameRunning = false;
+    const isWinner = winner === currentPlayerRole;
+    const message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
+    const scoreText = `Score final : ${score1} - ${score2}`;
+    
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    ctx.fillStyle = isWinner ? COLORS.SONPI16_ORANGE : '#ff0000';
+    ctx.font = '48px ' + FONTS.QUENCY_PIXEL;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(message, canvas.width / 2, canvas.height / 2 - 40);
+    
+    ctx.fillStyle = COLORS.SONPI16_ORANGE;
+    ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
+    ctx.fillText(scoreText, canvas.width / 2, canvas.height / 2 + 20);
+    
+    ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
+    ctx.fillText('Retour au lobby dans 3 secondes...', canvas.width / 2, canvas.height / 2 + 80);
+    ctx.restore();
+    
+    setTimeout(() => {
+        returnToLobby();
+    }, 3000);
+}
+
 function startGame(playerRole: 'player1' | 'player2'): void
 {
-    console.log('[GAME] startGame() appelé, role:', playerRole);
+    console.log('[GAME] ========== startGame() appelé ==========');
+    console.log('[GAME] Role:', playerRole);
     console.log('[GAME] Canvas disponible?', !!canvas, 'Dimensions:', canvas?.width, 'x', canvas?.height);
+    console.log('[GAME] ctx disponible?', !!ctx);
     
     if (!canvas || !ctx) {
         console.error('[GAME] Canvas ou contexte non disponible!');
@@ -231,11 +344,15 @@ function startGame(playerRole: 'player1' | 'player2'): void
     
     const gameScreen = document.getElementById("gameScreen");
     const yourRoleSpan = document.getElementById("yourRole");
+    const waitingDiv = document.getElementById("waiting");
     
     if (!gameScreen || !yourRoleSpan) {
         console.error('[GAME] Éléments DOM manquants!');
         return;
     }
+    
+    if (waitingDiv)
+        waitingDiv.classList.add("hidden");
     
     gameScreen.classList.remove("hidden");
     yourRoleSpan.textContent = playerRole === 'player1' ? 'Joueur 1 (Gauche)' : 'Joueur 2 (Droite)';
@@ -244,16 +361,47 @@ function startGame(playerRole: 'player1' | 'player2'): void
     player1 = new Player("Player 1", paddleOffset);
     player2 = new Player("Player 2", canvas.width - paddleOffset - 10);
     ball = new Ball(canvas.width / 2, canvas.height / 2);
+    cloneBalls = [];
+    fruits = [];
     setupGameEventListeners();
 
     gameRunning = true;
-    console.log('[GAME] Démarrage de la boucle de rendu');
-    gameLoop(0);
+    lastTime = 0;
+    
+    if (animationFrameId === null) {
+        console.log('[GAME] Démarrage de la boucle de rendu');
+        animationFrameId = requestAnimationFrame(gameLoop);
+    } else {
+        console.log('[GAME] Boucle de rendu déjà active');
+    }
 }
 
 function returnToLobby(): void
 {
+    if (isReturningToLobby) {
+        console.log('[GAME] Retour au lobby déjà en cours, ignoré');
+        return;
+    }
+    
+    console.log('[GAME] Retour au lobby, déconnexion WebSocket...');
+    isReturningToLobby = true;
+    gameRunning = false;
+    currentPlayerRole = null;
+    cloneBalls = [];
+    fruits = [];
+    
+    if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+    }
+    
+    wsClient.disconnect();
+    cleanupPreviousHandlers();
     navigate('home');
+    
+    setTimeout(() => {
+        isReturningToLobby = false;
+    }, 1000);
 }
 
 function updatePing(): void
@@ -268,8 +416,15 @@ function updatePing(): void
 
 function render(): void
 {
+    if (!ctx || !canvas) return;
+    
     ctx.fillStyle = COLORS.SONPI16_BLACK;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    if (!player1 || !player2 || !ball) {
+        console.warn('[GAME] render() appelé mais objets pas encore initialisés');
+        return;
+    }
 
     player1.paddle.render(ctx, COLORS.SONPI16_ORANGE);
     player2.paddle.render(ctx, COLORS.SONPI16_ORANGE);

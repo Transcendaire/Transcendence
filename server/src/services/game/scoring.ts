@@ -1,6 +1,6 @@
 import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
-import { paddleSize } from "@app/shared/consts.js";
+import { paddleSize, maxScore } from "@app/shared/consts.js";
 
 /**
  * @brief Scoring management utilities
@@ -15,6 +15,7 @@ export class ScoringManager
      * @param canvasWidth Width of the game canvas
      * @param canvasHeight Height of the game canvas
      * @param isCustomMode Whether custom mode is enabled
+     * @returns True if game should end (max score reached)
      */
     public static handleScore(
         player: Player,
@@ -23,7 +24,7 @@ export class ScoringManager
         canvasWidth: number,
         canvasHeight: number,
         isCustomMode: boolean
-    ): void
+    ): boolean
     {
         const oldScore = player.score;
 
@@ -62,6 +63,13 @@ export class ScoringManager
         ball.reset(canvasWidth, canvasHeight);
         player.paddle.positionY = canvasHeight / 2 - paddleSize / 2;
         opponent.paddle.positionY = canvasHeight / 2 - paddleSize / 2;
+
+        if (player.score >= maxScore) {
+            console.log(`[SERVER] GAME OVER! ${player.name} wins ${player.score} - ${opponent.score}`);
+            return true;
+        }
+
+        return false;
     }
 
     /**

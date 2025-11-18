@@ -280,7 +280,8 @@ export class MatchmakingService
 				y: clone.positionY,
 				vx: clone.velocityX,
 				vy: clone.velocityY
-			}))
+			})),
+			fruits: gameState!.fruits
 		};
 
 		if (room.player1.socket)

@@ -79,11 +79,36 @@ export class PowerUpManager
     {
         const pendingPowerUps = player.consumePendingPowerUps();
         
-        if (pendingPowerUps.length > 0) {
+        if (pendingPowerUps.length > 0)
+        {
             console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
             pendingPowerUps.forEach((powerUp: PowerUp) => {
                 PowerUpManager.activatePowerUp(player, powerUp, ball, gameService);
             });
         }
+    }
+
+    /**
+     * @brief Award fruit bonus to player
+     * @param player Player who collected the fruit
+     * @details Completes charging power-up and starts another random one at same progress
+     */
+    public static awardFruitBonus(player: Player): void
+    {
+        if (!player.chargingPowerUp)
+        {
+            console.log(`[SERVER] ${player.name} collected fruit but has no charging power-up`);
+            return;
+        }
+
+        const currentProgress = player.hitStreak;
+        const completedPowerUp = player.chargingPowerUp;
+        const slotIndex = completedPowerUp === 'Son' ? 0 : completedPowerUp === 'Pi' ? 1 : 2;
+
+        player.itemSlots[slotIndex] = completedPowerUp;
+        player.hitStreak = currentProgress;
+        const newPowerUp = player.selectRandomChargingPowerUp();
+
+        console.log(`[SERVER] ${player.name} fruit bonus: completed ${completedPowerUp}, started ${newPowerUp} at ${currentProgress}/3`);
     }
 }

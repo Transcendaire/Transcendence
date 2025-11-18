@@ -1,6 +1,7 @@
 import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
 import { CloneBall } from "@app/shared/models/CloneBall.js";
+import { PowerUpFruit } from "@app/shared/types.js";
 import { paddleOffset } from "@app/shared/consts.js";
 import { PowerUpManager } from "./powerup.js";
 import { CollisionDetector } from "./collision.js";
@@ -15,6 +16,10 @@ export class GameService
     private player2!: Player;
     private ball!: Ball;
     private cloneBalls: CloneBall[];
+    private fruits: PowerUpFruit[];
+    private fruitSpawnTimer: number;
+    private ballTouched: boolean;
+    private readonly fruitSpawnInterval: number;
     private readonly canvasWidth: number;
     private readonly canvasHeight: number;
     private readonly isCustomMode: boolean;
@@ -32,6 +37,10 @@ export class GameService
         this.canvasHeight = canvasHeight;
         this.isCustomMode = isCustomMode;
         this.cloneBalls = [];
+        this.fruits = [];
+        this.fruitSpawnTimer = 0;
+        this.ballTouched = false;
+        this.fruitSpawnInterval = 5000;
         this.initGame();
     }
 
@@ -50,13 +59,14 @@ export class GameService
      * @brief Get current game state
      * @returns Object containing both players, ball, and clones
      */
-    public getGameState(): { player1: Player; player2: Player; ball: Ball; cloneBalls: CloneBall[] }
+    public getGameState(): { player1: Player; player2: Player; ball: Ball; cloneBalls: CloneBall[]; fruits: PowerUpFruit[] }
     {
         return {
             player1: this.player1,
             player2: this.player2,
             ball: this.ball,
-            cloneBalls: this.cloneBalls
+            cloneBalls: this.cloneBalls,
+            fruits: this.fruits
         };
     }
 
@@ -134,7 +144,9 @@ export class GameService
         }
         this.ball.update(deltaTime);
         this.updateCloneBalls(deltaTime);
+        this.updateFruitSpawning(deltaTime);
         this.checkCollisions();
+        this.checkFruitCollisions();
     }
 
     /**
@@ -170,6 +182,7 @@ export class GameService
         if (antiDoubleTap && CollisionDetector.isTouchingPaddle(player.paddle, ball))
         {
             ball.bounce(player.paddle)
+            this.ballTouched = true;
 
             if (ball.isCurving)
                 ball.removeCurve();
@@ -213,6 +226,7 @@ export class GameService
         if (ScoringManager.checkScoreCondition(ball, cond)) {
             if (this.cloneBalls.length > 0)
                 this.clearCloneBalls();
+            this.ballTouched = false;
             ScoringManager.handleScore(
                 player,
                 opponent,
@@ -270,6 +284,78 @@ export class GameService
             const powerUp = player.activatePowerUp(slotIndex);
             if (powerUp)
                 console.log(`[SERVER] ${player.name} registered ${powerUp} for next bounce. Pending: ${player.pendingPowerUps.join(', ')}`);
+        }
+    }
+
+    /**
+     * @brief Spawn power-up fruit at random middle position
+     */
+    private spawnFruit(): void
+    {
+        const minX = this.canvasWidth * 0.25;
+        const maxX = this.canvasWidth * 0.75;
+        const minY = 50;
+        const maxY = this.canvasHeight - 50;
+        const fruit: PowerUpFruit = {
+            id: Math.random().toString(36).substr(2, 9),
+            x: minX + Math.random() * (maxX - minX),
+            y: minY + Math.random() * (maxY - minY),
+            rotation: 0
+        };
+
+        this.fruits.push(fruit);
+        console.log(`[GAME] Spawned fruit at (${fruit.x.toFixed(0)}, ${fruit.y.toFixed(0)})`);
+    }
+
+    /**
+     * @brief Update fruit spawn timer and spawn new fruits
+     * @param deltaTime Time elapsed since last update
+     */
+    private updateFruitSpawning(deltaTime: number): void
+    {
+        if (!this.isCustomMode)
+            return;
+
+        this.fruitSpawnTimer += deltaTime;
+
+        if (this.fruitSpawnTimer >= this.fruitSpawnInterval)
+        {
+            if (this.fruits.length < 3)
+                this.spawnFruit();
+            this.fruitSpawnTimer = 0;
+        }
+    }
+
+    /**
+     * @brief Check ball collision with fruits and award bonus
+     */
+    private checkFruitCollisions(): void
+    {
+        const ballSize = this.ball.size;
+        const fruitSize = 30;
+
+        for (let i = this.fruits.length - 1; i >= 0; i--)
+        {
+            const fruit = this.fruits[i];
+
+            if (!fruit)
+                continue;
+
+            const collides = (
+                this.ball.positionX < fruit.x + fruitSize &&
+                this.ball.positionX + ballSize > fruit.x &&
+                this.ball.positionY < fruit.y + fruitSize &&
+                this.ball.positionY + ballSize > fruit.y
+            );
+
+            if (collides && this.ballTouched)
+            {
+                const player = this.ball.velocityX > 0 ? this.player1 : this.player2;
+
+                PowerUpManager.awardFruitBonus(player);
+                this.fruits.splice(i, 1);
+                console.log(`[GAME] ${player.name} collected fruit at (${fruit.x.toFixed(0)}, ${fruit.y.toFixed(0)})`);
+            }
         }
     }
 }

@@ -1,7 +1,7 @@
 import { Player } from "/dist/shared/models/Player.js";
 import { Ball } from "/dist/shared/models/Ball.js";
 import { wsClient } from "../components/WebSocketClient.js";
-import { GameState, GameInput } from "/dist/shared/types.js";
+import { GameState, GameInput, PowerUpFruit } from "/dist/shared/types.js";
 import { inputParserClass } from "../components/inputParser.js"
 import { paddleSize, paddleOffset} from "/dist/shared/consts.js";
 import { COLORS, FONTS } from "../components/consts.js";
@@ -16,6 +16,7 @@ let player1: Player;
 let player2: Player;
 let ball: Ball;
 let cloneBalls: Array<{ x: number; y: number; vx: number; vy: number }> = [];
+let fruits: PowerUpFruit[] = [];
 let currentPlayerRole: 'player1' | 'player2' | null = null;
 let gameRunning = false;
 
@@ -165,6 +166,7 @@ function updateGameState(gameState: GameState): void
     ball.velocityY = gameState.ball.vy;
 
     cloneBalls = gameState.cloneBalls || [];
+    fruits = gameState.fruits || [];
 
     if (player1.score > oldScore1) {
         console.log(`[GAME] POINT POUR PLAYER 1! Score: ${player1.score} - ${player2.score}`);
@@ -272,6 +274,10 @@ function render(): void
     player1.paddle.render(ctx, COLORS.SONPI16_ORANGE);
     player2.paddle.render(ctx, COLORS.SONPI16_ORANGE);
 
+    fruits.forEach(fruit => {
+        renderFruit(fruit);
+    });
+
     cloneBalls.forEach(clone => {
         renderCloneBall(clone);
     });
@@ -279,6 +285,25 @@ function render(): void
     ball.render(ctx, COLORS.SONPI16_ORANGE);
 
     renderScore();
+}
+
+function renderFruit(fruit: PowerUpFruit): void
+{
+    const size = 30;
+    const centerX = fruit.x + size / 2;
+    const centerY = fruit.y + size / 2;
+    const time = Date.now() / 1000;
+    const rotation = (time * 0.5) % (Math.PI * 2);
+
+    ctx.save();
+    ctx.fillStyle = COLORS.SONPI16_ORANGE;
+    ctx.font = `bold 32px ${FONTS.QUENCY_PIXEL}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.translate(centerX, centerY);
+    ctx.rotate(rotation);
+    ctx.fillText("R", 0, 0);
+    ctx.restore();
 }
 
 function renderCloneBall(clone: { x: number; y: number; vx: number; vy: number }): void

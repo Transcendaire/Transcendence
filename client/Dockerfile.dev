@@ -15,7 +15,7 @@ RUN cp -r /shared/dist/* public/dist/shared/
 
 # Installer dépendances CLIENT
 COPY client/package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copier le code CLIENT
 COPY client/tsconfig.json ./

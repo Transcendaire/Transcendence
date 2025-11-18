@@ -13,6 +13,7 @@ export class CloneBall
     public readonly size: number;
     public isCurving: boolean;
     public curveDirection: number;
+    public speedBoostMultiplier: number;
 
     /**
      * @brief Constructor
@@ -20,8 +21,9 @@ export class CloneBall
      * @param positionY Initial Y position
      * @param velocityX Initial X velocity
      * @param velocityY Initial Y velocity
+     * @param speedBoostMultiplier Speed multiplier from Son effect (default 1.0)
      */
-    constructor(positionX: number, positionY: number, velocityX: number, velocityY: number)
+    constructor(positionX: number, positionY: number, velocityX: number, velocityY: number, speedBoostMultiplier: number = 1.0)
     {
         this.positionX = positionX;
         this.positionY = positionY;
@@ -30,6 +32,7 @@ export class CloneBall
         this.size = 12;
         this.isCurving = false;
         this.curveDirection = 0;
+        this.speedBoostMultiplier = speedBoostMultiplier;
     }
 
     /**
@@ -55,6 +58,20 @@ export class CloneBall
     {
         this.isCurving = true;
         this.curveDirection = direction;
+    }
+
+    /**
+     * @brief Apply speed boost multiplier to clone
+     * @param multiplier Speed multiplier from Son effect
+     */
+    public applySpeedBoost(multiplier: number): void
+    {
+        if (this.speedBoostMultiplier === 1.0)
+        {
+            this.velocityX *= multiplier;
+            this.velocityY *= multiplier;
+            this.speedBoostMultiplier = multiplier;
+        }
     }
 
     /**

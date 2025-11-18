@@ -54,12 +54,14 @@ export class PowerUpManager
             case 'Pi':
                 const curveDirection = Math.random() > 0.5 ? 1 : -1;
                 ball.applyCurve(curveDirection);
+                gameService.curveCloneBalls(curveDirection);
                 console.log(`[PowerUpManager] Pi effect: curve direction ${curveDirection}`);
                 break;
 
             case 'Son':
                 ball.applySpeedBoost(1.5);
-                console.log(`[PowerUpManager] Son effect: speed boost x1.8`);
+                gameService.boostCloneBalls(1.5);
+                console.log(`[PowerUpManager] Son effect: speed boost x1.5`);
                 break;
 
             case '16':  
@@ -97,7 +99,16 @@ export class PowerUpManager
     {
         if (!player.chargingPowerUp)
         {
-            console.log(`[SERVER] ${player.name} collected fruit but has no charging power-up`);
+            const newPowerUp = player.selectRandomChargingPowerUp();
+            if (newPowerUp)
+            {
+                player.hitStreak = 1;
+                console.log(`[SERVER] ${player.name} fruit bonus: started ${newPowerUp} at 1/3 (was idle)`);
+            }
+            else
+            {
+                console.log(`[SERVER] ${player.name} collected fruit but all slots full`);
+            }
             return;
         }
 
@@ -106,9 +117,19 @@ export class PowerUpManager
         const slotIndex = completedPowerUp === 'Son' ? 0 : completedPowerUp === 'Pi' ? 1 : 2;
 
         player.itemSlots[slotIndex] = completedPowerUp;
-        player.hitStreak = currentProgress;
+        player.chargingPowerUp = null;
+        player.hitStreak = 0;
+        
         const newPowerUp = player.selectRandomChargingPowerUp();
-
-        console.log(`[SERVER] ${player.name} fruit bonus: completed ${completedPowerUp}, started ${newPowerUp} at ${currentProgress}/3`);
+        
+        if (newPowerUp)
+        {
+            player.hitStreak = currentProgress;
+            console.log(`[SERVER] ${player.name} fruit bonus: completed ${completedPowerUp}, started ${newPowerUp} at ${currentProgress}/3`);
+        }
+        else
+        {
+            console.log(`[SERVER] ${player.name} fruit bonus: completed ${completedPowerUp}, all slots full`);
+        }
     }
 }

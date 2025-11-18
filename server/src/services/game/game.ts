@@ -2,7 +2,7 @@ import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
 import { CloneBall } from "@app/shared/models/CloneBall.js";
 import { PowerUpFruit } from "@app/shared/types.js";
-import { paddleOffset } from "@app/shared/consts.js";
+import { paddleOffset, speedBoost } from "@app/shared/consts.js";
 import { PowerUpManager } from "./powerup.js";
 import { CollisionDetector } from "./collision.js";
 import { ScoringManager } from "./scoring.js";
@@ -79,24 +79,48 @@ export class GameService
         this.cloneBalls = [];
         const ballDirection = Math.sign(this.ball.velocityX);
         const speed = Math.sqrt(this.ball.velocityX * this.ball.velocityX + this.ball.velocityY * this.ball.velocityY);
-    const angleRange = this.ball.isCurving ? (2 * Math.PI) / 3 : Math.PI / 2;
-    const angleStart = -angleRange / 2;
-    const angleStep = angleRange / (count - 1);
+        const speedBoostMultiplier = this.ball.isBoosted ? speedBoost : 1.0;
+        const angleRange = this.ball.isCurving ? (2 * Math.PI) / 3 : Math.PI / 2;
+        const angleStart = -angleRange / 2;
+        const angleStep = angleRange / (count - 1);
 
         for (let i = 0; i < count; i++)
         {
             const angle = angleStart + angleStep * i;
             const vx = Math.cos(angle) * speed * ballDirection;
             const vy = Math.sin(angle) * speed;
-
-            const clone = new CloneBall(this.ball.positionX, this.ball.positionY, vx, vy);
+            const clone = new CloneBall(this.ball.positionX, this.ball.positionY, vx, vy, speedBoostMultiplier);
 
             if (this.ball.isCurving)
                 clone.applyCurve(this.ball.curveDirection);
             this.cloneBalls.push(clone);
         }
 
-        console.log(`[GAME] Created ${count} clone balls (direction: ${ballDirection > 0 ? 'right' : 'left'}, curving: ${this.ball.isCurving})`);
+        console.log(`[GAME] Created ${count} clone balls (direction: ${ballDirection > 0 ? 'right' : 'left'}, curving: ${this.ball.isCurving}, boosted: ${this.ball.isBoosted})`);
+    }
+
+    /**
+     * @brief Apply speed boost to all existing clone balls
+     * @param multiplier Speed multiplier from Son effect
+     */
+    public boostCloneBalls(multiplier: number): void
+    {
+        this.cloneBalls.forEach(clone => {
+            clone.applySpeedBoost(multiplier);
+        });
+        console.log(`[GAME] Applied speed boost ${multiplier}x to ${this.cloneBalls.length} clone balls`);
+    }
+
+    /**
+     * @brief Apply curve to all existing clone balls
+     * @param direction Direction of curve (1 = down, -1 = up)
+     */
+    public curveCloneBalls(direction: number): void
+    {
+        this.cloneBalls.forEach(clone => {
+            clone.applyCurve(direction);
+        });
+        console.log(`[GAME] Applied curve direction ${direction} to ${this.cloneBalls.length} clone balls`);
     }
 
     /**
@@ -195,18 +219,22 @@ export class GameService
             {
                 PowerUpManager.applyPendingPowerUps(player, ball, this);
                 
-                player.incrementHitStreak();
-
-                if (player.hitStreak === 1 && !player.chargingPowerUp)
+                if (player.hitStreak === 0 && !player.chargingPowerUp)
                 {
                     const selected = player.selectRandomChargingPowerUp();
                     if (selected)
+                    {
+                        player.incrementHitStreak();
                         console.log(`[SERVER] ${player.name} started charging ${selected}`);
+                    }
                 }
+                else if (player.chargingPowerUp)
+                    player.incrementHitStreak();
 
                 console.log(`[SERVER] ${player.name} hit streak: ${player.hitStreak} (charging: ${player.chargingPowerUp})`);
 
-                if (player.hitStreak >= 3) {
+                if (player.hitStreak >= 3 && player.chargingPowerUp)
+                {
                     PowerUpManager.awardRandomPowerUp(player);
                     player.resetHitStreak();
                 }
@@ -223,7 +251,8 @@ export class GameService
      */
     private checkSide(player: Player, opponent: Player, ball: Ball, cond: boolean): void
     {
-        if (ScoringManager.checkScoreCondition(ball, cond)) {
+        if (ScoringManager.checkScoreCondition(ball, cond))
+        {
             if (this.cloneBalls.length > 0)
                 this.clearCloneBalls();
             this.ballTouched = false;
@@ -315,9 +344,7 @@ export class GameService
     {
         if (!this.isCustomMode)
             return;
-
         this.fruitSpawnTimer += deltaTime;
-
         if (this.fruitSpawnTimer >= this.fruitSpawnInterval)
         {
             if (this.fruits.length < 3)
@@ -337,7 +364,6 @@ export class GameService
         for (let i = this.fruits.length - 1; i >= 0; i--)
         {
             const fruit = this.fruits[i];
-
             if (!fruit)
                 continue;
 

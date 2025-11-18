@@ -34,8 +34,29 @@ export class ScoringManager
         {
             player.clearPendingPowerUps();
             opponent.clearPendingPowerUps();
+            
+            if (player.chargingPowerUp)
+            {
+                player.incrementHitStreak();
+                console.log(`[SERVER] ${player.name} gained 1 charge for scoring (${player.hitStreak}/3)`);
+                
+                if (player.hitStreak >= 3)
+                {
+                    const powerUp = player.chargingPowerUp;
+                    const slotIndex = powerUp === 'Son' ? 0 : powerUp === 'Pi' ? 1 : 2;
+                    player.itemSlots[slotIndex] = powerUp;
+                    player.chargingPowerUp = null;
+                    player.hitStreak = 0;
+                    console.log(`[SERVER] ${player.name} completed ${powerUp} from scoring bonus!`);
+                }
+            }
+            
             opponent.resetHitStreak();
-            console.log(`[SERVER] ${opponent.name} hit streak reset to 0 (got scored on)`);
+            const removedPowerUp = opponent.removeRandomPowerUp();
+            if (removedPowerUp)
+                console.log(`[SERVER] ${opponent.name} lost ${removedPowerUp} (got scored on)`);
+            else
+                console.log(`[SERVER] ${opponent.name} had no power-ups to lose`);
             console.log(`[SERVER] Pending power-ups cleared for both players`);
         }
         ball.reset(canvasWidth, canvasHeight);

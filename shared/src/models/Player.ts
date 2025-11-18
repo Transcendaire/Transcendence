@@ -185,4 +185,26 @@ export class Player
         this.pendingPowerUps = [];
         this.selectedSlots = [false, false, false];
     }
+
+    /**
+     * @brief Remove random completed power-up from slots
+     * @returns Name of removed power-up or null if no power-ups
+     */
+    public removeRandomPowerUp(): PowerUp
+    {
+        const filledSlots: number[] = [];
+
+        for (let i = 0; i < 3; i++)
+            if (this.itemSlots[i] !== null)
+                filledSlots.push(i);
+
+        if (filledSlots.length === 0)
+            return null;
+
+        const randomIndex = filledSlots[Math.floor(Math.random() * filledSlots.length)]!;
+        const removedPowerUp = this.itemSlots[randomIndex];
+        this.itemSlots[randomIndex] = null;
+
+        return removedPowerUp;
+    }
 }

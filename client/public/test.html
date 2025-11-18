@@ -9,107 +9,128 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="./config/config-tailwind.js"></script>
 </head>
+<body class="min-h-screen bg-sonpi16-orange">  
+    
+        <div>
+        <img src="./assets/Transcendaire.png" class="max-w-xs md:max-w-md sm:mb-0 mx-auto"> 
+    </div>
 
- <div id="gameModeModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-2xl w-full mx-4 transform transition-all duration-300">
+    <div id="tournamentContainer" class="container mx-auto px-4 py-8">
+        
+        <div class="flex md:flex-row flex-col gap-6 justify-center items-center mb-8">
+            
+            <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl w-80 min-w-[370px] max-w-lg min-h-[500px] max-h-[800px] ">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-3xl font-bold text-sonpi16-orange font-quency flex items-center gap-3">
+                        <span class="text-4xl">👥</span>
+                        Joueurs en ligne
+                    </h2>
+                    <span id="playerCount" 
+                          class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-full 
+                                 font-bold text-xl font-quency">
+                        0
+                    </span>
+                </div>
+                
+                <div id="playersList" 
+                     class="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
+                </div>
+            </div>
 
-            <h3 class="text-4xl font-bold text-sonpi16-orange mb-8 text-center font-quency">
-                Choisissez votre mode
+            <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl min-w-[370px] max-w-lg min-h-[500px] max-h-[800px]">
+                <div class="flex flex-row items-center mb-6 gap-6">
+                    <h2 class="text-3xl font-bold text-sonpi16-orange font-quency flex items-center gap-3">
+                        Lobbies disponibles
+                    </h2>
+                    <button id="createLobbyButton" 
+                            class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-lg 
+                                   font-bold hover:bg-opacity-90 transition-all font-quency 
+                                   flex items-center">
+                        <span class="text-2xl">+</span><p>Creer</p>
+        
+                    </button>
+                </div>
+
+                <div id="lobbiesList" 
+                     class="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex justify-center"> 
+            <button id="backButton" 
+                    class="bg-red-600 text-white px-6 py-3 rounded-lg font-bold 
+                           hover:bg-red-700 transition-all duration-300 font-quency">
+                back to home
+            </button>
+        </div>
+    </div>
+
+    <div id="createLobbyModal" 
+         class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
+        <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+            <h3 class="text-3xl font-bold text-sonpi16-orange mb-6 text-center font-quency">
+                Créer un lobby
             </h3>
             
-            <div class="grid md:grid-cols-2 gap-6">
-                <!-- Mode 1v1 -->
-                <button id="joinGameButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">🎮</div>
-                    <h4 class="font-quency text-2xl font-bold">1 vs 1</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Affrontez un joueur en ligne
-                    </p>
-                </button>
+            <form class="space-y-4">
+                <div>
+                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                        Nom du lobby
+                    </label>
+                    <input type="text" 
+                            placeholder="SquidGame"
+                           class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                                  px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                                  focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                                  font-quency">
+                </div>
                 
-                <!-- Mode IA -->
-                <button id="joinAIButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">🤖</div>
-                    <h4 class="font-quency text-2xl font-bold">vs IA</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Entraînez-vous contre l'ordinateur
-                    </p>
-                </button>
+                <div>
+                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                        Type de partie
+                    </label>
+                    <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                                   px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                                   focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                                   font-quency">
+                            <option class="bg-sonpi16-orange">Normal</option>
+                            <option>Custom</option>
+                    </select>
+                </div>
                 
-                <!-- Mode Custom 1v1 avec power-ups -->
-                <button id="joinCustomButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">⚡</div>
-                    <h4 class="font-quency text-2xl font-bold">Custom 1v1</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Partie personnalisée avec power-ups
-                    </p>
-                </button>
+                <div>
+                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                        Nombre de joueurs
+                    </label>
+                    <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                                   px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                                   focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                                   font-quency">
+                        <option>2</option>
+                        <option>4</option>
+                        <option>8</option>
+                        <option>16</option>
+                    </select>
+                </div>
                 
-                <!-- Mode Custom IA avec power-ups -->
-                <button id="joinCustomAIButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">⚡🤖</div>
-                    <h4 class="font-quency text-2xl font-bold">Custom vs IA</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Contre l'IA avec power-ups
-                    </p>
-                </button>
-                
-                <!-- Mode Tournoi -->
-                <button id="joinTournamentButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group md:col-span-2">
-                    <div class="text-6xl">🏆</div>
-                    <h4 class="font-quency text-2xl font-bold">Tournoi</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Participez à un tournoi épique
-                    </p>
-                </button>
-            </div>
-            
-            <button id="cancelGameModeButton" 
-                    class="mt-8 text-sonpi16-orange hover:text-white transition-colors 
-                           w-full text-center py-3 text-lg font-quency">
-                ← Retour
-            </button>
+                <div class="flex gap-4 mt-6">
+                    <button type="button" id="cancelCreateButton"
+                            class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-bold 
+                                   hover:bg-red-700 transition-all font-quency">
+                        Annuler
+                    </button>
+                    <button type="submit"
+                            class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-lg 
+                                   font-bold hover:bg-opacity-90 transition-all font-quency">
+                        Créer
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
     
-    <div id="waitingModal" 
-         class=" fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 
-                backdrop-blur-sm">
-        <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 
-                    text-center">            
-            <h3 class="text-3xl font-bold text-sonpi16-orange mb-4 font-quency animate-pulse">
-                Recherche d'un adversaire...
-            </h3>
 
-            <p class="text-sonpi16-orange text-xl mb-6 font-quency"></p>
-            <button id="cancelWaitButton" 
-
-                    class="bg-red-600 text-white px-8 py-3 rounded-lg font-bold 
-                         font-quency">
-                ANNULER
-            </button>
-        </div>
-    </div>
-</main>
+  </main>
 </body>
 </html>

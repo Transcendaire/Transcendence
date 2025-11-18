@@ -1,9 +1,10 @@
-export type Route = 'home' | 'profile' | 'game';
+export type Route = 'home' | 'profile' | 'game' | 'lobby';
 
 const ROUTES: Record<Route, string> = {
     home: '/page/home.html',
     profile: '/page/profile.html',
-    game: '/page/game.html'
+    game: '/page/game.html',
+    lobby: '/page/lobby.html'
 };
 
 type PageInitializer = () => void;

@@ -40,6 +40,8 @@ const keys = {
 function initGame(): void
 {
     console.log('[GAME] initGame() appelé');
+
+    setupWebSocketCallbacks();
     
     requestAnimationFrame(() => {
         canvas = document.getElementById("pong") as HTMLCanvasElement;
@@ -50,9 +52,17 @@ function initGame(): void
         console.log('[GAME] Canvas trouvé, dimensions:', canvas.width, 'x', canvas.height);
         ctx = canvas.getContext("2d")!;
         
-        setupWebSocketCallbacks();
-        console.log('[GAME] Initialisation terminée');
-        
+        const storedRole = sessionStorage.getItem('playerRole') as 'player1' | 'player2' | null;
+
+        if (storedRole) {
+            currentPlayerRole = storedRole;
+            console.log('[GAME] Démarrage avec rôle:', storedRole);
+            startGame(storedRole);
+            sessionStorage.removeItem('playerRole');
+        }
+        else
+            navigate("home");
+
         if (wsClient.isConnected()) {
             console.log('[GAME] WebSocket déjà connecté, vérification du status...');
         }
@@ -66,25 +76,13 @@ function setupWebSocketCallbacks(): void
 {
     console.log('[GAME] Configuration des callbacks WebSocket...');
 
-    wsClient.onWaitingForPlayer = () => {
-        showWaitingScreen();
-    };
-    wsClient.onPlayerJoined = (playerCount: number) => {
-        updatePlayerCount(playerCount);
-    };
-    wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
-        console.log('[GAME] Callback onGameStart assigné et appelé avec role:', playerRole);
-        currentPlayerRole = playerRole;
-        startGame(playerRole);
-    };
-    console.log('[GAME] Callback onGameStart assigné');
-    
     wsClient.onGameState = (gameState: GameState) => {
         updateGameState(gameState);
     };
+
     wsClient.onDisconnected = () => {
         alert("Connexion perdue avec le serveur");
-        returnToLobby();
+        navigate("lobby");
     };
     wsClient.onError = (error: string) => {
         alert(error);
@@ -202,21 +200,6 @@ function updateGameState(gameState: GameState): void
     }
 }
 
-function showWaitingScreen(): void
-{
-    const lobbyContent = document.getElementById("lobby-content")!;
-    const waitingDiv = document.getElementById("waiting")!;
-    
-    lobbyContent.classList.add("hidden");
-    waitingDiv.classList.remove("hidden");
-}
-
-function updatePlayerCount(playerCount: number): void
-{
-    const playerCountSpan = document.getElementById("playerCount")!;
-    playerCountSpan.textContent = playerCount.toString();
-}
-
 function startGame(playerRole: 'player1' | 'player2'): void
 {
     console.log('[GAME] startGame() appelé, role:', playerRole);
@@ -249,10 +232,6 @@ function startGame(playerRole: 'player1' | 'player2'): void
     gameLoop(0);
 }
 
-function returnToLobby(): void
-{
-    navigate('home');
-}
 
 function updatePing(): void
 {

@@ -3,6 +3,7 @@ import { render, navigate, getCurrentRoute, Route } from './router.js';
 import './page/home.js';
 import './page/profile.js';
 import './page/game.js';
+import './page/lobby.js'
 
 console.log('[APP] Application chargée');
 
@@ -22,29 +23,36 @@ function initApp(): void {
         console.log('[APP] Popstate détecté (back button), navigation vers:', route);
         render(route);
     });
-    
-    setupGlobalEvents();
 }
 
-function setupGlobalEvents(): void {
-    window.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            const modals = document.querySelectorAll('.modal:not(.hidden)');
-            modals.forEach(modal => modal.classList.add('hidden'));
-        }
+export function setupGlobalModalEvents(modal: HTMLElement, showButton: HTMLButtonElement, cancelButton: HTMLButtonElement)
+{
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) 
+            hide(modal);
+        });
+
+    modal.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key === 'Escape')
+            hide(modal);
     });
 
-    window.addEventListener('storage', (e) => {
-        if (e.key === 'logout') {
-            navigate('home');
-        }
-    });
+    cancelButton.addEventListener('click', () => hide(modal));
+    showButton.addEventListener('click', () => show(modal));
 }
 
 export function getEl(id: string): HTMLElement {
     const el = document.getElementById(id);
     if (!el) throw new Error(`#${id} not found`);
     return el;
+}
+
+export function show(element: HTMLElement): void {
+    element.classList.remove('hidden');
+}
+
+export function hide(element: HTMLElement): void {
+    element.classList.add('hidden');
 }
 
 document.addEventListener('DOMContentLoaded', initApp);

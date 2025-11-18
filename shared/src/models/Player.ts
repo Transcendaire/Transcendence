@@ -202,7 +202,7 @@ export class Player
             return null;
 
         const randomIndex = filledSlots[Math.floor(Math.random() * filledSlots.length)]!;
-        const removedPowerUp = this.itemSlots[randomIndex];
+        const removedPowerUp = this.itemSlots[randomIndex]!;
         this.itemSlots[randomIndex] = null;
 
         return removedPowerUp;

@@ -15,6 +15,7 @@ let lastTime = 0;
 let player1: Player;
 let player2: Player;
 let ball: Ball;
+let cloneBalls: Array<{ x: number; y: number; vx: number; vy: number }> = [];
 let currentPlayerRole: 'player1' | 'player2' | null = null;
 let gameRunning = false;
 
@@ -163,6 +164,8 @@ function updateGameState(gameState: GameState): void
     ball.velocityX = gameState.ball.vx;
     ball.velocityY = gameState.ball.vy;
 
+    cloneBalls = gameState.cloneBalls || [];
+
     if (player1.score > oldScore1) {
         console.log(`[GAME] POINT POUR PLAYER 1! Score: ${player1.score} - ${player2.score}`);
     }
@@ -268,9 +271,32 @@ function render(): void
 
     player1.paddle.render(ctx, COLORS.SONPI16_ORANGE);
     player2.paddle.render(ctx, COLORS.SONPI16_ORANGE);
+
+    cloneBalls.forEach(clone => {
+        renderCloneBall(clone);
+    });
+
     ball.render(ctx, COLORS.SONPI16_ORANGE);
 
     renderScore();
+}
+
+function renderCloneBall(clone: { x: number; y: number; vx: number; vy: number }): void
+{
+    const size = 12;
+    const centerX = clone.x + size / 2;
+    const centerY = clone.y + size / 2;
+
+    ctx.save();
+    ctx.globalAlpha = 0.8;
+    ctx.fillStyle = COLORS.SONPI16_ORANGE;
+    ctx.translate(centerX, centerY);
+    ctx.translate(-size / 2, -size / 2);
+    ctx.fillRect(3, 0, 6, 3);
+    ctx.fillRect(0, 3, 12, 3);
+    ctx.fillRect(0, 6, 12, 3);
+    ctx.fillRect(3, 9, 6, 3);
+    ctx.restore();
 }
 
 function renderScore(): void

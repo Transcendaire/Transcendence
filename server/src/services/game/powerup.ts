@@ -1,5 +1,6 @@
 import { Player, PowerUp } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
+import type { GameService } from "./game.js";
 
 /**
  * @brief Power-up management utilities
@@ -39,8 +40,9 @@ export class PowerUpManager
      * @param player Player using the power-up
      * @param powerUp Power-up to activate
      * @param ball Game ball (for effects that modify ball behavior)
+     * @param gameService Game service (for 16 effect clone creation)
      */
-    public static activatePowerUp(player: Player, powerUp: PowerUp, ball: Ball): void
+    public static activatePowerUp(player: Player, powerUp: PowerUp, ball: Ball, gameService: GameService): void
     {
         if (!powerUp)
             return;
@@ -56,12 +58,13 @@ export class PowerUpManager
                 break;
 
             case 'Son':
-                ball.applySpeedBoost(1.4);
-                console.log(`[PowerUpManager] Son effect: speed boost x1.4`);
+                ball.applySpeedBoost(1.5);
+                console.log(`[PowerUpManager] Son effect: speed boost x1.8`);
                 break;
 
-            case '16':
-                console.log(`[PowerUpManager] 16 effect: TODO`);
+            case '16':  
+                gameService.createCloneBalls(15);
+                console.log(`[PowerUpManager] 16 effect: 15 clone balls created`);
                 break;
         }
     }
@@ -70,15 +73,16 @@ export class PowerUpManager
      * @brief Apply pending power-ups for a player
      * @param player Player whose pending power-ups should be applied
      * @param ball Game ball (for effects that modify ball behavior)
+     * @param gameService Game service (for 16 effect clone creation)
      */
-    public static applyPendingPowerUps(player: Player, ball: Ball): void
+    public static applyPendingPowerUps(player: Player, ball: Ball, gameService: GameService): void
     {
         const pendingPowerUps = player.consumePendingPowerUps();
         
         if (pendingPowerUps.length > 0) {
             console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
             pendingPowerUps.forEach((powerUp: PowerUp) => {
-                PowerUpManager.activatePowerUp(player, powerUp, ball);
+                PowerUpManager.activatePowerUp(player, powerUp, ball, gameService);
             });
         }
     }

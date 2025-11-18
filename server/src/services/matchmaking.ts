@@ -274,7 +274,13 @@ export class MatchmakingService
 				y: gameState!.ball.positionY,
 				vx: gameState!.ball.velocityX,
 				vy: gameState!.ball.velocityY
-			}
+			},
+			cloneBalls: gameState!.cloneBalls.map(clone => ({
+				x: clone.positionX,
+				y: clone.positionY,
+				vx: clone.velocityX,
+				vy: clone.velocityY
+			}))
 		};
 
 		if (room.player1.socket)

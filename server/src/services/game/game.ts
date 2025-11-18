@@ -1,5 +1,6 @@
 import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
+import { CloneBall } from "@app/shared/models/CloneBall.js";
 import { paddleOffset } from "@app/shared/consts.js";
 import { PowerUpManager } from "./powerup.js";
 import { CollisionDetector } from "./collision.js";
@@ -13,6 +14,7 @@ export class GameService
     private player1!: Player;
     private player2!: Player;
     private ball!: Ball;
+    private cloneBalls: CloneBall[];
     private readonly canvasWidth: number;
     private readonly canvasHeight: number;
     private readonly isCustomMode: boolean;
@@ -29,6 +31,7 @@ export class GameService
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
         this.isCustomMode = isCustomMode;
+        this.cloneBalls = [];
         this.initGame();
     }
 
@@ -45,15 +48,54 @@ export class GameService
 
     /**
      * @brief Get current game state
-     * @returns Object containing both players and ball
+     * @returns Object containing both players, ball, and clones
      */
-    public getGameState(): { player1: Player; player2: Player; ball: Ball }
+    public getGameState(): { player1: Player; player2: Player; ball: Ball; cloneBalls: CloneBall[] }
     {
         return {
             player1: this.player1,
             player2: this.player2,
-            ball: this.ball
+            ball: this.ball,
+            cloneBalls: this.cloneBalls
         };
+    }
+
+    /**
+     * @brief Create clone balls with angle variations
+     * @param count Number of clones to create
+     */
+    public createCloneBalls(count: number): void
+    {
+        this.cloneBalls = [];
+        const ballDirection = Math.sign(this.ball.velocityX);
+        const speed = Math.sqrt(this.ball.velocityX * this.ball.velocityX + this.ball.velocityY * this.ball.velocityY);
+    const angleRange = this.ball.isCurving ? (2 * Math.PI) / 3 : Math.PI / 2;
+    const angleStart = -angleRange / 2;
+    const angleStep = angleRange / (count - 1);
+
+        for (let i = 0; i < count; i++)
+        {
+            const angle = angleStart + angleStep * i;
+            const vx = Math.cos(angle) * speed * ballDirection;
+            const vy = Math.sin(angle) * speed;
+
+            const clone = new CloneBall(this.ball.positionX, this.ball.positionY, vx, vy);
+
+            if (this.ball.isCurving)
+                clone.applyCurve(this.ball.curveDirection);
+            this.cloneBalls.push(clone);
+        }
+
+        console.log(`[GAME] Created ${count} clone balls (direction: ${ballDirection > 0 ? 'right' : 'left'}, curving: ${this.ball.isCurving})`);
+    }
+
+    /**
+     * @brief Clear all clone balls
+     */
+    public clearCloneBalls(): void
+    {
+        this.cloneBalls = [];
+        console.log(`[GAME] Cleared all clone balls`);
     }
 
     /**
@@ -91,7 +133,28 @@ export class GameService
                 this.usePowerUpSlot(this.player2, 2);
         }
         this.ball.update(deltaTime);
+        this.updateCloneBalls(deltaTime);
         this.checkCollisions();
+    }
+
+    /**
+     * @brief Update clone balls physics (wall bounces only)
+     * @param deltaTime Time elapsed since last update
+     */
+    private updateCloneBalls(deltaTime: number): void
+    {
+        this.cloneBalls.forEach(clone => {
+            clone.update(deltaTime);
+
+            if (clone.positionY <= 0 || clone.positionY + clone.size >= this.canvasHeight)
+            {
+                clone.bounceVertical();
+                if (clone.positionY <= 0)
+                    clone.positionY = 0;
+                else if (clone.positionY + clone.size >= this.canvasHeight)
+                    clone.positionY = this.canvasHeight - clone.size;
+            }
+        });
     }
 
     /**
@@ -109,17 +172,15 @@ export class GameService
             ball.bounce(player.paddle)
 
             if (ball.isCurving)
-            {
                 ball.removeCurve();
-            }
-
             if (ball.isBoosted)
-            {
                 ball.removeSpeedBoost();
-            }
+            if (this.cloneBalls.length > 0)
+                this.clearCloneBalls();
 
-            if (this.isCustomMode) {
-                PowerUpManager.applyPendingPowerUps(player, ball);
+            if (this.isCustomMode)
+            {
+                PowerUpManager.applyPendingPowerUps(player, ball, this);
                 
                 player.incrementHitStreak();
 
@@ -150,6 +211,8 @@ export class GameService
     private checkSide(player: Player, opponent: Player, ball: Ball, cond: boolean): void
     {
         if (ScoringManager.checkScoreCondition(ball, cond)) {
+            if (this.cloneBalls.length > 0)
+                this.clearCloneBalls();
             ScoringManager.handleScore(
                 player,
                 opponent,
@@ -199,14 +262,12 @@ export class GameService
         if (player.selectedSlots[slotIndex])
         {
             const cancelled = player.cancelPowerUp(slotIndex);
-
             if (cancelled)
                 console.log(`[SERVER] ${player.name} cancelled power-up at slot ${slotIndex}. Pending: ${player.pendingPowerUps.join(', ')}`);
         }
         else
         {
             const powerUp = player.activatePowerUp(slotIndex);
-
             if (powerUp)
                 console.log(`[SERVER] ${player.name} registered ${powerUp} for next bounce. Pending: ${player.pendingPowerUps.join(', ')}`);
         }

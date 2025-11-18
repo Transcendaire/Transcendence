@@ -1,4 +1,5 @@
 import { Paddle } from "./Paddle.js";
+import { curveAcceleration } from "../consts.js";
 
 export const velYfactor = 500;
 
@@ -69,9 +70,7 @@ export class Ball
         const speed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
         
         if (this.isCurving)
-        {
-            this.velocityY += this.curveDirection * 300 * dt;
-        }
+            this.velocityY += this.curveDirection * curveAcceleration * dt;
 
         this.positionX += this.velocityX * dt;
         this.positionY += this.velocityY * dt;

@@ -83,8 +83,9 @@ export class Player
             return null;
 
         const randomIndex = Math.floor(Math.random() * availablePowerUps.length);
-        this.chargingPowerUp = availablePowerUps[randomIndex];
-        return this.chargingPowerUp;
+        const selected = availablePowerUps[randomIndex] ?? null;
+        this.chargingPowerUp = selected;
+        return selected;
     }
 
     /**
@@ -125,7 +126,8 @@ export class Player
             return null;
         const powerUp = this.itemSlots[slotIndex] || null;
 
-        if (powerUp && !this.selectedSlots[slotIndex]) {
+        if (powerUp && !this.selectedSlots[slotIndex])
+        {
             this.selectedSlots[slotIndex] = true;
             if (!this.pendingPowerUps.includes(powerUp))
                 this.pendingPowerUps.push(powerUp);
@@ -146,13 +148,13 @@ export class Player
             return false;
         const powerUp = this.itemSlots[slotIndex];
 
-        if (powerUp) {
+        if (powerUp)
+        {
             this.selectedSlots[slotIndex] = false;
             const pendingIndex = this.pendingPowerUps.indexOf(powerUp);
 
-            if (pendingIndex !== -1) {
+            if (pendingIndex !== -1)
                 this.pendingPowerUps.splice(pendingIndex, 1);
-            }
             return true;
         }
         return false;

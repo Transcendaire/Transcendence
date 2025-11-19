@@ -2,7 +2,7 @@ import { WebSocket } from 'ws';
 import { MatchmakingService } from './matchmaking.js';
 import { getDatabase } from '../db/databaseSingleton.js';
 import { Match, SingleEliminationBracket } from './brackets.js';
-import { errTournament, TournamentError } from "../../../shared/errors.js"
+import { errTournament, TournamentError } from "@app/shared/errors.js"
 import { Player } from '../types.js';
 import { WebsocketHandler } from '@fastify/websocket';
 import { sign } from 'crypto';
@@ -128,7 +128,6 @@ export class Tournament {
 
 	public getPlayerCount(): number
 	{
-		console.log(`📊 getPlayerCount() for ${this.name}: ${this.players.size}`);
 		return this.players.size;
 	}
 

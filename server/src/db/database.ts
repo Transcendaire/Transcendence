@@ -1,7 +1,7 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player } from "../types.js"
-import { DatabaseError } from "../../../shared/errors.js"
+import { DatabaseError } from "@app/shared/errors.js"
 import { getDatabase } from "./databaseSingleton.js";
 // import { create } from "domain";
 
@@ -209,7 +209,8 @@ export class DatabaseService {
 		if (!id || id.trim().length < 3)
 			throw new DatabaseError("Le nom doit faire au moins trois caractères");
 
-		const result = this.db.prepare("DELETE FROM players WHERE id= ?").run(id);
+		let result = this.db.prepare("DELETE FROM players WHERE id= ?").run(id);
+		result += this.db.prepare("DELETE FROM tournament_players WHERE id= ?").run(id);
 		return result.changes > 0;
 	}
 

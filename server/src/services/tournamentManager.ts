@@ -3,7 +3,7 @@ import { MatchmakingService } from './matchmaking.js'
 import crypto from 'crypto'
 import { match } from 'assert';
 import { getDatabase } from '../db/databaseSingleton.js';
-import { DatabaseError, errTournament, TournamentError } from '../../../shared/errors.js';
+import { DatabaseError, errTournament, TournamentError } from "@app/shared/errors.js";
 
 export class TournamentManagerService 
 {
@@ -15,6 +15,7 @@ export class TournamentManagerService
 	{
 		this.matchmaking = matchmaking;
 	}
+
 
 	public createTournament(name: string, maxPlayers: number): string
 	{

@@ -8,10 +8,11 @@ import { MatchmakingService } from './services/matchmaking.js'
 import fs from 'fs'
 import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament, TournamentStatus } from './services/tournament.js'
-import { inputParserClass } from '../../shared/inputParser.js'
+import { inputParserClass } from "@app/shared/inputParser.js"
 import { getDatabase } from './db/databaseSingleton.js'
-import { DatabaseError, errTournament, TournamentError, UserError } from '../../shared/errors.js'
+import { DatabaseError, errTournament, TournamentError, UserError } from "@app/shared/errors.js"
 import { Player } from './types.js'
+import { DatabaseService } from './db/database.js'
 declare module 'fastify' {
   interface FastifyRequest {
 	player?: Player;
@@ -25,11 +26,11 @@ const server = fastify({
 export const app = server;
 export let tournamentManager: TournamentManagerService; //!for testing
 (async () => {
-  const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const server = fastify({
-    logger: true // Enable logging
-  })
+	const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const inputParser = new inputParserClass();
+  const db = new DatabaseService();
   const matchmaking = new MatchmakingService()
+  tournamentManager = new TournamentManagerService(matchmaking);
   const publicPath = path.join(__dirname, '../../../../client/public')
   const distPath = path.join(__dirname, '../../../../client/dist')
   const indexPath = path.join(publicPath, 'index.html')
@@ -58,6 +59,20 @@ export let tournamentManager: TournamentManagerService; //!for testing
     decorateReply: false
   })
   
+
+   await server.register(fastifyCookie);
+
+
+
+  //* code that runs BEFORE each route handler
+  server.addHook('preHandler', async (req, res) => {
+	const id = req.cookies.player_id;
+	if (!id)
+		return ;
+	const player = db.getPlayerBy('id', id);
+	if (player)
+		req.player = player;
+  })
 
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
@@ -374,7 +389,7 @@ server.get<{ Querystring: { playerName: string } }>
 
     // Skip les fichiers statiques (JS, CSS, images, etc.)
     if (request.url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf)$/)) {
-      return reply.code(404).send('File not found')
+      return res.code(404).send('File not found')
     }
     
     // For all other routes, serve the index.html file

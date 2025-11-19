@@ -1,9 +1,10 @@
 import { render, navigate, getCurrentRoute, Route } from './router.js';
-
+import { UserError, errClient } from '/dist/shared/errors.js'
 import './page/home.js';
 import './page/profile.js';
 import './page/game.js';
 import './page/lobby.js'
+
 
 console.log('[APP] Application chargée');
 
@@ -23,6 +24,19 @@ function initApp(): void {
         console.log('[APP] Popstate détecté (back button), navigation vers:', route);
         render(route);
     });
+}
+
+
+export async function getPlayerName(): Promise<string | undefined>
+{
+	const response = await fetch('/api/players/me');
+	const data = await response.json();
+
+	if (response.status === 200)
+		return data.playerName;
+	else if (response.status === 401)
+		throw new UserError(data.error, errClient.UNAUTHENTICATED_PLAYER);
+	throw new UserError(data.error, errClient.NONEXISTING_PLAYER);
 }
 
 export function setupGlobalModalEvents(modal: HTMLElement, showButton: HTMLButtonElement, cancelButton: HTMLButtonElement)
@@ -56,3 +70,4 @@ export function hide(element: HTMLElement): void {
 }
 
 document.addEventListener('DOMContentLoaded', initApp);
+

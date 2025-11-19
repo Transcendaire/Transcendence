@@ -7,7 +7,7 @@
   "scripts": {
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd ../client && npm run build",
-    "build:server": "tsc",
+    "build:server": "tsc --project tsconfig.build.json",
     "dev": "concurrently \"tsc --watch\" \"sleep 3 && nodemon --delay 1 --watch dist --ext js --ignore '*.map' dist/index.docker.js\"",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"

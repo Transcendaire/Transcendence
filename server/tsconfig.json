@@ -2,11 +2,11 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ES2020",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "outDir": "./dist",
-    "baseUrl": "./",
+    "baseUrl": ".",
     "paths": {
-      "@app/shared/*": ["../shared/dist/*"]
+      "@app/shared/*": ["../shared/src/*"]
     },
     "strict": true,
     "esModuleInterop": true,
@@ -28,11 +28,6 @@
     "exactOptionalPropertyTypes": true,
     "types": ["node"]
   },
-  "include": [
-    "src/**/*"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }

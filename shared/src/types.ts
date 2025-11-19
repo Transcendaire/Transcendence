@@ -11,6 +11,13 @@ export type GameInput = {
 
 export type PowerUpType = 'Son' | 'Pi' | '16' | null;
 
+export type PowerUpFruit = {
+	id: string;
+	x: number;
+	y: number;
+	rotation: number;
+}
+
 export type GameState = {
 	player1: {
 		paddle: { y: number };
@@ -18,6 +25,8 @@ export type GameState = {
 		itemSlots?: PowerUpType[];
 		pendingPowerUps?: PowerUpType[];
 		selectedSlots?: boolean[];
+		hitStreak?: number;
+		chargingPowerUp?: PowerUpType;
 	};
 	player2: {
 		paddle: { y: number };
@@ -25,6 +34,8 @@ export type GameState = {
 		itemSlots?: PowerUpType[];
 		pendingPowerUps?: PowerUpType[];
 		selectedSlots?: boolean[];
+		hitStreak?: number;
+		chargingPowerUp?: PowerUpType;
 	};
 	ball: {
 		x: number;
@@ -32,6 +43,13 @@ export type GameState = {
 		vx: number;
 		vy: number;
 	};
+	cloneBalls?: Array<{
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
+	}>;
+	fruits?: PowerUpFruit[];
 }
 
 export type WebSocketMessage = 
@@ -44,6 +62,7 @@ export type WebSocketMessage =
 | { type: "gameStart"; playerRole: 'player1' | 'player2' }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
+| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number }
 | { type: "ping" }
 | { type: "pong" }
 

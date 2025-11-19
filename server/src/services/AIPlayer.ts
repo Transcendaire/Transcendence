@@ -1,4 +1,4 @@
-import { GameService } from './main.js'
+import { GameService } from './game/game.js' 
 import { Player } from '@app/shared/models/Player.js'
 import { Ball } from '@app/shared/models/Ball.js'
 import { Paddle } from '@app/shared/models/Paddle.js'
@@ -60,7 +60,27 @@ export class AIPlayer
         this.movementIntervalId = setInterval(() => {
             this.updateMovement();
         }, (1000/60));
-    }    /**
+    }
+
+    /**
+     * @brief Stop AI decision and movement loops
+     */
+    public stop(): void
+    {
+        if (this.intervalId) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+        if (this.movementIntervalId) {
+            clearInterval(this.movementIntervalId);
+            this.movementIntervalId = null;
+        }
+        this.inputState.up = false;
+        this.inputState.down = false;
+        console.log('[AIPlayer] AI stopped');
+    }
+
+    /**
      * @brief AI decision-making algorithm
      * @param oldBallX Previous ball X position
      * @param oldBallY Previous ball Y position
@@ -80,17 +100,6 @@ export class AIPlayer
             this.targetY = canvasHeight / 2;
             console.log('[AI] Ball going away, going to middle');
         }
-    }
-
-    /**
-     * @brief Stop AI loops
-     */
-    stop()
-    {
-        if (this.intervalId)
-            clearInterval(this.intervalId)
-        if (this.movementIntervalId)
-            clearInterval(this.movementIntervalId)
     }
 
     /**

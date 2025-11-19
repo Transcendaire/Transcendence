@@ -37,8 +37,8 @@ export function setupGlobalModalEvents(modal: HTMLElement, showButton: HTMLButto
             hide(modal);
     });
 
-    cancelButton.addEventListener('click', () => hide(modal));
     showButton.addEventListener('click', () => show(modal));
+    cancelButton.addEventListener('click', () => hide(modal));
 }
 
 export function getEl(id: string): HTMLElement {

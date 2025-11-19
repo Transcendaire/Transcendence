@@ -15,14 +15,16 @@ RUN cp -r /shared/dist/* public/dist/shared/
 
 # Installer dépendances CLIENT
 COPY client/package*.json ./
-RUN npm ci
+RUN npm install
 
 # Copier le code CLIENT
 COPY client/tsconfig.json ./
+COPY client/tailwind.config.js ./
+COPY client/tsconfig.build.json ./
 COPY client/src ./src
 COPY client/public ./public
 
-# Compiler une première fois
+# Compiler une première fois (CSS + TS)
 RUN npm run build
 
 # Copier vers le volume pour nginx
@@ -30,6 +32,5 @@ RUN mkdir -p /output && cp -r /app/public/* /output/
 
 EXPOSE 8080
 
-# Lancer TypeScript en mode watch (recompile automatiquement)
-# + Copier les fichiers vers /output à chaque changement
-CMD ["sh", "-c", "while true; do npm run build -- --watch & sleep 5; cp -r /app/public/* /output/; sleep 10; done"]
+# Lancer TypeScript et Tailwind en mode watch
+CMD ["sh", "-c", "npm run build && npx concurrently \"npx tsc --project tsconfig.build.json --watch\" \"npx tailwindcss -i ./public/config/input.css -o ./public/config/output.css --watch\""]

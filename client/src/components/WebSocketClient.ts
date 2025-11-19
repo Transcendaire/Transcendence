@@ -13,6 +13,7 @@ export class WebSocketClient
     private latency = 0;
     private pendingGameStart: 'player1' | 'player2' | null = null;
     private _isCustomGame = false;
+    private intentionalDisconnect = false;
     
     public onGameState?: (gameState: GameState) => void;
     public onWaitingForPlayer?: () => void;
@@ -20,6 +21,7 @@ export class WebSocketClient
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number) => void;
     
     public get onGameStart() {
         return this._onGameStart;
@@ -62,7 +64,12 @@ export class WebSocketClient
                 this.ws.onclose = () => {
                     console.log('WebSocket fermé');
                     this.onDisconnected?.();
-                    this.attemptReconnect();
+                    if (!this.intentionalDisconnect) {
+                        this.attemptReconnect();
+                    } else {
+                        console.log('Déconnexion volontaire, pas de reconnexion');
+                        this.intentionalDisconnect = false; // Reset le flag
+                    }
                 };
                 this.ws.onerror = (error) => {
                     console.error('Erreur WebSocket:', error);
@@ -85,8 +92,15 @@ export class WebSocketClient
                 break;
                 
             case 'waiting':
-                console.log('[WEBSOCKET] En attente d\'un autre joueur...');
-                this.onWaitingForPlayer?.();
+                const waitingMessage = message.message || 'En attente d\'un autre joueur...';
+                console.log(`[WEBSOCKET] ${waitingMessage}`);
+                if (message.message && message.message.includes('déconnecté')) {
+                    alert(message.message);
+                    this.disconnect();
+                    this.onDisconnected?.();
+                } else {
+                    this.onWaitingForPlayer?.();
+                }
                 break;
                 
             case 'gameStart':
@@ -110,6 +124,13 @@ export class WebSocketClient
                 
             case 'pong':
                 this.calculateLatency();
+                break;
+                
+            case 'gameOver':
+                if (message.winner && message.score1 !== undefined && message.score2 !== undefined) {
+                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}`);
+                    this.onGameOver?.(message.winner, message.score1, message.score2);
+                }
                 break;
                 
             default:
@@ -237,6 +258,7 @@ export class WebSocketClient
     public disconnect(): void
     {
         if (this.ws) {
+            this.intentionalDisconnect = true; // Marque la déconnexion comme volontaire
             this.ws.close();
             delete this.ws;
         }

@@ -3,7 +3,7 @@ import websocket from '@fastify/websocket'
 import fastifyStatic from '@fastify/static'
 import path from 'path'
 import { fileURLToPath } from 'url'
-import { MatchmakingService } from './services/matchmaking.js'
+import { MatchmakingService } from './services/matchmaking/matchmaking.js'
 import fs from 'fs'
 
 (async () => {

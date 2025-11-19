@@ -229,6 +229,17 @@ export class WebSocketClient
         }
     }
 
+    /**
+     * @brief Notify server that player surrenders/abandons
+     */
+    public surrender(): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = { type: 'surrender' }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
     private calculateLatency(): void
     {
         this.latency = Date.now() - this.lastPingTime;

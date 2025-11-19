@@ -1,0 +1,50 @@
+import { render, navigate, getCurrentRoute, Route } from './router.js';
+
+import './page/home.js';
+import './page/profile.js';
+import './page/game.js';
+
+console.log('[APP] Application chargée');
+
+function initApp(): void {
+    console.log('[APP] Initialisation de l\'application');
+    
+    const initialRoute = getCurrentRoute();
+    console.log('[APP] Route initiale:', initialRoute);
+    render(initialRoute);
+    
+    window.addEventListener('popstate', (event) => {
+        if (event.state && event.state.route !== undefined) {
+            console.log('[APP] Ignoring programmatic navigation');
+            return;
+        }
+        const route = getCurrentRoute();
+        console.log('[APP] Popstate détecté (back button), navigation vers:', route);
+        render(route);
+    });
+    
+    setupGlobalEvents();
+}
+
+function setupGlobalEvents(): void {
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const modals = document.querySelectorAll('.modal:not(.hidden)');
+            modals.forEach(modal => modal.classList.add('hidden'));
+        }
+    });
+
+    window.addEventListener('storage', (e) => {
+        if (e.key === 'logout') {
+            navigate('home');
+        }
+    });
+}
+
+export function getEl(id: string): HTMLElement {
+    const el = document.getElementById(id);
+    if (!el) throw new Error(`#${id} not found`);
+    return el;
+}
+
+document.addEventListener('DOMContentLoaded', initApp);

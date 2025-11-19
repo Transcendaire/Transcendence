@@ -108,12 +108,10 @@ export class MatchmakingService
 	public removePlayer(socket: WebSocket): void
 	{
 		const player = this.playerSockets.get(socket)
-
 		if (!player)
-			return
 
+			return
 		this.quickMatch.removeFromQueue(socket)
-		
 		const gameRoom = this.gameRoomManager.findGameByPlayer(socket)
 		if (gameRoom)
 		{
@@ -122,7 +120,6 @@ export class MatchmakingService
 
 			if (opponent.socket && opponent.id !== 'AI')
 				this.sendMessage(opponent.socket, { type: 'waiting' })
-
 			this.gameRoomManager.endGame(gameRoom.id)
 		}
 

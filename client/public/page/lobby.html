@@ -1,17 +1,4 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-	<meta charset="UTF-8">
-    <title>Pong</title>
-    <link rel="icon" type="image/png" href="./assets/Transcendaire.png">
-    <link href="./config/tools.css" rel="stylesheet" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="./config/config-tailwind.js"></script>
-</head>
-<body class="min-h-screen bg-sonpi16-orange">  
-    
-        <div>
+    <div>
         <img src="./assets/Transcendaire.png" class="max-w-xs md:max-w-md sm:mb-0 mx-auto"> 
     </div>
 
@@ -72,13 +59,14 @@
             <h3 class="text-3xl font-bold text-sonpi16-orange mb-6 text-center font-quency">
                 Créer un lobby
             </h3>
+
             
-            <form class="space-y-4">
+            <form id="creationForm" class="space-y-4">
                 <div>
                     <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                         Nom du lobby
                     </label>
-                    <input type="text" 
+                    <input id="tournamentName" type="text" 
                             placeholder="SquidGame"
                            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                   px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
@@ -87,7 +75,7 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    <label id="gameMode" class="block text-sonpi16-orange font-bold mb-2 font-quency">
                         Type de partie
                     </label>
                     <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
@@ -100,7 +88,7 @@
                 </div>
                 
                 <div>
-                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    <label id="nbPlayer" class="block text-sonpi16-orange font-bold mb-2 font-quency">
                         Nombre de joueurs
                     </label>
                     <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
@@ -120,7 +108,7 @@
                                    hover:bg-red-700 transition-all font-quency">
                         Annuler
                     </button>
-                    <button type="submit"
+                    <button id="createLobbyButton" type="submit"
                             class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-lg 
                                    font-bold hover:bg-opacity-90 transition-all font-quency">
                         Créer
@@ -130,7 +118,3 @@
         </div>
     </div>
     
-
-  </main>
-</body>
-</html>

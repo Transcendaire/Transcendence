@@ -1,90 +1,113 @@
-// /**
-//  * @brief Setup lobby event listeners
-//  * @param joinButton Join game button
-//  * @param playerNameInput Player name input field
-//  * @param cancelButton Cancel waiting button
-//  * @param lobbyScreen Lobby screen element
-//  * @param gameScreen Game screen element
-//  */
-// function setupLobbyEventListeners(joinButton: HTMLButtonElement, playerNameInput: HTMLInputElement, 
-//                                  cancelButton: HTMLButtonElement, lobbyScreen: HTMLElement, gameScreen: HTMLElement,
-//                                  tournamentButtons: TournamentHTMLElements): void
-// {
-//     const getPlayerName = () => playerNameInput.value.trim() ; 
+                    
+                    // html a utiliser 
+                    // <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
+                    //             hover:bg-opacity-20 transition-all duration-300 
+                    //             border-2 border-transparent hover:border-sonpi16-orange">
+                    //     </div>
+                    // </div>
 
-//     joinButton.addEventListener('click', async () => {
+import {navigate , registerPageInitializer} from "../router.js"
+import { wsClient } from "../components/WebSocketClient.js";
+import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
+import { playerName } from "./home.js"; 
 
-//         if (inputParser.parsePlayerName(getPlayerName()) === false)
-//             return;
-//         try {
-//             await wsClient.connect(`ws://${window.location.host}/game`);
-//             wsClient.joinGame(getPlayerName());
-//         } catch (error) {
-//             showError("Impossible de se connecter au serveur");
-//         }
-//     });
+function initLobby()
+{
+    const createLobbyModal = getEl("createLobbyModal");
 
-//     const joinAIButton = document.getElementById("joinAI") as HTMLButtonElement;
-//     if (joinAIButton) {
-//         joinAIButton.addEventListener('click', async () => {
-//             const playerName = playerNameInput.value.trim();
-//             if (!playerName) {
-//                 showError("Veuillez entrer votre nom");
-//                 return;
-//             }
-//             try {
-//                 await wsClient.connect(`ws://${window.location.host}/game`);
-//                 wsClient.joinAIGame(playerName);
-//             } catch (error) {
-//                 showError("Impossible de se connecter au serveur");
-//             }
-//         });
-//     }
-//     cancelButton.addEventListener('click', () => {
-//         wsClient.disconnect();
-//         returnToLobby();
-//     });
+    initCreationModal(createLobbyModal);
+}
 
-//     tournamentButtons.joinTournamentButton.addEventListener('click', async () => {
-//         if (inputParser.parsePlayerName(getPlayerName()) === false)
-//             return;
-//         showTournamentScreen(lobbyScreen, tournamentButtons.tournamentSetupScreen);	
-//     });
-
-//     tournamentButtons.createTournamentButton.addEventListener('click', async () => {
-//         const tournamentName = tournamentButtons.tournamentNameInput.value.trim();
-//         const nbPlayers = Number(tournamentButtons.playerCountInput.value.trim());
-//         if (inputParser.parseTournament(tournamentName, nbPlayers) === false)
-//             return;
-//     })
-
-//     tournamentButtons.cancelTournamentButton.addEventListener('click', async () => { 
-//         returnToLobby();
-//     })
-// }
-
-// function getTournamentElementsAsHTML(): TournamentHTMLElements {
-//     return {
-//             tournamentSetupScreen: document.getElementById("tournamentSetup") as HTMLButtonElement,
-//             joinTournamentButton: document.getElementById("joinTournament") as HTMLButtonElement,
-//             createTournamentButton: document.getElementById("createTournament") as HTMLButtonElement,
-//             cancelTournamentButton: document.getElementById("cancelTournament") as HTMLButtonElement,
-//             tournamentNameInput: document.getElementById("tournamentName") as HTMLInputElement,
-//             playerCountInput: document.getElementById("playerCount") as HTMLInputElement
-//     };
-// }
-
-
-//     const lobbyScreen = document.getElementById("lobby")!;
-//     const gameScreen = document.getElementById("gameScreen")!;
-//     const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
-//     const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
-//     const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
-
-//     const tournamentButtons: TournamentHTMLElements = getTournamentElementsAsHTML();    const lobbyScreen = document.getElementById("lobby")!;
-//         const gameScreen = document.getElementById("gameScreen")!;
-//         const joinButton = document.getElementById("joinGame") as HTMLButtonElement;
-//         const playerNameInput = document.getElementById("playerName") as HTMLInputElement;
-//         const cancelButton = document.getElementById("cancelWait") as HTMLButtonElement;
+function initCreationModal(createLobbyModal: HTMLElement)
+{
+    const tournamentName = getEl("tournamentName") as HTMLInputElement;
+    const gameMode = getEl("gameMode") as HTMLSelectElement;
+    const nbPlayer = getEl("nbPlayer") as HTMLSelectElement;
+    const createLobbyButton = getEl('createLobbyButton') as HTMLButtonElement;
+    const cancelCreateButton = getEl('cancelCreateButton') as HTMLButtonElement;
+    const form = getEl('creationForm') as HTMLFormElement;
     
-//         const tournamentButtons: TournamentHTMLElements = getTournamentElementsAsHTML();
+    setupGlobalModalEvents(createLobbyModal ,createLobbyButton, cancelCreateButton);
+
+    form?.addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        const name = tournamentName.value;
+        const mode = gameMode.value;
+        const maxPlayers = parseInt(nbPlayer.value);
+        const currentPlayers = 0;
+        
+        if (!name || name.trim() === '') {
+            alert('Veuillez entrer un nom de tournoi');
+            return;
+        }
+        
+        if (maxPlayers < 2 || maxPlayers > 16) {
+            alert('Nombre de joueurs invalide');
+            return;
+        }
+        const lobbyList = getEl("lobbiesList");
+
+        if (!lobbyList) {
+            console.error('[LOBBY] lobbyList non trouvé!');
+            return;
+        }
+    
+    // Créer la div du tournoi
+    const tournamentDiv = document.createElement('div');
+    tournamentDiv.id = `tournament`;
+    tournamentDiv.className = `bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
+                               hover:bg-opacity-20 transition-all duration-300 
+                               border-2 border-transparent hover:border-sonpi16-orange`;
+    
+    // Contenu HTML du tournoi
+    tournamentDiv.innerHTML = `
+        <div class="flex items-center justify-between">
+            <!-- Infos tournoi -->
+            <div class="flex-1">
+                <h3 class="text-xl font-bold text-sonpi16-orange font-quency mb-2">
+                    ${name}
+                </h3>
+                <div class="flex gap-4 text-sm text-sonpi16-orange opacity-80">
+                    <span class="flex items-center gap-1">
+                        <span class="text-lg">${mode === 'custom' ? '⚡' : '🎮'}</span>
+                        ${mode === 'custom' ? 'Custom' : 'Normal'}
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <span class="text-lg">👥</span>
+                        <span id="player-count">
+                            ${currentPlayers}/${maxPlayers}
+                        </span>
+                    </span>
+                </div>
+            </div>
+            
+            <!-- Boutons d'action -->
+            <div class="flex gap-2">
+                <button 
+                    class="joinTournament bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-lg 
+                           font-bold hover:bg-opacity-90 transition-all font-quency
+                           ${currentPlayers >= maxPlayers ? 'opacity-50 cursor-not-allowed' : ''}"
+                    ${currentPlayers >= maxPlayers ? 'disabled' : ''}>
+                    Rejoindre
+                </button>
+                <button 
+                    class="deleteTournament bg-red-600 text-white px-4 py-2 rounded-lg 
+                           font-bold hover:bg-red-700 transition-all font-quency">
+                    🗑️
+                </button>
+            </div>
+        </div>
+    `;
+    
+    lobbyList.insertBefore(tournamentDiv, lobbyList.firstChild);
+
+    console.log(`creation du tournoi ${mode} ${name} de ${maxPlayers} joueurs`)
+        
+    hide(createLobbyModal);
+        
+    form.reset();
+    });
+}
+
+registerPageInitializer("lobby", initLobby);

@@ -1,4 +1,4 @@
-import { GameState, GameInput, WebSocketMessage } from "../../server/src/types.js";
+import { GameState, GameInput, WebSocketMessage } from "/dist/shared/types.js";
 
 /**
  * @brief WebSocket client for real-time game communication
@@ -11,13 +11,30 @@ export class WebSocketClient
     private reconnectDelay = 1000;
     private lastPingTime = 0;
     private latency = 0;
+    private pendingGameStart: 'player1' | 'player2' | null = null;
+    private _isCustomGame = false;
+    private intentionalDisconnect = false;
     
     public onGameState?: (gameState: GameState) => void;
     public onWaitingForPlayer?: () => void;
-    public onGameStart?: (playerRole: 'player1' | 'player2') => void;
+    private _onGameStart: ((playerRole: 'player1' | 'player2') => void) | null = null;
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number) => void;
+    
+    public get onGameStart() {
+        return this._onGameStart;
+    }
+    
+    public set onGameStart(callback: ((playerRole: 'player1' | 'player2') => void) | null) {
+        this._onGameStart = callback;
+        if (callback && this.pendingGameStart) {
+            console.log('[WEBSOCKET] Appel du callback gameStart en attente avec role:', this.pendingGameStart);
+            callback(this.pendingGameStart);
+            this.pendingGameStart = null;
+        }
+    }
 
     /**
      * @brief Connect to WebSocket server
@@ -47,7 +64,12 @@ export class WebSocketClient
                 this.ws.onclose = () => {
                     console.log('WebSocket fermé');
                     this.onDisconnected?.();
-                    this.attemptReconnect();
+                    if (!this.intentionalDisconnect) {
+                        this.attemptReconnect();
+                    } else {
+                        console.log('Déconnexion volontaire, pas de reconnexion');
+                        this.intentionalDisconnect = false; // Reset le flag
+                    }
                 };
                 this.ws.onerror = (error) => {
                     console.error('Erreur WebSocket:', error);
@@ -70,14 +92,26 @@ export class WebSocketClient
                 break;
                 
             case 'waiting':
-                console.log('[WEBSOCKET] En attente d\'un autre joueur...');
-                this.onWaitingForPlayer?.();
+                const waitingMessage = message.message || 'En attente d\'un autre joueur...';
+                console.log(`[WEBSOCKET] ${waitingMessage}`);
+                if (message.message && message.message.includes('déconnecté')) {
+                    alert(message.message);
+                    this.disconnect();
+                    this.onDisconnected?.();
+                } else {
+                    this.onWaitingForPlayer?.();
+                }
                 break;
                 
             case 'gameStart':
                 if (message.playerRole) {
                     console.log(`[WEBSOCKET] Jeu demarre! Vous etes: ${message.playerRole}`);
-                    this.onGameStart?.(message.playerRole);
+                    if (this._onGameStart) {
+                        this._onGameStart(message.playerRole);
+                    } else {
+                        console.log('[WEBSOCKET] Callback onGameStart pas encore défini, mise en attente...');
+                        this.pendingGameStart = message.playerRole;
+                    }
                 }
                 break;
                 
@@ -92,6 +126,13 @@ export class WebSocketClient
                 this.calculateLatency();
                 break;
                 
+            case 'gameOver':
+                if (message.winner && message.score1 !== undefined && message.score2 !== undefined) {
+                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}`);
+                    this.onGameOver?.(message.winner, message.score1, message.score2);
+                }
+                break;
+                
             default:
                 console.warn('[WEBSOCKET] Type de message inconnu:', message.type);
         }
@@ -103,6 +144,7 @@ export class WebSocketClient
      */
     public joinGame(playerName: string): void
     {
+        this._isCustomGame = false;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'join',
@@ -118,9 +160,42 @@ export class WebSocketClient
      */
     public joinAIGame(playerName: string): void
     {
+        this._isCustomGame = false;
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = {
                 type: 'joinAI',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
+     * @brief Join custom game with power-ups
+     * @param playerName Player's display name
+     */
+    public joinCustomGame(playerName: string): void
+    {
+        this._isCustomGame = true;
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinCustom',
+                playerName
+            }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
+     * @brief Join custom game against AI with power-ups
+     * @param playerName Player's display name
+     */
+    public joinCustomAIGame(playerName: string): void
+    {
+        this._isCustomGame = true;
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'joinCustomAI',
                 playerName
             }
             this.ws.send(JSON.stringify(message))
@@ -176,13 +251,14 @@ export class WebSocketClient
         console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
-            this.connect(`ws://${window.location.host}/game`).catch(console.error);
+            this.connect(`ws://${window.location.host}/ws`).catch(console.error);
         }, this.reconnectDelay * this.reconnectAttempts);
     }
 
     public disconnect(): void
     {
         if (this.ws) {
+            this.intentionalDisconnect = true; // Marque la déconnexion comme volontaire
             this.ws.close();
             delete this.ws;
         }
@@ -192,4 +268,11 @@ export class WebSocketClient
     {
         return this.ws !== undefined && this.ws.readyState === WebSocket.OPEN;
     }
+
+    public isCustomGame(): boolean
+    {
+        return this._isCustomGame;
+    }
 }
+
+export const wsClient = new WebSocketClient();

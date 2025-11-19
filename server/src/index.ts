@@ -25,15 +25,13 @@ const server = fastify({
 export const app = server;
 export let tournamentManager: TournamentManagerService; //!for testing
 (async () => {
-	const __dirname = path.dirname(fileURLToPath(import.meta.url))
-	const matchmaking = new MatchmakingService()
-	tournamentManager = new TournamentManagerService(matchmaking);
-	const inputParser = new inputParserClass();
-	const db = getDatabase();
-
-  const serverCwd = process.cwd();
-  const publicPath = path.join(serverCwd, '../client/public')
-  const distPath = path.join(serverCwd, '../client/dist')
+  const __dirname = path.dirname(fileURLToPath(import.meta.url))
+  const server = fastify({
+    logger: true // Enable logging
+  })
+  const matchmaking = new MatchmakingService()
+  const publicPath = path.join(__dirname, '../../../../client/public')
+  const distPath = path.join(__dirname, '../../../../client/dist')
   const indexPath = path.join(publicPath, 'index.html')
   // Debug the correct paths
   console.log('Current directory:', process.cwd())
@@ -55,31 +53,15 @@ export let tournamentManager: TournamentManagerService; //!for testing
   
   await server.register(fastifyStatic, {
     root: distPath,
-    prefix: '/dist',
+    prefix: '/dist/',
+    index: false,
     decorateReply: false
   })
   
 
-  await server.register(fastifyCookie);
-
-
-
-  //* code that runs BEFORE each route handler
-  server.addHook('preHandler', async (req, res) => {
-	const id = req.cookies.player_id;
-	if (!id)
-		return ;
-	const player = db.getPlayerBy('id', id);
-	if (player)
-		req.player = player;
-  })
-  /*******************************
-   * WEBSOCKET ROUTES
-   *******************************/
-  
   // WebSocket endpoint for the game
   server.register(async function (fastify) {
-    fastify.get('/game', { websocket: true }, (connection, req) => {
+    fastify.get('/ws', { websocket: true }, (connection, req) => {
       const ws = connection.socket
       ws.on('message', (message) => {
         try {
@@ -388,6 +370,11 @@ server.get<{ Querystring: { playerName: string } }>
     // Skip WebSocket route
     if (request.url === '/game') {
       return res.code(404).send({ error: 'WebSocket endpoint not found' })
+    }
+
+    // Skip les fichiers statiques (JS, CSS, images, etc.)
+    if (request.url.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|json|woff|woff2|ttf)$/)) {
+      return reply.code(404).send('File not found')
     }
     
     // For all other routes, serve the index.html file

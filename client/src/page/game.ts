@@ -112,6 +112,16 @@ function setupWebSocketCallbacks(): void
         attemptStart();
     };
     console.log('[GAME] Callback onGameStart configuré');
+    wsClient.onWaitingForPlayer = () => {
+        const waitingDiv = document.getElementById('waiting')
+        if (gameRunning)
+        {
+            alert('Adversaire déconnecté')
+            returnToLobby()
+        }
+        if (waitingDiv)
+            waitingDiv.classList.remove('hidden')
+    }
     
     wsClient.onGameState = (gameState: GameState) => {
         updateGameState(gameState);
@@ -166,7 +176,9 @@ function setupDisconnectionHandlers(): void
     const handleSurrender = () => {
         if (confirm('Voulez-vous vraiment abandonner la partie ?')) {
             console.log('[GAME] Abandon de la partie');
-            navigate('home');
+            if (wsClient.isConnected())
+                wsClient.surrender()
+            returnToLobby()
         }
     };
 
@@ -236,9 +248,11 @@ function sendInputToServer(): void
 
 function updateGameState(gameState: GameState): void
 {
-    if (!player1 || !player2 || !ball) {
-        console.warn('[GAME] updateGameState appelé mais objets pas encore initialisés');
-        return;
+    if (!player1 || !player2 || !ball)
+    {
+        console.warn('[GAME] updateGameState appelé mais objets pas encore initialisés, retry dans 50ms')
+        setTimeout(() => updateGameState(gameState), 50)
+        return
     }
 
     const oldScore1 = player1.score;

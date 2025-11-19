@@ -1,10 +1,9 @@
-import { Player } from "./Player.js";
-import { Ball } from "./Ball.js";
-import { COLORS, FONTS } from "./constants.js";
-import { WebSocketClient } from "./WebSocketClient.js";
-import { GameState, GameInput } from "../../server/src/types.js";
-import { inputParserClass } from "../../shared/inputParser.js"
-import { paddleSize, paddleOffset } from "../../server/src/consts.js";
+import { Player } from "/dist/shared/models/Player.js";
+import { Ball } from "/dist/shared/models/Ball.js";
+import { wsClient } from "./components/WebSocketClient.js";
+import { GameState, GameInput, PowerUpFruit } from "/dist/shared/types.js";
+// import { inputParserClass } from "./components/inputParser.js"
+import { paddleSize, paddleOffset } from "/dist/shared/consts.js";
 import { TournamentError, UserError, errClient } from "../../shared/errors.js";
 
 import { TournamentHTMLElements } from "../../server/src/types.js"

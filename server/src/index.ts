@@ -8,9 +8,9 @@ import { MatchmakingService } from './services/matchmaking.js'
 import fs from 'fs'
 import { TournamentManagerService } from './services/tournamentManager.js'
 import { Tournament, TournamentStatus } from './services/tournament.js'
-import { inputParserClass } from '../../shared/inputParser.js'
+import { inputParserClass } from '@app/shared/inputParser.js'
 import { getDatabase } from './db/databaseSingleton.js'
-import { DatabaseError, errTournament, TournamentError, UserError } from '../../shared/errors.js'
+import { DatabaseError, errTournament, TournamentError, UserError } from '@app/shared/errors.js'
 import { Player } from './types.js'
 declare module 'fastify' {
   interface FastifyRequest {
@@ -34,14 +34,6 @@ export let tournamentManager: TournamentManagerService; //!for testing
   const serverCwd = process.cwd();
   const publicPath = path.join(serverCwd, '../client/public')
   const distPath = path.join(serverCwd, '../client/dist')
-  //*theirs
-//   const __dirname = path.dirname(fileURLToPath(import.meta.url))
-  const server = fastify({
-    logger: true // Enable logging
-  })
-//   const matchmaking = new MatchmakingService()
-//   const publicPath = path.join(__dirname, '../../../../client/public')
-//   const distPath = path.join(__dirname, '../../../../client/dist')
   const indexPath = path.join(publicPath, 'index.html')
   // Debug the correct paths
   console.log('Current directory:', process.cwd())

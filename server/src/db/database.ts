@@ -1,7 +1,7 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player } from "../types.js"
-import { DatabaseError } from "../../../shared/errors.js"
+import { DatabaseError } from "@app/shared/errors.js"
 import { getDatabase } from "./databaseSingleton.js";
 // import { create } from "domain";
 

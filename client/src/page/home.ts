@@ -1,5 +1,5 @@
 import { registerPageInitializer, navigate } from "../router.js";
-import { inputParserClass } from "../components/inputParser.js";
+import { inputParserClass } from "../../../shared/src/inputParser.js"
 import { wsClient } from "../components/WebSocketClient.js";
 import { getEl } from "../app.js";
 
@@ -47,8 +47,9 @@ function initLoginModal(loginModal: HTMLElement)
     {
         const playerInput = getPlayerName();
 
+		//! change
         console.log(`playerInput = ${playerInput}`)
-        if (inputParser.parsePlayerName(playerInput) === false) 
+        if (inputParser.parsePlayerNameWithNoThrow(playerInput) === false) 
             alert(`${playerInput} n'est pas un nom valide`);
         else 
         {

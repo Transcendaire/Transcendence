@@ -45,9 +45,20 @@ export class inputParserClass {
 		if (!playerName || playerName === undefined)
 			throw new UserError('Nom du joueur requis');
     	if (playerName.trim().length < 3)
-			throw new UserError('Le nom doit faire au moins 3 caractères')
+			throw new UserError('Le nom doit faire au moins 3 caractères');
     	if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
-			throw new UserError('Au moins un caractère invalide dans le nom du joueur')
+			throw new UserError('Au moins un caractère invalide dans le nom du joueur');
+	}
+
+	public parsePlayerNameWithNoThrow(playerName: string): boolean
+	{
+		if (!playerName || playerName === undefined)
+			return false;
+    	if (playerName.trim().length < 3)
+			return false;
+    	if (!/^[a-zA-Z0-9_-]+$/.test(playerName))
+			return false;
+		return true;
 	}
 
 	

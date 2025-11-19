@@ -2,7 +2,8 @@ import { Player } from "/dist/shared/models/Player.js";
 import { Ball } from "/dist/shared/models/Ball.js";
 import { wsClient } from "../components/WebSocketClient.js";
 import { GameState, GameInput, PowerUpFruit } from "/dist/shared/types.js";
-import { inputParserClass } from "../components/inputParser.js"
+// import { inputParserClass } from "../components/inputParser.js"
+import { inputParserClass } from "../../../shared/src/inputParser.js"
 import { paddleSize, paddleOffset} from "/dist/shared/consts.js";
 import { COLORS, FONTS } from "../components/consts.js";
 import { registerPageInitializer , navigate } from "../router.js";

@@ -2,8 +2,8 @@ import { render, navigate, getCurrentRoute, Route } from './router.js';
 
 import './page/home.js';
 import './page/profile.js';
-import './page/game.js';
-import './page/lobby.js';
+import './page/game/index.js';
+import './page/lobby.js'
 
 console.log('[APP] Application chargée');
 

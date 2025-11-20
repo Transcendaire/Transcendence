@@ -1,6 +1,6 @@
 import fastify from 'fastify'
 import websocket from '@fastify/websocket'
-import { MatchmakingService } from './services/matchmaking.js'
+import { MatchmakingService } from './services/matchmaking/matchmaking.js'
 
 (async () => {
   const server = fastify({

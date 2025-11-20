@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws';
-import { MatchmakingService } from './matchmaking.js';
+import { MatchmakingService } from './matchmaking/matchmaking.js';
 import { getDatabase } from '../db/databaseSingleton.js';
 import { Tournament, Player } from '../types.js';
 

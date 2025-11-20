@@ -1,90 +1,309 @@
 import { WebSocket } from 'ws'
-import { Player } from './types.js'
+import { Lobby, LobbyPlayer, CustomGameSettings } from '@app/shared/types.js'
+import { GameRoomManager } from './gameRoom.js'
 
 /**
- * @brief Lobby for multiplayer games (2-6 players) and tournaments
- */
-export interface Lobby
-{
-	id: string
-	name: string
-	creatorId: string
-	type: 'multiplayer' | 'tournament'
-	maxPlayers: number
-	isCustom: boolean
-	players: Player[]
-	status: 'waiting' | 'starting' | 'playing'
-	createdAt: number
-}
-
-/**
- * @brief Manages game lobbies for multiplayer and tournaments
- * @details This will handle lobby creation, joining, and starting games with bots
+ * @brief Manages custom game lobbies for 2-6 players
+ * @details Handles lobby creation, player management, bot addition,
+ * ownership transfer, and game start with strict security checks
  */
 export class LobbyManager
 {
 	private lobbies: Map<string, Lobby> = new Map()
+	private socketToLobby: Map<WebSocket, string> = new Map()
+	private lobbyToSockets: Map<string, Set<WebSocket>> = new Map()
+	private socketToPlayerId: Map<WebSocket, string> = new Map()
+	private gameRoomManager: GameRoomManager
+	private allSockets: Map<WebSocket, any>
+
+	constructor(gameRoomManager: GameRoomManager, allSockets: Map<WebSocket, any>)
+	{
+		this.gameRoomManager = gameRoomManager
+		this.allSockets = allSockets
+	}
 
 	/**
-	 * @brief Create new lobby
-	 * @param creator Creator player
-	 * @param name Lobby name
-	 * @param type Multiplayer or tournament
-	 * @param maxPlayers Maximum players (2-6 for multiplayer, 4-16 for tournament)
-	 * @param isCustom Enable power-ups
-	 * @returns Created lobby ID
+	 * @brief Create new custom lobby
+	 * @param socket Creator's WebSocket connection
+	 * @param playerName Creator's name
+	 * @param lobbyName Lobby display name
+	 * @param lobbyType Type of lobby (tournament or multiplayergame)
+	 * @param settings Game settings
+	 * @returns Created lobby ID or null if player already in lobby
 	 */
-	public createLobby(creator: Player, name: string, type: 'multiplayer' | 'tournament', maxPlayers: number, isCustom: boolean): string
+	public createLobby(
+		socket: WebSocket,
+		playerName: string,
+		lobbyName: string,
+		lobbyType: 'tournament' | 'multiplayergame',
+		settings: CustomGameSettings
+	): string | null
 	{
-		const lobbyId = Math.random().toString(36).substr(2, 9)
+		const playerId = this.socketToPlayerId.get(socket) || 
+			`player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+		if (this.socketToLobby.has(socket))
+			return null;
+		const lobbyId = `lobby-${Date.now()}-${Math.random().toString(36)
+			.substr(2, 9)}`
+		const creatorPlayer: LobbyPlayer = {
+			id: playerId,
+			name: playerName,
+			isBot: false,
+			isReady: true
+		}
 		const lobby: Lobby = {
 			id: lobbyId,
-			name,
-			creatorId: creator.id,
-			type,
-			maxPlayers,
-			isCustom,
-			players: [creator],
+			creatorId: playerId,
+			name: lobbyName,
+			type: lobbyType,
+			settings: settings,
+			players: [creatorPlayer],
+			maxPlayers: lobbyType === 'tournament' ? 16 : 6,
 			status: 'waiting',
 			createdAt: Date.now()
 		}
+
 		this.lobbies.set(lobbyId, lobby)
-		console.log(`[LOBBY] Created ${type} lobby "${name}" (${lobbyId}) - max ${maxPlayers} players`)
+		this.trackSocket(socket, lobbyId, playerId)
+		console.log(`[LOBBY] Created ${lobbyType} lobby "${lobbyName}" (${lobbyId}) by ${playerName}`)
+		this.broadcastLobbyListToAll()
 		return lobbyId
 	}
 
 	/**
 	 * @brief Join existing lobby
-	 * @param lobbyId Lobby to join
-	 * @param player Player joining
-	 * @returns True if successfully joined
+	 * @param socket Player's WebSocket
+	 * @param playerName Player's name
+	 * @param lobbyId Target lobby ID
+	 * @returns Error message or null on success
 	 */
-	public joinLobby(lobbyId: string, player: Player): boolean
+	public joinLobby(
+		socket: WebSocket,
+		playerName: string,
+		lobbyId: string
+	): string | null
 	{
+		const playerId = this.socketToPlayerId.get(socket) || 
+			`player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+
+		if (this.socketToLobby.has(socket))
+			return "You are already in a lobby"
 		const lobby = this.lobbies.get(lobbyId)
+
+		if (!lobby)
+			return "Lobby not found"
+		if (lobby.status !== 'waiting')
+			return "Lobby already started"
+		if (lobby.players.length >= lobby.maxPlayers)
+			return "Lobby is full"
+		const newPlayer: LobbyPlayer = {
+			id: playerId,
+			name: playerName,
+			isBot: false,
+			isReady: false
+		}
+
+		lobby.players.push(newPlayer)
+		this.trackSocket(socket, lobbyId, playerId)
+		console.log(`[LOBBY] ${playerName} joined ${lobbyId} (${lobby.players
+			.length}/${lobby.maxPlayers})`)
+		this.broadcastLobbyUpdate(lobby)
+		this.broadcastLobbyListToAll()
+		return null
+	}
+
+	/**
+	 * @brief Leave lobby
+	 * @param socket Player's WebSocket
+	 * @returns True if successfully left
+	 */
+	public leaveLobby(socket: WebSocket): boolean
+	{
+		const lobbyId = this.socketToLobby.get(socket)
+		const playerId = this.socketToPlayerId.get(socket)
+
+		if (!lobbyId || !playerId)
+			return false
+		const lobby = this.lobbies.get(lobbyId)
+
 		if (!lobby)
 			return false
-		if (lobby.status !== 'waiting')
-			return false
-		if (lobby.players.length >= lobby.maxPlayers)
-			return false
-		lobby.players.push(player)
-		console.log(`[LOBBY] ${player.name} joined lobby ${lobbyId} (${lobby.players.length}/${lobby.maxPlayers})`)
+		this.untrackSocket(socket)
+		const playerIndex = lobby.players.findIndex(p => p.id === playerId)
+
+		if (playerIndex > -1)
+			lobby.players.splice(playerIndex, 1)
+		if (lobby.players.length === 0)
+		{
+			console.log(`[LOBBY] Deleting empty lobby ${lobbyId}`)
+			this.lobbies.delete(lobbyId)
+			this.lobbyToSockets.delete(lobbyId)
+			this.broadcastLobbyListToAll()
+			return true
+		}
+		if (lobby.creatorId === playerId)
+			this.transferOwnership(lobby)
+		this.broadcastLobbyUpdate(lobby)
+		this.broadcastLobbyListToAll()
+		console.log(`[LOBBY] Player ${playerId} left ${lobbyId}`)
 		return true
 	}
 
 	/**
+	 * @brief Add bot to lobby
+	 * @param socket Requester's WebSocket
+	 * @param lobbyId Target lobby ID
+	 * @returns Error message or null on success
+	 */
+	public addBot(socket: WebSocket, lobbyId: string): string | null
+	{
+		const playerId = this.socketToPlayerId.get(socket)
+		const lobby = this.lobbies.get(lobbyId)
+
+		if (!lobby)
+			return "Lobby not found"
+		if (lobby.creatorId !== playerId)
+			return "Only lobby owner can add bots"
+		if (lobby.players.length >= lobby.maxPlayers)
+			return "Lobby is full"
+		const botCount = lobby.players.filter(p => p.isBot).length
+		const botId = `bot-${Date.now()}-${Math.random().toString(36)
+			.substr(2, 5)}`
+		const bot: LobbyPlayer = {
+			id: botId,
+			name: `Bot #${botCount + 1}`,
+			isBot: true,
+			isReady: true
+		}
+
+		lobby.players.push(bot)
+		this.broadcastLobbyUpdate(lobby)
+		this.broadcastLobbyListToAll()
+		console.log(`[LOBBY] Bot added to ${lobbyId} (${lobby.players.length}/${lobby.maxPlayers})`)
+		return null
+	}
+
+	/**
+	 * @brief Remove bot from lobby
+	 * @param socket Requester's WebSocket
+	 * @param lobbyId Target lobby ID
+	 * @param botId Bot ID to remove
+	 * @returns Error message or null on success
+	 */
+	public removeBot(
+		socket: WebSocket,
+		lobbyId: string,
+		botId: string
+	): string | null
+	{
+		const playerId = this.socketToPlayerId.get(socket)
+		const lobby = this.lobbies.get(lobbyId)
+
+		if (!lobby)
+			return "Lobby not found"
+		if (lobby.creatorId !== playerId)
+			return "Only lobby owner can remove bots"
+		const botIndex = lobby.players.findIndex(p => p.id === botId && 
+			p.isBot)
+
+		if (botIndex === -1)
+			return "Bot not found"
+		lobby.players.splice(botIndex, 1)
+		this.broadcastLobbyUpdate(lobby)
+		this.broadcastLobbyListToAll()
+		console.log(`[LOBBY] Bot ${botId} removed from ${lobbyId}`)
+		return null
+	}
+
+	/**
+	 * @brief Start lobby game
+	 * @param socket Requester's WebSocket
+	 * @param lobbyId Target lobby ID
+	 * @returns Error message or null on success
+	 */
+	public startLobby(socket: WebSocket, lobbyId: string): string | null
+	{
+		const playerId = this.socketToPlayerId.get(socket)
+		const lobby = this.lobbies.get(lobbyId)
+
+		if (!lobby)
+			return "Lobby not found"
+		if (lobby.creatorId !== playerId)
+			return "Only lobby owner can start game"
+		if (lobby.players.length < 2)
+			return "Need at least 2 players"
+		if (lobby.players.length > 6)
+			return "Maximum 6 players allowed"
+		lobby.status = 'starting'
+		console.log(`[LOBBY] Starting game ${lobbyId} with ${lobby.players
+			.length} players`)
+		this.broadcastLobbyUpdate(lobby)
+		
+		const sockets = this.lobbyToSockets.get(lobbyId)
+		if (sockets)
+		{
+			for (const sock of sockets)
+				this.untrackSocket(sock)
+		}
+		
+		this.lobbies.delete(lobbyId)
+		this.lobbyToSockets.delete(lobbyId)
+		this.broadcastLobbyListToAll()
+		return null
+	}
+
+	/**
+	 * @brief Delete lobby (owner only)
+	 * @param socket Requester's WebSocket
+	 * @param lobbyId Target lobby ID
+	 * @returns Error message or null on success
+	 */
+	public deleteLobby(socket: WebSocket, lobbyId: string): string | null
+	{
+		const playerId = this.socketToPlayerId.get(socket)
+		const lobby = this.lobbies.get(lobbyId)
+
+		if (!lobby)
+			return "Lobby not found"
+		if (lobby.creatorId !== playerId)
+			return "Only lobby owner can delete lobby"
+		
+		const sockets = this.lobbyToSockets.get(lobbyId)
+		if (sockets)
+		{
+			const message = JSON.stringify({
+				type: 'lobbyError',
+				message: 'Lobby has been deleted by owner'
+			})
+			for (const sock of sockets)
+			{
+				if (sock.readyState === WebSocket.OPEN)
+					sock.send(message)
+				this.untrackSocket(sock)
+			}
+		}
+
+		this.lobbies.delete(lobbyId)
+		this.lobbyToSockets.delete(lobbyId)
+		console.log(`[LOBBY] Lobby ${lobbyId} deleted by owner`)
+		this.broadcastLobbyListToAll()
+		return null
+	}
+
+	/**
 	 * @brief Get all open lobbies
-	 * @returns List of lobbies with status 'waiting'
+	 * @returns Array of lobbies with status 'waiting'
 	 */
 	public getOpenLobbies(): Lobby[]
 	{
-		return Array.from(this.lobbies.values()).filter(l => l.status === 'waiting')
+		return Array.from(this.lobbies.values()).filter(l => l.status === 
+			'waiting')
 	}
 
 	/**
 	 * @brief Get lobby by ID
-	 * @param lobbyId Lobby ID
+	 * @param lobbyId Lobby identifier
 	 * @returns Lobby or undefined
 	 */
 	public getLobby(lobbyId: string): Lobby | undefined
@@ -93,37 +312,121 @@ export class LobbyManager
 	}
 
 	/**
-	 * @brief Remove player from lobby
-	 * @param lobbyId Lobby ID
-	 * @param playerId Player ID to remove
+	 * @brief Handle socket disconnection
+	 * @param socket Disconnected WebSocket
 	 */
-	public removePlayerFromLobby(lobbyId: string, playerId: string): void
+	public handleDisconnect(socket: WebSocket): void
 	{
-		const lobby = this.lobbies.get(lobbyId)
-		if (!lobby)
+		this.leaveLobby(socket)
+	}
+
+	/**
+	 * @brief Transfer lobby ownership to random remaining player
+	 * @param lobby Target lobby
+	 */
+	private transferOwnership(lobby: Lobby): void
+	{
+		const nonBotPlayers = lobby.players.filter(p => !p.isBot)
+
+		if (nonBotPlayers.length === 0)
 			return
-		const index = lobby.players.findIndex(p => p.id === playerId)
-		if (index > -1)
-			lobby.players.splice(index, 1)
-		if (lobby.players.length === 0 || playerId === lobby.creatorId)
+		const randomIndex = Math.floor(Math.random() * nonBotPlayers.length)
+		const newOwner = nonBotPlayers[randomIndex]
+
+		if (!newOwner)
+			return
+		lobby.creatorId = newOwner.id
+		console.log(`[LOBBY] Ownership transferred to ${newOwner.name} in ${lobby.id}`)
+	}
+
+	/**
+	 * @brief Track socket association with lobby
+	 * @param socket WebSocket connection
+	 * @param lobbyId Lobby identifier
+	 * @param playerId Player identifier
+	 */
+	private trackSocket(
+		socket: WebSocket,
+		lobbyId: string,
+		playerId: string
+	): void
+	{
+		this.socketToLobby.set(socket, lobbyId)
+		this.socketToPlayerId.set(socket, playerId)
+		if (!this.lobbyToSockets.has(lobbyId))
+			this.lobbyToSockets.set(lobbyId, new Set())
+		this.lobbyToSockets.get(lobbyId)!.add(socket)
+	}
+
+	/**
+	 * @brief Remove socket tracking
+	 * @param socket WebSocket connection
+	 */
+	private untrackSocket(socket: WebSocket): void
+	{
+		const lobbyId = this.socketToLobby.get(socket)
+
+		if (lobbyId)
 		{
-			console.log(`[LOBBY] Closing empty/creator-left lobby ${lobbyId}`)
-			this.lobbies.delete(lobbyId)
+			const sockets = this.lobbyToSockets.get(lobbyId)
+			if (sockets)
+			{
+				sockets.delete(socket)
+				if (sockets.size === 0)
+					this.lobbyToSockets.delete(lobbyId)
+			}
+		}
+		this.socketToLobby.delete(socket)
+		this.socketToPlayerId.delete(socket)
+	}
+
+	/**
+	 * @brief Broadcast lobby update to all members
+	 * @param lobby Lobby to broadcast
+	 */
+	private broadcastLobbyUpdate(lobby: Lobby): void
+	{
+		const sockets = this.lobbyToSockets.get(lobby.id)
+		const message = JSON.stringify({
+			type: 'lobbyUpdate',
+			lobby: lobby
+		})
+
+		if (!sockets)
+			return
+		for (const socket of sockets)
+			if (socket.readyState === WebSocket.OPEN)
+				socket.send(message)
+	}
+
+	/**
+	 * @brief Broadcast lobby list to all connected clients
+	 * @details Sends updated lobby list after creation/deletion/changes
+	 */
+	private broadcastLobbyListToAll(): void
+	{
+		const lobbies = this.getOpenLobbies()
+		const message = JSON.stringify({
+			type: 'lobbyList',
+			lobbies: lobbies
+		})
+
+		console.log(`[LOBBY] Broadcasting lobby list to ${this.allSockets.size} clients`)
+		for (const socket of this.allSockets.keys())
+		{
+			if (socket.readyState === WebSocket.OPEN)
+				socket.send(message)
 		}
 	}
 
 	/**
-	 * @brief Start game from lobby (will fill remaining slots with AI)
-	 * @param lobbyId Lobby to start
-	 * @returns True if game started successfully
+	 * @brief Send message to specific socket
+	 * @param socket Target WebSocket
+	 * @param message Message object
 	 */
-	public startLobbyGame(lobbyId: string): boolean
+	private sendMessage(socket: WebSocket, message: any): void
 	{
-		const lobby = this.lobbies.get(lobbyId)
-		if (!lobby || lobby.status !== 'waiting')
-			return false
-		lobby.status = 'starting'
-		console.log(`[LOBBY] Starting ${lobby.type} game ${lobbyId} with ${lobby.players.length}/${lobby.maxPlayers} players`)
-		return true
+		if (socket.readyState === WebSocket.OPEN)
+			socket.send(JSON.stringify(message))
 	}
 }

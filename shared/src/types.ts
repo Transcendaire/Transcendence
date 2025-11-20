@@ -18,6 +18,31 @@ export type PowerUpFruit = {
 	rotation: number;
 }
 
+export type CustomGameSettings = {
+	maxScore: number;
+	powerUpsEnabled: boolean;
+	fruitFrequency: 'low' | 'normal' | 'high';
+}
+
+export type LobbyPlayer = {
+	id: string;
+	name: string;
+	isBot: boolean;
+	isReady: boolean;
+}
+
+export type Lobby = {
+	id: string;
+	creatorId: string;
+	name: string;
+	type: 'tournament' | 'multiplayergame';
+	settings: CustomGameSettings;
+	players: LobbyPlayer[];
+	maxPlayers: number;
+	status: 'waiting' | 'starting' | 'playing';
+	createdAt: number;
+}
+
 export type GameState = {
 	player1: {
 		paddle: { y: number };
@@ -66,6 +91,18 @@ export type WebSocketMessage =
 | { type: "surrender" }
 | { type: "ping" }
 | { type: "pong" }
+| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; settings: CustomGameSettings }
+| { type: "joinLobby"; playerName: string; lobbyId: string }
+| { type: "leaveLobby"; lobbyId: string }
+| { type: "deleteLobby"; lobbyId: string }
+| { type: "addBot"; lobbyId: string }
+| { type: "removeBot"; lobbyId: string; botId: string }
+| { type: "startLobby"; lobbyId: string }
+| { type: "requestLobbyList" }
+| { type: "lobbyCreated"; lobbyId: string; lobby: Lobby }
+| { type: "lobbyUpdate"; lobby: Lobby }
+| { type: "lobbyList"; lobbies: Lobby[] }
+| { type: "lobbyError"; message: string }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

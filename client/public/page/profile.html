@@ -1,0 +1,68 @@
+div class="flex items-center mb-8">
+    <button id="back-home" class="flex items-center text-sonpi16-black hover:scale-105 transition">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path  stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            <span class="font-quency text-xl">Retour</span>
+    </button>
+        </div>
+
+        <div class="max-w-4xl mx-auto w-full">
+
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+            <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
+        <!-- Avatar -->
+            <div class="flex-shrink-0">
+                <div class="w-32 h-32 bg-sonpi16-orange rounded-full flex items-center justify-center">
+                <span class="text-white font-quency text-5xl" id="user-initial">u</span>
+            </div>
+        </div>
+
+        <div class="flex-1 text-center sm:text-left">
+          <h1 class="text-3xl font-bold font-quency text-sonpi16-black mb-2" id="username">username</h1>
+          <p class="text-gray-600 mb-4">Membre depuis le <span id="join-date">10 octobre 2025</span></p>
+          
+          <div class="flex gap-6 justify-center sm:justify-start">
+            <div>
+              <p class="text-2xl font-bold text-sonpi16-orange" id="total-games">0</p>
+              <p class="text-sm text-gray-600">Parties</p>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-green-600" id="wins">0</p>
+              <p class="text-sm text-gray-600">Victoires</p>
+            </div>
+            <div>
+              <p class="text-2xl font-bold text-red-600" id="losses">0</p>
+              <p class="text-sm text-gray-600">Défaites</p>
+            </div>
+          </div>
+        </div>
+
+        <button id="edit-profile" class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded-xl hover:scale-105 transition font-quency">
+          Éditer
+        </button>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+      <h2 class="text-2xl font-bold font-quency text-sonpi16-black mb-6">Statistiques</h2>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
+        <div class="text-center p-4 bg-gray-50 rounded-lg">
+          <p class="text-gray-600 mb-2">Ratio victoires</p>
+          <p class="text-3xl font-bold text-sonpi16-orange" id="win-rate">0%</p>
+        </div>
+        
+        <div class="text-center p-4 bg-gray-50 rounded-lg">
+          <p class="text-gray-600 mb-2">Plus longue série</p>
+          <p class="text-3xl font-bold text-green-600" id="win-streak">0</p>
+        </div>
+        
+        <div class="text-center p-4 bg-gray-50 rounded-lg">
+          <p class="text-gray-600 mb-2">Points marqués</p>
+          <p class="text-3xl font-bold text-sonpi16-black" id="total-points">0</p>
+        </div>
+      </div>
+    </div>   
+    </div>
+  </div>

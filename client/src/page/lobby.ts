@@ -59,8 +59,6 @@ function initCreationModal(createLobbyModal: HTMLElement)
     tournamentDiv.className = `bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                                hover:bg-opacity-20 transition-all duration-300 
                                border-2 border-transparent hover:border-sonpi16-orange`;
-    
-    // Contenu HTML du tournoi
     tournamentDiv.innerHTML = `
         <div class="flex items-center justify-between">
             <!-- Infos tournoi -->
@@ -90,11 +88,6 @@ function initCreationModal(createLobbyModal: HTMLElement)
                            ${currentPlayers >= maxPlayers ? 'opacity-50 cursor-not-allowed' : ''}"
                     ${currentPlayers >= maxPlayers ? 'disabled' : ''}>
                     Rejoindre
-                </button>
-                <button 
-                    class="deleteTournament bg-red-600 text-white px-4 py-2 rounded-lg 
-                           font-bold hover:bg-red-700 transition-all font-quency">
-                    🗑️
                 </button>
             </div>
         </div>

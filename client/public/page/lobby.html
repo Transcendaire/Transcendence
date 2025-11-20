@@ -53,6 +53,8 @@
         </div>
     </div>
 
+    <!-- lobby Creation -->
+
     <div id="createLobbyModal" 
          class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
         <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
@@ -67,11 +69,24 @@
                         Nom du lobby
                     </label>
                     <input id="tournamentName" type="text" 
-                            placeholder="SquidGame"
+                           placeholder="SquidGame"
                            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                   px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                   focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                   font-quency">
+                </div>
+
+                <div>
+                    <label id="gameMode" class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                        Type de partie
+                    </label>
+                    <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                                   px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                                   focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                                   font-quency">
+                            <option>Normal</option>
+                            <option>Custom</option>
+                    </select>
                 </div>
                 
                 <div>
@@ -82,13 +97,13 @@
                                    px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                    focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                    font-quency">
-                            <option class="bg-sonpi16-orange">Normal</option>
-                            <option>Custom</option>
+                            <option>Tournoi</option>
+                            <option>Multiplayer</option>
                     </select>
                 </div>
                 
                 <div>
-                    <label id="nbPlayer" class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    <label id="maxPlayer" class="block text-sonpi16-orange font-bold mb-2 font-quency">
                         Nombre de joueurs
                     </label>
                     <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
@@ -115,6 +130,34 @@
                     </button>
                 </div>
             </form>
-        </div>
+        </div>  
     </div>
+
+    <!-- lobbyModal -->
+
+    <div id="lobbyModal" class="hidden fixed inset-0 bg-black/50">
+  <div class="flex flex-col justify-start bg-sonpi16-black rounded-3xl p-6 max-w-2xl min-h-[700px] mx-auto mt-20 ">
+    <div class="border-b border-sonpi16-orange">
+      <h2 id="roomName" class="text-2xl font-bold text-sonpi16-orange font-quency item text-center ">${RoomName}</h2>
+    </div>
+
+    <div id="playersList" 
+        class="overflow-y-auto grid grid-cols-2 items-start
+                    scroll-smooth gap-4 max-w-full max-h-[550px] p-7 ">
+
+        <div class="flex flex-row gap-12 items-center border-sonpi16-black rounded-xl bg-sonpi16-orange w-full">
+            <img src="./assets/Transcendaire.png" alt="avatar" class="w-16 h-16 rounded-full object-cover">
+            <span id="${player.id}" class="font-quency m">${playerName}</span>
+        </div>
+
+    </div>
+
+    <div class="flex flex-row justify-between mt-auto">
+      <span id="playerCount" class="text-sonpi16-orange px-6 py-3 rounded-xl font-bold">${nbPlayer}/${maxPlayer}</span>
+      <button id="startGame" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">Lancer la partie</button>
+      <button id="quitRoom" class="font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">quitter la partie</button>
+    </div>
+    
+  </div>
+</div>
     

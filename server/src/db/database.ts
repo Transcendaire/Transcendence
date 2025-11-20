@@ -1,7 +1,7 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player } from "../types.js"
-import { DatabaseError } from "@app/shared/errors.js"
+import { DatabaseError, errDatabase } from "@app/shared/errors.js"
 import { getDatabase } from "./databaseSingleton.js";
 // import { create } from "domain";
 
@@ -45,7 +45,18 @@ export class DatabaseService {
 	 */
 	private setDatabase(): void {
 		this.db.exec(
-			`CREATE TABLE IF NOT EXISTS players (
+			`CREATE TABLE IF NOT EXISTS users (
+			id TEXT PRIMARY KEY,
+			login TEXT UNIQUE NOT NULL, 
+			password TEXT, //*this is hashed
+			alias TEXT NOT NULL, //*pseudo but called it alias for concordance
+			created_at INTEGER NOT NULL,
+			tournament_alias TEXT,
+			games_played INTEGER DEFAULT 0,
+			games_won INTEGER DEFAULT 0,
+			online BOOLEAN DEFAULT false 
+			);
+			CREATE TABLE IF NOT EXISTS players (
 			id TEXT PRIMARY KEY,
 			alias TEXT UNIQUE NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -86,20 +97,95 @@ export class DatabaseService {
 		`);
 	}
 
+
+
+				//*******************************          USERS         ************************************ */
+
+	/**
+	 * @brief Creates a new user account
+	 * @param login Private login for authentication
+	 * @param password Hashed password
+	 * @param publicLogin Public display name
+	 * @returns Generated UUID for the created user
+	 * @note No parsing is done here because the server does it before calling this method.
+	 */
+	public createUser(login: string, hashedPassword: string, alias: string): string 
+	{
+		const id = randomUUID();
+		const currDate = Date.now();
+		this.db.prepare(`
+			INSERT INTO users (id, login, password, alias, created_at, tournament_alias, games_played, games_won, online)
+			VALUES (?, ?, ?, ?, ?, 0)`
+		).run(id, login.trim(), hashedPassword, alias.trim(), currDate);
+		this.createPlayer(alias, id, currDate);
+
+		return id;
+	}
+
+	public getUserByLogin(login: string)
+	{
+		return this.db.prepare('SELECT * FROM users where login = ?').get(login);
+	}
+
+	public getUserById(id: string)
+	{
+		return this.db.prepare('SELECT * FROM users where id = ?').get(id);
+	}
+
+	/**
+	 * @brief Sets user online status
+	 * @param userId User's UUID
+	 * @param online Boolean (1 for online, 0 for offline)
+	 */
+	public setUserOnlineStatus(userId: string, online: boolean) : void
+	{
+		this.db.prepare('UPDATE users SET online = ? WHERE id = ?').get(online, userId);//! check if it works with a boolean
+	}
+
+	/**
+	 * @brief Updates user's game statistics
+	 * @param userId User's UUID
+	 * @param won Whether the user won the game
+	 */
+	public updateUserStats(userId: string, won: boolean): void 
+	{
+		if (won)
+			this.db.prepare('UPDATE users SET games_played = games_played + 1, games_won + 1 WHERE id = ?').run(userId);
+		else
+			this.db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
+	}
+
+	/**
+	 * @brief Updates user's alias
+	 * @param userId User's UUID
+	 * @param newAlias New alias
+	 * @note No check is done on newAlias (alias' validity, because the server already did it)
+	 */
+	public updateUserAlias(userId: string, newAlias: string): void
+	{
+		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(userId);
+
+		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
+			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
+
+		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+	}
+
+
 	/**
 	 * @brief Creates a new player in the database
 	 * @param alias Unique player alias
+	 * @params id User's UUID
+	 * @params currDate Current date at creation of the user in the database
 	 * @returns Generated UUID for the created player
-	 * @throws Error if alias is invalid or already exists
+	 * @note This function is called when a new user registers. 
+	 * @note No check is done here, since server already handled parsing/duplicate issues
 	 */
-	public createPlayer(alias: string): string 
+	public createPlayer(alias: string, id: string, currDate: number): string 
 	{
 		checkAliasValidity(alias);
-		
-		if (this.getPlayerBy("alias", alias))
-			throw new DatabaseError("Ce nom est déjà pris, merci d'en choisir un nouveau."); //? Should throw
-		const id = randomUUID();
-		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), Date.now(), 'created');
+
+		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), currDate, 'created');
 		return id;
 	}
 
@@ -446,10 +532,7 @@ export class DatabaseService {
 
 		let player = this.getPlayer(alias);
 		if (!player)
-		{
-			const playerId = this.createPlayer(alias);
-			player = { id: playerId, alias, createdAt: Date.now()};
-		}
+			throw new DatabaseError('Impossible d\'ajouter le joueur au tournoi : le joueur n\'existe pas', errDatabase.PLAYER_NOT_FOUND);
 
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
 		).get(tournamentId, player.id);

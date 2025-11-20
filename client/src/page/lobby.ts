@@ -57,6 +57,12 @@ function setupWebSocketCallbacks(): void
         console.error('[LOBBY] Erreur lobby:', message);
         alert(`Erreur: ${message}`);
     };
+    
+    wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
+        console.log(`[LOBBY] Match de tournoi démarre! Rôle: ${playerRole}`);
+        sessionStorage.setItem('playerRole', playerRole);
+        navigate('game');
+    };
 }
 
 function requestLobbyList(): void
@@ -303,15 +309,17 @@ function initCreationModal(createLobbyModal: HTMLElement)
             return;
         }
         
-        console.log(`[LOBBY] Création d'un lobby: ${name}, mode: ${mode}, joueurs: ${maxPlayers}`);
+        const type = gameType?.value || 'MultiplayerGame';
+        const lobbyType: 'tournament' | 'multiplayergame' = 
+            type === 'Tournament' ? 'tournament' : 'multiplayergame';
+
+        console.log(`[LOBBY] Création d'un lobby: ${name}, type: ${type}, mode: ${mode}, joueurs: ${maxPlayers}`);
         
         const settings = {
             maxScore: 5,
             powerUpsEnabled: mode.toLowerCase() === 'custom',
             fruitFrequency: 'normal' as 'low' | 'normal' | 'high'
         };
-        
-        const lobbyType: 'tournament' | 'multiplayergame' = maxPlayers > 6 ? 'tournament' : 'multiplayergame';
         
         wsClient.sendMessage({
             type: 'createCustomLobby',

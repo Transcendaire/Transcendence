@@ -17,9 +17,20 @@ export class GameRoomManager
 	 * @param player1 First player
 	 * @param player2 Second player
 	 * @param isCustom Enable power-ups mode
+	 * @param tournamentMatch Optional tournament match info with callback
 	 * @returns Created game room ID
 	 */
-	public createGame(player1: Player, player2: Player, isCustom: boolean): string
+	public createGame(
+		player1: Player, 
+		player2: Player, 
+		isCustom: boolean,
+		tournamentMatch?: {
+			tournamentId: string
+			matchId: string
+			isFinalMatch: boolean
+			onComplete: (winnerId: string, score1: number, score2: number) => void
+		}
+	): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
 		const gameService = new GameService(canvasWidth, canvasHeight, isCustom)
@@ -34,7 +45,8 @@ export class GameRoomManager
 			player2Input: { up: false, down: false },
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
 			player2PrevSlots: { slot1: false, slot2: false, slot3: false },
-			isCustom
+			isCustom,
+			...(tournamentMatch && { tournamentMatch })
 		}
 		this.activeGames.set(gameId, room)
 		return gameId
@@ -163,10 +175,35 @@ export class GameRoomManager
 		{
 			const gameState = room.gameService.getGameState()
 			const winner = gameState.player1.score > gameState.player2.score ? 'player1' : 'player2'
+			const winnerId = winner === 'player1' ? room.player1.id : room.player2.id
+			const isTournament = !!room.tournamentMatch
+			const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
+			
 			if (room.player1.socket)
-				this.sendMessage(room.player1.socket, { type: 'gameOver', winner, score1: gameState.player1.score, score2: gameState.player2.score })
+				this.sendMessage(room.player1.socket, { 
+					type: 'gameOver', 
+					winner, 
+					score1: gameState.player1.score, 
+					score2: gameState.player2.score,
+					isTournament,
+					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
+				})
 			if (room.player2.socket && room.player2.id !== 'AI')
-				this.sendMessage(room.player2.socket, { type: 'gameOver', winner, score1: gameState.player1.score, score2: gameState.player2.score })
+				this.sendMessage(room.player2.socket, { 
+					type: 'gameOver', 
+					winner, 
+					score1: gameState.player1.score, 
+					score2: gameState.player2.score,
+					isTournament,
+					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
+				})
+			
+			if (room.tournamentMatch)
+			{
+				console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
+				room.tournamentMatch.onComplete(winnerId, gameState.player1.score, gameState.player2.score)
+			}
+			
 			this.endGame(gameId)
 			return
 		}

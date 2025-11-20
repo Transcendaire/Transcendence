@@ -27,17 +27,21 @@ export class TournamentManagerService
 	public createTournament(name: string, maxPlayers: number): string
 	{
 		try {
-			if (this.db.getTournament(undefined, name))
-				throw new TournamentError(`Le tournoi ${name} existe déjà et ne peut pas être créé`, errTournament.ALREADY_EXISTING)
+			const existingTournament = this.db.getTournament(undefined, name)
+			if (existingTournament)
+			{
+				console.log(`[TOURNAMENT_MANAGER] Tournament ${name} already exists in DB, deleting it`)
+				this.db.deleteTournament(existingTournament.id, undefined)
+				this.tournamentsMap.delete(existingTournament.id)
+			}
 			this.db.createTournament(name, maxPlayers);
-
 			const tournamentData = this.db.getTournament(undefined, name);
+
 			if (!tournamentData)
 				throw new DatabaseError(`Impossible de trouver le tournoi ${name} dans la base de données`);
-
 			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking);
-			this.tournamentsMap.set(tournamentData.id, tournament);
 
+			this.tournamentsMap.set(tournamentData.id, tournament);
 			return tournamentData.id;
 		} catch (error) {
 			console.error(`createTournament: error creating tournament ${name}: `, error);

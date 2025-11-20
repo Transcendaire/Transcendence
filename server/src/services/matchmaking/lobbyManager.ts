@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws'
 import { Lobby, LobbyPlayer, CustomGameSettings } from '@app/shared/types.js'
 import { GameRoomManager } from './gameRoom.js'
+import { TournamentManagerService } from '../tournament/tournamentManager.js'
 
 /**
  * @brief Manages custom game lobbies for 2-6 players
@@ -15,11 +16,13 @@ export class LobbyManager
 	private socketToPlayerId: Map<WebSocket, string> = new Map()
 	private gameRoomManager: GameRoomManager
 	private allSockets: Map<WebSocket, any>
+	private tournamentManager: TournamentManagerService
 
-	constructor(gameRoomManager: GameRoomManager, allSockets: Map<WebSocket, any>)
+	constructor(gameRoomManager: GameRoomManager, allSockets: Map<WebSocket, any>, tournamentManager: TournamentManagerService)
 	{
 		this.gameRoomManager = gameRoomManager
 		this.allSockets = allSockets
+		this.tournamentManager = tournamentManager
 	}
 
 	/**
@@ -233,12 +236,64 @@ export class LobbyManager
 			return "Only lobby owner can start game"
 		if (lobby.players.length < 2)
 			return "Need at least 2 players"
-		if (lobby.players.length > 6)
+		if (lobby.type === 'tournament' && lobby.players.length > 16)
+			return "Maximum 16 players for tournaments"
+		if (lobby.type === 'multiplayergame' && lobby.players.length > 6)
 			return "Maximum 6 players allowed"
+		
 		lobby.status = 'starting'
-		console.log(`[LOBBY] Starting game ${lobbyId} with ${lobby.players
-			.length} players`)
+		console.log(`[LOBBY] Starting ${lobby.type} ${lobbyId} with ${lobby.players.length} players`)
 		this.broadcastLobbyUpdate(lobby)
+		
+		if (lobby.type === 'tournament')
+		{
+			try {
+				const uniqueTournamentName = `${lobby.name}-${Date.now()}`
+				const tournamentId = this.tournamentManager.createTournament(uniqueTournamentName, lobby.players.length)
+				const tournament = this.tournamentManager.getTournament(tournamentId)
+				
+				if (!tournament)
+					return "Failed to create tournament"
+				
+				// Add all players to tournament with their sockets
+				const sockets = this.lobbyToSockets.get(lobbyId)
+				console.log(`[LOBBY] Adding ${lobby.players.length} players to tournament`)
+				for (const player of lobby.players)
+				{
+					if (!player.isBot)
+					{
+						let playerSocket: WebSocket | undefined
+						if (sockets)
+						{
+							for (const sock of sockets)
+							{
+								const sockPlayerId = this.socketToPlayerId.get(sock)
+								if (sockPlayerId === player.id)
+								{
+									playerSocket = sock
+									break
+								}
+							}
+						}
+						console.log(`[LOBBY] Adding player ${player.name} with socket: ${playerSocket ? 'YES' : 'NO'}`)
+						tournament.addPlayerToTournament(player.name, playerSocket)
+					}
+				}
+				console.log(`[LOBBY] All players added, starting tournament`)
+				
+				// Start the tournament
+				tournament.runTournament()
+				console.log(`[LOBBY] Tournament ${tournamentId} started with ${lobby.players.length} players`)
+			} catch (error) {
+				console.error(`[LOBBY] Failed to start tournament:`, error)
+				return "Failed to start tournament"
+			}
+		}
+		else
+		{
+			// Handle multiplayer game (not implemented yet)
+			console.log(`[LOBBY] Multiplayer game start not yet implemented`)
+		}
 		
 		const sockets = this.lobbyToSockets.get(lobbyId)
 		if (sockets)

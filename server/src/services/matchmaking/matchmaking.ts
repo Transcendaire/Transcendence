@@ -4,6 +4,7 @@ import { Player } from './types.js'
 import { GameRoomManager } from './gameRoom.js'
 import { QuickMatchService } from './quickMatch.js'
 import { LobbyManager } from './lobbyManager.js'
+import { TournamentManagerService } from '../tournament/tournamentManager.js'
 
 /**
  * @brief Main matchmaking orchestrator
@@ -11,6 +12,7 @@ import { LobbyManager } from './lobbyManager.js'
  * - QuickMatchService: 1v1 quick matches (normal/custom)
  * - LobbyManager: Multiplayer lobbies and tournaments (2-6 players)
  * - GameRoomManager: Active game rooms and loops
+ * - TournamentManagerService: Tournament bracket management
  */
 export class MatchmakingService
 {
@@ -18,12 +20,19 @@ export class MatchmakingService
 	private gameRoomManager: GameRoomManager
 	private quickMatch: QuickMatchService
 	private lobbyManager: LobbyManager
+	private tournamentManager: TournamentManagerService
 
 	constructor()
 	{
 		this.gameRoomManager = new GameRoomManager()
 		this.quickMatch = new QuickMatchService(this.gameRoomManager)
-		this.lobbyManager = new LobbyManager(this.gameRoomManager, this.playerSockets)
+		this.tournamentManager = new TournamentManagerService(this)
+		this.lobbyManager = new LobbyManager(this.gameRoomManager, this.playerSockets, this.tournamentManager)
+	}
+
+	public getGameRoomManager(): GameRoomManager
+	{
+		return this.gameRoomManager
 	}
 
 	/**

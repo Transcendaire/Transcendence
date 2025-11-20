@@ -87,7 +87,7 @@ export type WebSocketMessage =
 | { type: "gameStart"; playerRole: 'player1' | 'player2' }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number }
+| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number; isTournament?: boolean; shouldDisconnect?: boolean }
 | { type: "surrender" }
 | { type: "ping" }
 | { type: "pong" }
@@ -103,6 +103,8 @@ export type WebSocketMessage =
 | { type: "lobbyUpdate"; lobby: Lobby }
 | { type: "lobbyList"; lobbies: Lobby[] }
 | { type: "lobbyError"; message: string }
+| { type: "waitingForMatch"; message: string }
+| { type: "tournamentComplete"; champion: string; tournamentName: string }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

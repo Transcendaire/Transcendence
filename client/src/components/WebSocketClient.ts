@@ -21,7 +21,7 @@ export class WebSocketClient
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
-    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean) => void;
     
     public onLobbyCreated?: (lobbyId: string, lobby: Lobby) => void;
     public onLobbyUpdate?: (lobby: Lobby) => void;
@@ -133,8 +133,8 @@ export class WebSocketClient
                 
             case 'gameOver':
                 if (message.winner && message.score1 !== undefined && message.score2 !== undefined) {
-                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}`);
-                    this.onGameOver?.(message.winner, message.score1, message.score2);
+                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, Should disconnect: ${message.shouldDisconnect}`);
+                    this.onGameOver?.(message.winner, message.score1, message.score2, message.isTournament, message.shouldDisconnect);
                 }
                 break;
                 
@@ -163,6 +163,20 @@ export class WebSocketClient
                 if (message.message) {
                     console.error(`[WEBSOCKET] Erreur lobby: ${message.message}`);
                     this.onLobbyError?.(message.message);
+                }
+                break;
+                
+            case 'waitingForMatch':
+                if (message.message) {
+                    console.log(`[WEBSOCKET] ${message.message}`);
+                    this.onWaitingForPlayer?.();
+                }
+                break;
+                
+            case 'tournamentComplete':
+                if (message.champion && message.tournamentName) {
+                    console.log(`[WEBSOCKET] Tournament ${message.tournamentName} terminé! Champion: ${message.champion}`);
+                    alert(`🏆 Tournoi "${message.tournamentName}" terminé!\nChampion: ${message.champion}`);
                 }
                 break;
                 

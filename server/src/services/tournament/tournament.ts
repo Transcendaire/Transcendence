@@ -67,16 +67,19 @@ export class Tournament {
 	{
 		if (this.status === TournamentStatus.RUNNING)
 			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi a déjà débuté`, errTournament.ALREADY_STARTED);
-
 		if (this.status === TournamentStatus.COMPLETED)
 			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est terminé`, errTournament.ALREADY_OVER);
-		
 		if (this.players.size === this.maxPlayers)
 			throw new TournamentError(`Impossible d'ajouter ${alias} au tournoi ${this.name}: le tournoi est complet`, errTournament.TOURNAMENT_FULL);
-		
+		if (this.players.has(alias))
+		{
+			console.log(`[TOURNAMENT] Player ${alias} already in tournament, skipping`);
+			return;
+		}
 		try {
 			this.db.addPlayerToTournament(alias, this.id, this.name);
 			const player = this.db.getPlayer(alias);
+
 			if (!player)
 				throw new TournamentError(`Impossible de trouver le joueur ${alias} dans le tournoi ${this.name}`);
 			this.players.set(player.alias, {
@@ -85,6 +88,7 @@ export class Tournament {
 				 status: 'waiting',
 				 socket
 				});
+			console.log(`[TOURNAMENT] Player ${alias} added with socket: ${socket ? 'YES' : 'NO'}`);
 			if (this.players.size === this.maxPlayers)
 			{
 				this.status = TournamentStatus.FULL;
@@ -128,12 +132,17 @@ export class Tournament {
 
 	public runTournament()
 	{
-		if (this.status !== TournamentStatus.CREATED)
+		console.log(`[TOURNAMENT] runTournament called for ${this.name} with ${this.players.size} players, status: ${this.status}`);
+		if (this.status !== TournamentStatus.CREATED && this.status !== TournamentStatus.FULL)
 			throw new TournamentError(`Impossible de lancer le tournoi ${this.name}: le tournoi est a déjà commencé ou est terminé`);
 
 		this.db.setTournamentStatus(TournamentStatus.RUNNING, this.id);
+		this.status = TournamentStatus.RUNNING;
+		
+		console.log(`[TOURNAMENT] Generating bracket for ${this.players.size} players`);
 		try {
 			this.bracket = this.bracketService.generateBracket();
+			console.log(`[TOURNAMENT] Bracket generated: ${this.bracket.length} rounds`);
 		} catch (error) {
 			console.error(`Impossible de lancer le tournoi ${this.name}: `, error);
 			throw error;
@@ -178,32 +187,125 @@ export class Tournament {
 
 	private startRound()
 	{
-		if (this.currRound === this.maxRound)
+		if (this.currRound >= this.maxRound)
+		{
 			this.endTournament();
+			return;
+		}
+		console.log(`[TOURNAMENT] Starting round ${this.currRound + 1}/${this.maxRound}`)
 		for (let i = 0; i < this.bracket![this.currRound]!.length; i++)
 		{
 			const currMatch = this.bracket![this.currRound]![i];
-			console.log( "match ", i, ": ", currMatch?.player1Alias, " VERSUS ", currMatch?.player2Alias);
+
+			console.log(`[TOURNAMENT] Match ${i}: ${currMatch?.player1Alias} vs ${currMatch?.player2Alias}`);
 			this.startMatch(currMatch!);
 		}
-		this.currRound++;
-		//*check if it is not the last round
-		//*iterates through the bracket and start all matches
 	}
 
 	private startMatch(match: Match)
 	{
-		//*this is an issue for now. How to start match using matchmaking class?
+		console.log(`[TOURNAMENT] startMatch: ${match.player1Alias} vs ${match.player2Alias}`);
+		const player1 = this.players.get(match.player1Alias);
+		const player2 = this.players.get(match.player2Alias);
+		const gameRoomManager = this.matchmakingService.getGameRoomManager();
+
+		if (!player1 || !player2)
+		{
+			console.error(`[TOURNAMENT] Cannot start match: players not found (${match.player1Alias}: ${!!player1}, ${match.player2Alias}: ${!!player2})`);
+			console.error(`[TOURNAMENT] Available players:`, Array.from(this.players.keys()));
+			return;
+		}
+		if (!player1.socket || !player2.socket)
+		{
+			console.error(`[TOURNAMENT] Cannot start match: player sockets not available (${match.player1Alias}: ${!!player1.socket}, ${match.player2Alias}: ${!!player2.socket})`);
+			return;
+		}
+		player1.status = 'playing';
+		player2.status = 'playing';
+		match.status = 'playing';
+		
+		const isFinalMatch = this.currRound === this.maxRound - 1;
+		console.log(`[TOURNAMENT] Match is final: ${isFinalMatch} (round ${this.currRound + 1}/${this.maxRound})`);
+		
+		const gameId = gameRoomManager.createGame(
+			{ socket: player1.socket, name: player1.alias, id: player1.id },
+			{ socket: player2.socket, name: player2.alias, id: player2.id },
+			false,
+			{
+				tournamentId: this.id,
+				matchId: match.id,
+				isFinalMatch,
+				onComplete: (winnerId: string, score1: number, score2: number) =>
+				{
+					this.completeMatch(match, winnerId, score1, score2);
+				}
+			}
+		);
+
+		console.log(`[TOURNAMENT] Started game ${gameId} for match ${match.id}`);
+		
+		if (player1.socket.readyState === 1)
+		{
+			player1.socket.send(JSON.stringify({
+				type: 'gameStart',
+				playerRole: 'player1'
+			}));
+			console.log(`[TOURNAMENT] Sent gameStart to ${player1.alias} as player1`);
+		}
+		if (player2.socket.readyState === 1)
+		{
+			player2.socket.send(JSON.stringify({
+				type: 'gameStart',
+				playerRole: 'player2'
+			}));
+			console.log(`[TOURNAMENT] Sent gameStart to ${player2.alias} as player2`);
+		}
+		
+		(match as any).gameId = gameId;
+		for (const [alias, player] of this.players.entries())
+		{
+			if (player.status === 'waiting' && player.socket)
+			{
+				this.sendMessage(player.socket, { 
+					type: 'waitingForMatch',
+					message: `Waiting for your match. Current round: ${this.currRound + 1}/${this.maxRound}`
+				});
+			}
+		}
 	}
 
-	private completeMatch(match: Match, scoreA: number, scoreB: number)
-	{//! this.currRound might be at round+1 (if func called too late)
-		const winnerId: string = (scoreA > scoreB ? match.player1Id : match.player2Id);
+	/**
+	 * @brief Called when a game finishes
+	 * @param match The match that was completed
+	 * @param winnerId ID of the winning player
+	 * @param scoreA Score of player 1
+	 * @param scoreB Score of player 2
+	 */
+	public completeMatch(match: Match, winnerId: string, scoreA: number, scoreB: number): void
+	{
+		const winnerAlias = winnerId === match.player1Id ? match.player1Alias : match.player2Alias;
+		const loserAlias = winnerId === match.player1Id ? match.player2Alias : match.player1Alias;
+		const winner = this.players.get(winnerAlias);
+		const loser = this.players.get(loserAlias);
+		const currentRoundMatches = this.bracket[this.currRound];
 
+		console.log(`[TOURNAMENT] Match ${match.id} completed: ${match.player1Alias} ${scoreA}-${scoreB} ${match.player2Alias}`);
 		this.bracketService.updateMatchResult(match, winnerId);
-		this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, scoreA, scoreB, 'completed')
-		//*store result of the match inside the database
-		//*set the state of the match in the bracket class
+		this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, scoreA, scoreB, 'completed');
+		if (winner)
+			winner.status = 'waiting';
+		if (loser)
+			loser.status = 'eliminated';
+		if (currentRoundMatches && this.isRoundComplete(currentRoundMatches))
+		{
+			console.log(`[TOURNAMENT] Round ${this.currRound + 1} completed`);
+			this.completeRound(this.currRound);
+		}
+	}
+
+	private isRoundComplete(roundMatches: Match[]): boolean
+	{
+		return roundMatches.every(match => match.status === 'completed');
 	}
 
 	private completeRound(round: number): void
@@ -213,33 +315,56 @@ export class Tournament {
 
 		for (const match of roundMatches)
 			winners.push({ id: match.winnerId!, alias: match.winnerAlias! });
-
-		if (this.currRound + 2 < this.bracket.length)
+		if (round + 2 < this.bracket.length)
 			this.bracketService.updateBracket(winners, this.bracket[round + 1]!, this.bracket[round + 2]!)
-		else
+		else if (round + 1 < this.bracket.length)
 			this.bracketService.updateBracket(winners, this.bracket[round + 1]!, null);
 		this.currRound++;
-		//*generate the winners array
-		//*run updateBracket() from bracketclass by checking if there is still at least two rounds left 
-		//*(for the nextNextRound parameter)
-		//*update value of round
+		if (this.currRound < this.maxRound)
+		{
+			console.log(`[TOURNAMENT] Preparing round ${this.currRound + 1}`);
+			this.startRound();
+		}
+		else
+			this.endTournament();
 	}
 
-	private prepareRound()
-	{
-		
-	}
 	private endTournament()
 	{
-		//*chang status in database
+		const finalMatch = this.bracket[this.maxRound - 1]?.[0];
+		const championAlias = finalMatch?.winnerAlias!;
+		const champion = this.players.get(championAlias);
+
+		this.status = TournamentStatus.COMPLETED;
+		this.db.setTournamentStatus(TournamentStatus.COMPLETED, this.id);
+		if (finalMatch && finalMatch.winnerId && champion)
+		{
+			champion.status = 'champion';
+			console.log(`[TOURNAMENT] Tournament ${this.name} completed! Champion: ${championAlias}`);
+			this.notifyEndOfTournament(championAlias);
+		}
 	}
 
-	private notifyEndOfTournament()
+	private notifyEndOfTournament(championAlias: string)
 	{
-		//*send message to all players through websockets?
+		for (const [alias, player] of this.players.entries())
+		{
+			if (player.socket)
+			{
+				this.sendMessage(player.socket, {
+					type: 'tournamentComplete',
+					champion: championAlias,
+					tournamentName: this.name
+				});
+			}
+		}
 	}
 
-
-
-
+	private sendMessage(socket: WebSocket, message: any): void
+	{
+		if (socket && socket.readyState === socket.OPEN)
+		{
+			socket.send(JSON.stringify(message));
+		}
+	}
 }

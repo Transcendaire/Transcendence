@@ -1,7 +1,3 @@
-    <div>
-        <img src="./assets/Transcendaire.png" class="max-w-xs md:max-w-md sm:mb-0 mx-auto"> 
-    </div>
-
     <div id="tournamentContainer" class="container mx-auto px-4 py-8">
         
         <div class="flex md:flex-row flex-col gap-6 justify-center items-center mb-8">
@@ -77,43 +73,47 @@
                 </div>
 
                 <div>
-                    <label id="gameMode" class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    <label  class="block text-sonpi16-orange font-bold mb-2 font-quency">
                         Type de partie
                     </label>
-                    <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                    <select id="gameType"
+                            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                    px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                    focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                    font-quency">
-                            <option>Normal</option>
-                            <option>Custom</option>
+                            <option value="Tournoi">Tournoi</option>
+                            <option value="Multiplayer">Multiplayer</option>
                     </select>
                 </div>
-                
+
                 <div>
-                    <label id="gameMode" class="block text-sonpi16-orange font-bold mb-2 font-quency">
-                        Type de partie
+                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                        Mode
                     </label>
-                    <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                    <select id="gameMode"
+                            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                    px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                    focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                    font-quency">
-                            <option>Tournoi</option>
-                            <option>Multiplayer</option>
+                            <option value="Normal">Normal</option>
+                            <option value="Custom">Custom</option>
                     </select>
                 </div>
                 
+                
                 <div>
-                    <label id="maxPlayer" class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                         Nombre de joueurs
                     </label>
-                    <select class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                    <select id="nbPlayer"
+                            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                    px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                    focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                    font-quency">
-                        <option>2</option>
-                        <option>4</option>
-                        <option>8</option>
-                        <option>16</option>
+                        <option value="2">2</option>
+                        <option value="4">4</opton>
+                        <option value="8">8</option>
+                        <option value="16">16</option>
                     </select>
                 </div>
                 

@@ -21,6 +21,7 @@ function initLobby()
 function initCreationModal(createLobbyModal: HTMLElement)
 {
     const tournamentName = getEl("tournamentName") as HTMLInputElement;
+    const gameType = getEl("gameType") as HTMLSelectElement;
     const gameMode = getEl("gameMode") as HTMLSelectElement;
     const nbPlayer = getEl("nbPlayer") as HTMLSelectElement;
     const createLobbyButton = getEl('createLobbyButton') as HTMLButtonElement;
@@ -33,6 +34,7 @@ function initCreationModal(createLobbyModal: HTMLElement)
         e.preventDefault();
         
         const name = tournamentName.value;
+        const type = gameType.value;
         const mode = gameMode.value;
         const maxPlayers = parseInt(nbPlayer.value);
         const currentPlayers = 0;
@@ -52,6 +54,7 @@ function initCreationModal(createLobbyModal: HTMLElement)
             console.error('[LOBBY] lobbyList non trouvé!');
             return;
         }
+        console.log(` test mode = ${mode === 'Custom' ? 'Custom' : 'Normal'}`);
     
     // Créer la div du tournoi
     const tournamentDiv = document.createElement('div');
@@ -68,8 +71,8 @@ function initCreationModal(createLobbyModal: HTMLElement)
                 </h3>
                 <div class="flex gap-4 text-sm text-sonpi16-orange opacity-80">
                     <span class="flex items-center gap-1">
-                        <span class="text-lg">${mode === 'custom' ? '⚡' : '🎮'}</span>
-                        ${mode === 'custom' ? 'Custom' : 'Normal'}
+                        <span class="text-lg">${mode === 'Custom' ? '⚡' : '🎮'}</span>
+                        ${mode === 'Custom' ? 'Custom' : 'Normal'}
                     </span>
                     <span class="flex items-center gap-1">
                         <span class="text-lg">👥</span>
@@ -80,7 +83,6 @@ function initCreationModal(createLobbyModal: HTMLElement)
                 </div>
             </div>
             
-            <!-- Boutons d'action -->
             <div class="flex gap-2">
                 <button 
                     class="joinTournament bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-lg 

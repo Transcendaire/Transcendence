@@ -58,6 +58,8 @@ export class SingleEliminationBracket implements BracketService
 		let players = this.db.getTournamentPlayers(this.tournamentId);
 		let playersCount = players.length;
 		let round = 0;
+		
+		console.log(`[BRACKET] Generating bracket for ${playersCount} players`);
 
 		while (totalMatches)
 		{
@@ -148,11 +150,11 @@ export class SingleEliminationBracket implements BracketService
 		{
 			const match = toUpdateRound[0];
 			const toMove = {id: match!.player1Id, alias: match!.player1Alias};
+
 			winners.push(toMove);
 		}
-	
-		if (winners.length % 2) //* means there are an odd number of players in the current round
-			this.moveLeftoverPlayer(winners, nextNextRound![0]!);
+		if (winners.length % 2 && nextNextRound && nextNextRound[0])
+			this.moveLeftoverPlayer(winners, nextNextRound[0]);
 		for (let w = 0; w < winners.length;)
 		{
 			if (i === toUpdateRound.length)

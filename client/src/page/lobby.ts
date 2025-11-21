@@ -6,6 +6,7 @@ import { Lobby, LobbyPlayer } from "/dist/shared/types.js";
 
 let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;
+let currentOpenLobbyId: string | null = null;
 
 function initLobby()
 {
@@ -33,6 +34,10 @@ function setupWebSocketCallbacks(): void
     wsClient.onLobbyUpdate = (lobby: Lobby) => {
         console.log('[LOBBY] Mise à jour du lobby:', lobby);
         requestLobbyList();
+        
+        if (currentOpenLobbyId === lobby.id) {
+            setupLobbyModal(lobby);
+        }
     };
 
     wsClient.onLobbyList = (lobbies: Lobby[]) => {
@@ -44,6 +49,12 @@ function setupWebSocketCallbacks(): void
     wsClient.onLobbyError = (message: string) => {
         console.error('[LOBBY] Erreur lobby:', message);
         alert(`Erreur: ${message}`);
+    };
+    
+    wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
+        console.log(`[LOBBY] Match de tournoi démarre! Rôle: ${playerRole}`);
+        sessionStorage.setItem('playerRole', playerRole);
+        navigate('game');
     };
 }
 
@@ -165,6 +176,15 @@ function initCreationModal(createLobbyModal: HTMLElement)
     const createLobbyButton = getEl('createLobbyButton') as HTMLButtonElement;
     const cancelCreateButton = getEl('cancelCreateButton') as HTMLButtonElement;
     const form = getEl('creationForm') as HTMLFormElement;
+    const gameModeSelect = getEl("gameMode") as HTMLSelectElement;
+    const fruitFrequencyDiv = getEl("powerfruitsfrequency");
+    
+    gameModeSelect.addEventListener('change', () => {
+        if (gameModeSelect.value === "Normal")
+            fruitFrequencyDiv.classList.add("hidden");
+        else
+            fruitFrequencyDiv.classList.remove("hidden");
+    });
     
     setupGlobalModalEvents(createLobbyModal, createLobbyButton, cancelCreateButton);
 
@@ -178,6 +198,10 @@ function initCreationModal(createLobbyModal: HTMLElement)
         const mode = gameMode.value;
         const nbPlayer = getEl("nbPlayer") as HTMLSelectElement;
         const maxPlayers = parseInt(nbPlayer?.value || '2');
+        const fruitFrequencySelect = getEl("fruitFrequencySelect") as HTMLSelectElement;
+        const fruitFrequency = fruitFrequencySelect?.value as 'low' | 'normal' | 'high' || 'normal';
+        const maxScoreSelect = getEl("maxScoreSelect") as HTMLSelectElement;
+        const maxScore = parseInt(maxScoreSelect?.value || '5');
         
         if (!name || name === '') name = `${gameType.value} de ${playerName}`;
         
@@ -208,19 +232,25 @@ function initCreationModal(createLobbyModal: HTMLElement)
             return;
         }
         
-        const settings = {
-            maxScore: 5,
-            powerUpsEnabled: mode.toLowerCase() === 'custom',
-            fruitFrequency: 'normal' as 'low' | 'normal' | 'high'
-        };
+        const type = gameType?.value || 'multiplayerGame';
+        const lobbyType: 'tournament' | 'multiplayergame' = 
+            type.toLowerCase() === 'tournament' ? 'tournament' : 'multiplayergame';
+
+        console.log(`[LOBBY] Création d'un lobby: ${name}, type: ${type}, mode: ${mode}, joueurs: ${maxPlayers}`);
         
-        const lobbyType: 'tournament' | 'multiplayergame' = maxPlayers > 6 ? 'tournament' : 'multiplayergame';
+        const powerUpsEnabled = mode.toLowerCase() === 'custom';
+        const settings = {
+            maxScore: maxScore,
+            powerUpsEnabled: powerUpsEnabled,
+            fruitFrequency: powerUpsEnabled ? fruitFrequency : 'normal' as 'low' | 'normal' | 'high'
+        };
         
         wsClient.sendMessage({
             type: 'createCustomLobby',
             playerName: playerName,
             name: name,
             lobbyType: lobbyType,
+            maxPlayers: maxPlayers,
             settings: settings
         });
         
@@ -241,6 +271,8 @@ function setupLobbyModal(lobby: Lobby)
     const creator = lobby.players.find(p => p.id === lobby.creatorId);
     const isOwner = creator?.name === playerName;
 
+    currentOpenLobbyId = lobby.id;
+
     if (!lobby.players.length) deleteLobby(lobby.id);
 
     if (modalTitle) modalTitle.textContent = `${typeIcon} ${lobby.name}`;
@@ -251,26 +283,27 @@ function setupLobbyModal(lobby: Lobby)
         playersList.innerHTML = '';
 
         lobby.players.forEach(player => {
-            const playerDiv = createPlayerElement(player);
+            const playerDiv = createPlayerElement(player, lobby);
             playersList.appendChild(playerDiv);
         });
     }
 
-    if (isOwner)
-    {
+    if (isOwner && lobby.players.length >= 2) {
         show(startButton);
         startButton.onclick = () => startLobby(lobby.id);
+    } else {
+        hide(startButton);
+        startButton.onclick = null;
     }
 
-    if (quitButton) {
-        quitButton.onclick = () => {
-            wsClient.sendMessage({ 
-                type: 'leaveLobby', 
-                lobbyId: lobby.id 
-            });
-            hide(lobbyModal);
-        };
-    }
+    quitButton.onclick = () => {
+        wsClient.sendMessage({ 
+            type: 'leaveLobby', 
+            lobbyId: lobby.id 
+        });
+        currentOpenLobbyId = null;
+        hide(lobbyModal);
+    };
 
     show(lobbyModal);
 }
@@ -321,7 +354,7 @@ function createLobbyElement(lobby : Lobby): HTMLDivElement
     return lobbyDiv;
 }
 
-function createPlayerElement(player : LobbyPlayer): HTMLDivElement
+function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement
 {
     const playerDiv = document.createElement('div');
 
@@ -330,9 +363,12 @@ function createPlayerElement(player : LobbyPlayer): HTMLDivElement
                             border-sonpi16-black rounded-xl 
                             bg-sonpi16-orange w-full`
 
+    const isOwner = player.id === lobby.creatorId;
+    const ownerStar = isOwner ? ' ⭐' : '';
+
     playerDiv.innerHTML = `
             <img src="./assets/Transcendaire.png" alt="avatar" class="w-16 h-16 rounded-full object-cover">
-            <span id="${player.id}" class="font-quency m">${player.name}</span>`;
+            <span id="${player.id}" class="font-quency m">${player.name}${ownerStar}</span>`;
     return playerDiv;
 }
 

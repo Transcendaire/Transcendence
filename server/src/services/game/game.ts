@@ -2,7 +2,7 @@ import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
 import { CloneBall } from "@app/shared/models/CloneBall.js";
 import { PowerUpFruit } from "@app/shared/types.js";
-import { paddleOffset, speedBoost } from "@app/shared/consts.js";
+import { paddleOffset, speedBoost, FRUIT_FREQUENCY, maxScore as defaultMaxScore } from "@app/shared/consts.js";
 import { PowerUpManager } from "./powerup.js";
 import { CollisionDetector } from "./collision.js";
 import { ScoringManager } from "./scoring.js";
@@ -20,6 +20,8 @@ export class GameService
     private fruitSpawnTimer: number;
     private ballTouched: boolean;
     private readonly fruitSpawnInterval: number;
+    private readonly maxFruits: number;
+    private readonly maxScore: number;
     private readonly canvasWidth: number;
     private readonly canvasHeight: number;
     private readonly isCustomMode: boolean;
@@ -29,9 +31,12 @@ export class GameService
      * @param canvasWidth Width of the game canvas
      * @param canvasHeight Height of the game canvas
      * @param isCustomMode Enable custom mode with power-ups
+     * @param fruitFrequency Frequency of fruit spawning
+     * @param maxScore Maximum score to win the game
      */
     constructor(canvasWidth: number, canvasHeight: number,
-        isCustomMode: boolean = false)
+        isCustomMode: boolean = false, fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
+        maxScore: number = defaultMaxScore)
     {
         this.canvasWidth = canvasWidth;
         this.canvasHeight = canvasHeight;
@@ -40,7 +45,9 @@ export class GameService
         this.fruits = [];
         this.fruitSpawnTimer = 0;
         this.ballTouched = false;
-        this.fruitSpawnInterval = 5000;
+        this.fruitSpawnInterval = FRUIT_FREQUENCY[fruitFrequency];
+        this.maxFruits = fruitFrequency === 'low' ? 2 : fruitFrequency === 'normal' ? 4 : 7;
+        this.maxScore = maxScore;
         this.initGame();
     }
 
@@ -265,7 +272,8 @@ export class GameService
                 ball,
                 this.canvasWidth,
                 this.canvasHeight,
-                this.isCustomMode
+                this.isCustomMode,
+                this.maxScore
             );
         }
         return false;
@@ -356,7 +364,7 @@ export class GameService
         this.fruitSpawnTimer += deltaTime;
         if (this.fruitSpawnTimer >= this.fruitSpawnInterval)
         {
-            if (this.fruits.length < 3)
+            if (this.fruits.length < this.maxFruits)
                 this.spawnFruit();
             this.fruitSpawnTimer = 0;
         }

@@ -84,14 +84,14 @@ export type WebSocketMessage =
 | { type: "joinCustomAI"; playerName: string }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
-| { type: "gameStart"; playerRole: 'player1' | 'player2' }
+| { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number }
+| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number; isTournament?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
 | { type: "ping" }
 | { type: "pong" }
-| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; settings: CustomGameSettings }
+| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; maxPlayers: number; settings: CustomGameSettings }
 | { type: "joinLobby"; playerName: string; lobbyId: string }
 | { type: "leaveLobby"; lobbyId: string }
 | { type: "deleteLobby"; lobbyId: string }
@@ -103,6 +103,8 @@ export type WebSocketMessage =
 | { type: "lobbyUpdate"; lobby: Lobby }
 | { type: "lobbyList"; lobbies: Lobby[] }
 | { type: "lobbyError"; message: string }
+| { type: "waitingForMatch"; message: string }
+| { type: "tournamentComplete"; champion: string; tournamentName: string }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

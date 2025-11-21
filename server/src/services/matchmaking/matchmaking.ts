@@ -4,6 +4,7 @@ import { Player } from './types.js'
 import { GameRoomManager } from './gameRoom.js'
 import { QuickMatchService } from './quickMatch.js'
 import { LobbyManager } from './lobbyManager.js'
+import { TournamentManagerService } from '../tournament/tournamentManager.js'
 
 /**
  * @brief Main matchmaking orchestrator
@@ -11,6 +12,7 @@ import { LobbyManager } from './lobbyManager.js'
  * - QuickMatchService: 1v1 quick matches (normal/custom)
  * - LobbyManager: Multiplayer lobbies and tournaments (2-6 players)
  * - GameRoomManager: Active game rooms and loops
+ * - TournamentManagerService: Tournament bracket management
  */
 export class MatchmakingService
 {
@@ -18,12 +20,19 @@ export class MatchmakingService
 	private gameRoomManager: GameRoomManager
 	private quickMatch: QuickMatchService
 	private lobbyManager: LobbyManager
+	private tournamentManager: TournamentManagerService
 
 	constructor()
 	{
 		this.gameRoomManager = new GameRoomManager()
 		this.quickMatch = new QuickMatchService(this.gameRoomManager)
-		this.lobbyManager = new LobbyManager(this.gameRoomManager, this.playerSockets)
+		this.tournamentManager = new TournamentManagerService(this)
+		this.lobbyManager = new LobbyManager(this.gameRoomManager, this.playerSockets, this.tournamentManager)
+	}
+
+	public getGameRoomManager(): GameRoomManager
+	{
+		return this.gameRoomManager
 	}
 
 	/**
@@ -71,7 +80,7 @@ export class MatchmakingService
 				break
 			case 'createCustomLobby':
 				this.handleCreateLobby(socket, message.playerName, message.name, 
-					message.lobbyType, message.settings)
+					message.lobbyType, message.maxPlayers, message.settings)
 				break
 			case 'joinLobby':
 				this.handleJoinLobby(socket, message.playerName, message.lobbyId)
@@ -154,12 +163,41 @@ export class MatchmakingService
 		{
 			const isPlayer1 = gameRoom.player1.socket === socket
 			const opponent = isPlayer1 ? gameRoom.player2 : gameRoom.player1
+			const disconnectedPlayer = isPlayer1 ? gameRoom.player1 : gameRoom.player2
 
-			if (opponent.socket && opponent.id !== 'AI')
-				this.sendMessage(opponent.socket, { type: 'waiting' })
-			this.gameRoomManager.endGame(gameRoom.id)
+			if (gameRoom.tournamentMatch)
+			{
+				console.log(`[MATCHMAKING] Player ${disconnectedPlayer.name} disconnected from tournament match, ${opponent.name} wins by forfeit`)
+				const gameState = gameRoom.gameService.getGameState()
+				const winner = isPlayer1 ? 'player2' : 'player1'
+				const isFinalMatch = gameRoom.tournamentMatch.isFinalMatch
+				
+				if (opponent.socket && opponent.id !== 'AI')
+				{
+					this.sendMessage(opponent.socket, {
+						type: 'gameOver',
+						winner,
+						score1: gameState.player1.score,
+						score2: gameState.player2.score,
+						isTournament: true,
+						shouldDisconnect: isFinalMatch,
+						forfeit: true
+					})
+				}
+				gameRoom.tournamentMatch.onComplete(
+					opponent.id,
+					isPlayer1 ? gameState.player2.score : gameState.player1.score,
+					isPlayer1 ? gameState.player1.score : gameState.player2.score
+				)
+				this.gameRoomManager.endGame(gameRoom.id)
+			}
+			else
+			{
+				if (opponent.socket && opponent.id !== 'AI')
+					this.sendMessage(opponent.socket, { type: 'waiting' })
+				this.gameRoomManager.endGame(gameRoom.id)
+			}
 		}
-
 		this.playerSockets.delete(socket)
 	}
 
@@ -175,6 +213,7 @@ export class MatchmakingService
 		playerName: string,
 		name: string,
 		lobbyType: 'tournament' | 'multiplayergame',
+		maxPlayers: number,
 		settings: any
 	): void
 	{
@@ -182,7 +221,7 @@ export class MatchmakingService
 		if (player)
 			player.name = playerName
 		const lobbyId = this.lobbyManager.createLobby(socket, playerName, 
-			name, lobbyType, settings)
+			name, lobbyType, maxPlayers, settings)
 
 		if (!lobbyId)
 		{

@@ -44,11 +44,14 @@ export function setupDisconnectionHandlers(): void
     });
 }
 
-export function showGameOver(winner: 'player1' | 'player2', score1: number, score2: number): void
+export function showGameOver(winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
 {
     gameState.setGameRunning(false);
     const isWinner = winner === gameState.currentPlayerRole;
-    const message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
+    let message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
+    if (forfeit) {
+        message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
+    }
     const scoreText = `Score final : ${score1} - ${score2}`;
     
     gameState.ctx.save();
@@ -66,22 +69,29 @@ export function showGameOver(winner: 'player1' | 'player2', score1: number, scor
     gameState.ctx.fillText(scoreText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
     
     gameState.ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
-    gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
+    if (isTournament && !shouldDisconnect)
+    {
+        gameState.ctx.fillText('En attente du prochain match...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
+    }
+    else
+    {
+        const destination = isTournament ? 'lobby' : 'home';
+        gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
+        setTimeout(() => {
+            returnToLobby(destination);
+        }, 3000);
+    }
     gameState.ctx.restore();
-    
-    setTimeout(() => {
-        returnToLobby();
-    }, 3000);
 }
 
-export function returnToLobby(): void
+export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
 {
     if (gameState.isReturningToLobby) {
         console.log('[GAME] Retour au lobby déjà en cours, ignoré');
         return;
     }
     
-    console.log('[GAME] Retour au lobby, déconnexion WebSocket...');
+    console.log(`[GAME] Retour vers ${destination}, déconnexion WebSocket...`);
     gameState.setIsReturningToLobby(true);
     gameState.setGameRunning(false);
     gameState.setCurrentPlayerRole(null);
@@ -95,7 +105,7 @@ export function returnToLobby(): void
     
     wsClient.disconnect();
     gameState.clearCleanupHandlers();
-    navigate('home');
+    navigate(destination);
     
     setTimeout(() => {
         gameState.setIsReturningToLobby(false);

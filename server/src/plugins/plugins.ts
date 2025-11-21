@@ -24,4 +24,5 @@ export async function registerPlugins(server: FastifyInstance)
 		index: false,
 		decorateReply: false
 	})
+
 }

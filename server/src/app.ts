@@ -16,6 +16,6 @@ export async function createApp() { //*no network binding. Just registering stuf
 
 	await registerPlugins(server);
 	await registerRoutes(server);
-
+	
 	return server;
 }

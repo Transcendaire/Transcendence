@@ -46,10 +46,10 @@ export class DatabaseService {
 	private setDatabase(): void {
 		this.db.exec(
 			`CREATE TABLE IF NOT EXISTS users (
-			id TEXT PRIMARY KEY,
+			id TEXT UNIQUE PRIMARY KEY,
 			login TEXT UNIQUE NOT NULL, 
 			password TEXT, //*this is hashed
-			alias TEXT NOT NULL, //*pseudo but called it alias for concordance
+			alias TEXT UNIQUE NOT NULL, //*pseudo but called it alias for concordance
 			created_at INTEGER NOT NULL,
 			tournament_alias TEXT,
 			games_played INTEGER DEFAULT 0,

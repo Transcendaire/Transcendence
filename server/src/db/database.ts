@@ -531,16 +531,20 @@ export class DatabaseService {
 			throw new DatabaseError(`Impossible d'ajouter ${alias}: le tournoi ${tournamentName} est déjà plein`);
 
 		let player = this.getPlayer(alias);
-		if (!player)
-			throw new DatabaseError('Impossible d\'ajouter le joueur au tournoi : le joueur n\'existe pas', errDatabase.PLAYER_NOT_FOUND);
+		if (!player) //!
+		{
+			const id = this.createPlayer(alias, randomUUID(), Date.now());
+			player = this.getPlayerBy('id', id);
+		}
+			// throw new DatabaseError('Impossible d\'ajouter le joueur au tournoi : le joueur n\'existe pas', errDatabase.PLAYER_NOT_FOUND);
 
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
-		).get(tournamentId, player.id);
+		).get(tournamentId, player!.id);
 		if (playerAlreadyInTournament)
 			throw new DatabaseError(`Le joueur ${alias} existe déjà dans le tournoi ${tournamentName}`)
 
 		this.db.prepare("INSERT INTO tournament_players (tournament_id, player_id, alias, joined_at) VALUES (?, ?, ?, ?)"
-		).run(tournamentId, player.id, alias, Date.now());
+		).run(tournamentId, player!.id, alias, Date.now());
 
 		this.db.prepare("UPDATE tournaments SET curr_nb_players = curr_nb_players + 1 WHERE id = ?").run(tournamentId);
 	}

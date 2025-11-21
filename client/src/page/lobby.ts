@@ -63,7 +63,7 @@ function requestLobbyList(): void
     console.log('[LOBBY] Demande de la liste des lobbies');
     if (!wsClient.isConnected()) {
         console.log('[LOBBY] WebSocket non connecté, connexion en cours...');
-        wsClient.connect('ws://localhost:8080/ws').then(() => {
+        wsClient.connect(`ws://${window.location.host}/ws`).then(() => {
             wsClient.sendMessage({ type: 'requestLobbyList' });
         }).catch((error) => {
             console.error('[LOBBY] Erreur de connexion WebSocket:', error);

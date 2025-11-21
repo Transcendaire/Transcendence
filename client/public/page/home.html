@@ -1,60 +1,62 @@
-  <main class="flex flex-col m-0 p-0">
+<main class="flex flex-col m-0 p-0">
 
-    <div class="flex flex-col md:flex-row items-center justify-center">
-      <img src="/assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs md:max-w-md mb-4 sm:mb-0">
-      <div class="flex flex-col items-center md:items-start md:ml-8">
+  <div class="flex flex-col md:flex-row items-center justify-center">
+    <img src="/assets/Transcendaire.png" alt="Transcendaire" class="max-w-xs md:max-w-md mb-4 sm:mb-0">
+    <div class="flex flex-col items-center md:items-start md:ml-8">
 
-        <h1 class="text-sonpi16-black font-semibold text-4xl font-quency">Transcendaire</h1>
-        <h2 class="text-sonpi16-black font-semibold text-2xl font-quency">la quintessence du pong</h2>
+      <h1 class="text-sonpi16-black font-semibold text-4xl font-quency">Transcendaire</h1>
+      <h2 class="text-sonpi16-black font-semibold text-2xl font-quency">la quintessence du pong</h2>
 
-        <button id="loginButton" class="border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
-          <p class="text-2xl pb-1 font-bold">Se Connecter</p>
+      <button id="loginButton" class="border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
+        <p class="text-2xl pb-1 font-bold">Se Connecter</p>
+      </button>
+      <button id="signinButton" class="border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-105 hover:bg-sonpi16-black hover:text-sonpi16-orange">
+        <p class="text-2xl pb-1 font-bold">S'inscrire</p>
+      </button>
+
+      <div>
+        <button id="profileButton" class="hidden border-sonpi16-black rounded-xl bg-sonpi16-black w-fit text-sonpi16-orange border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 ">
+          <p class="text-2xl pb-1 font-bold font-quency">Profile</p>
         </button>
-
-        <div>
-          <button id="profileButton" class="hidden border-sonpi16-black rounded-xl bg-sonpi16-black w-fit text-sonpi16-orange border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 ">
-            <p class="text-2xl pb-1 font-bold font-quency">Profile</p>
-          </button>
-          <button id="logoutButton" class="hidden mx-2 border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 hover:bg-sonpi16-black hover:text-sonpi16-orange ">
-            <p class="text-2xl pb-1 font-bold font-quency">Logout</p>
-          </button>
-        </div>
-
+        <button id="logoutButton" class="hidden mx-2 border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 hover:bg-sonpi16-black hover:text-sonpi16-orange ">
+          <p class="text-2xl pb-1 font-bold font-quency">Logout</p>
+        </button>
       </div>
     </div>
+  </div>
 
-    <div id="gameModeModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
-        <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-2xl w-full mx-4 transform transition-all duration-300">
+  <div id="gameModeModal" class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-2xl w-full mx-4 transform transition-all duration-300">
 
-            <h3 class="text-4xl font-bold text-sonpi16-orange mb-8 text-center font-quency">
-                Choisissez votre mode
-            </h3>
+        <h3 class="text-4xl font-bold text-sonpi16-orange mb-8 text-center font-quency">
+            Choisissez votre mode
+        </h3>
             
-            <div class="grid md:grid-cols-2 gap-6">
-                <button id="joinGameButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">🎮</div>
-                    <h4 class="font-quency text-2xl font-bold">1 vs 1</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Affrontez un joueur en ligne
-                    </p>
-                </button>
+        <div class="grid md:grid-cols-2 gap-6">
+          <button id="joinGameButton" 
+                  class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
+                         hover:scale-105 transition-all duration-300 hover:shadow-2xl 
+                          border-4 border-transparent hover:border-white 
+                         flex flex-col items-center gap-4 group">
+            <div class="text-6xl">🎮</div>
+              <h4 class="font-quency text-2xl font-bold">1 vs 1</h4>
+                <p class="text-sm opacity-80 group-hover:opacity-100">
+                    Affrontez un joueur en ligne
+                </p>
+          </button>
                 
-                <button id="joinAIButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
+          <button id="joinAIButton" 
+                  class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
                                hover:scale-105 transition-all duration-300 hover:shadow-2xl 
                                border-4 border-transparent hover:border-white 
                                flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">🤖</div>
-                    <h4 class="font-quency text-2xl font-bold">vs IA</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
+            <div class="text-6xl">🤖</div>
+            <h4 class="font-quency text-2xl font-bold">vs IA</h4>
+            <p class="text-sm opacity-80 group-hover:opacity-100">
                         Entraînez-vous contre l'ordinateur
-                    </p>
-                </button>
-                
+            </p>
+          </button>
+      
                 <button id="joinCustomButton" 
                         class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
                                hover:scale-105 transition-all duration-300 hover:shadow-2xl 
@@ -106,37 +108,117 @@
       <p class="text-sonpi16-orange font-quency font-bold text-2xl sm:text-4xl py-3">JOUER</p>
     </div>
 
-    <div id="loginModal" class="hidden fixed inset-0 bg-sonpi16-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-xl p-8 shadow-lg w-80 flex flex-col items-center">
 
-        <button class="flex flex-row border w-full py-2 rounded-md justify-center items-center hover:border-sonpi16-orange">
-          <img class="inline h-10 px-3 inline" src="./assets/g.webp" alt="glogo">
-          <p class="text-sonpi16-orange font-semibold">Google Connect</p>
-        </button>
+<div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-sonpi16-black relative rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+    <button id="cancelLoginButton" 
+            class="absolute top-2 right-4 text-sonpi16-orange hover:text-white 
+               text-3xl font-bold transition-all hover:rotate-90 duration-300">
+              ×
+    </button>
+    <button class="mt-2 flex flex-row border border-sonpi16-orange 
+            w-full py-2 rounded-md justify-center items-center hover:border-sonpi16-orange
+             bg-sonpi16-orange bg-opacity-20">
+      <img class="inline h-10 px-3" src="./assets/g.webp" alt="glogo">
+      <p class="text-sonpi16-orange text-2xl font-bold">Google Connect</p>
+    </button>
 
-        <p class="my-3">ou</p>
+    <p class="font-quency border-t-2 my-3 py-1 w-4/5 mx-auto"></p>
 
-        <input id="playerNameInput" type="text" placeholder="Nom d'utilisateur" class="border rounded px-3 py-2 mb-3 w-full hover:border-sonpi16-orange focus:border-sonpi16-orange focus:ring-0 focus:outline-none" />
-        <button id="checkPlayerNameInput" class="bg-sonpi16-orange text-white px-4 py-2 rounded font-bold w-full hover:bg-orange-600 transition">jouer en tant qu'inviter</button>
-        <button id="cancelLoginButton" class="mt-4 text-sonpi16-orange hover:underline">Annuler</button>
-      </div>
+    <input id="usernameCheck" 
+            type="text" 
+            placeholder="Nom d'utilisateur" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                          px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                          focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency"/>
+    <input id="passwordCheck" 
+              type="text" 
+              placeholder="mot de passe" 
+              class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                        px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
+                        focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency" />
+
+      <button id="checkInput" 
+              class="font-quency mt-3 bg-sonpi16-orange
+               text-white px-4 py-2 rounded font-bold w-full hover:bg-orange-600 transition">Connexion
+      </button>
+      <button id="signinRedirect" class="block font-quency border-t-2 mt-3 py-1 w-4/5 mx-auto text-sonpi16-orange hover:text-white hover:underline">
+        Creer un compte ?
+      </button>
+  </div>
+</div>
+
+<div id="signinModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-sonpi16-black relative rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+    <button id="cancelSigninButton" 
+            class="absolute top-2 right-4 text-sonpi16-orange hover:text-white 
+               text-3xl font-bold transition-all hover:rotate-90 duration-300">
+              ×
+    </button>
+    <button class="mt-2 flex flex-row border border-sonpi16-orange 
+            w-full py-2 rounded-md justify-center items-center hover:border-sonpi16-orange
+             bg-sonpi16-orange bg-opacity-20">
+      <img class="inline h-10 px-3 " src="./assets/g.webp" alt="glogo">
+      <p class="text-sonpi16-orange text-2xl font-bold">Inscription avec Google</p>
+    </button>
+
+    <p class="font-quency border-t-2 my-3 py-1 w-4/5 mx-auto"></p>
+
+    <input id="newUser" 
+            type="text" 
+            placeholder="Nom d'utilisateur" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                          px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                          focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency"/>    
+    <input id="newAlias" 
+            type="text"
+            placeholder="Alias (visible des autres joueurs)" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                          px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                          focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency"/>
+    <input id="createPassword" 
+              type="text" 
+              placeholder="mot de passe" 
+              class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                        px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
+                        focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency" />
+
+    <input id="passwordConfirmation" 
+            type="text" 
+            placeholder="confirmez le mot de passe" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                        px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
+                        focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency" />
+
+      <button id="checkSignInInput" 
+              class="font-quency mt-3 bg-sonpi16-orange
+               text-white px-4 py-2 rounded font-bold w-full hover:bg-orange-600 transition">S'inscrire
+      </button>
     </div>
+</div>
 
-    <div id="waitingModal" 
-         class="hidden  fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 
+<div id="waitingModal" 
+    class="hidden fixed inset-0 bg-black bg-opacity-70 items-center justify-center z-50 
                 backdrop-blur-sm">
-      <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 
+  <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 
                     text-center">
-        <h3 class="text-3xl font-bold text-sonpi16-orange mb-4 font-quency animate-pulse">
-          Recherche d'aversaire...
-        </h3>
+    <h3 class="text-3xl font-bold text-sonpi16-orange mb-4 font-quency animate-pulse">
+      Recherche d'aversaire...
+    </h3>
 
-        <button id="cancelWaitButton" 
-                class="bg-red-600 text-white px-8 py-3 rounded-lg font-bold 
-                           hover:bg-red-700 transition-all duration-300 hover:shadow-lg 
-                           active:scale-95 font-quency">
+    <button id="cancelWaitButton" 
+            class="bg-red-600 text-white px-8 py-3 rounded-lg font-bold 
+                     hover:bg-red-700 transition-all duration-300 hover:shadow-lg 
+                     active:scale-95 font-quency">
             ANNULER
-        </button>
-      </div>
-    </div>
+    </button>
+  </div>
+</div>
+
 </main>

@@ -1,10 +1,23 @@
+export class BadRequest extends Error
+{
+	status: number;
+	constructor(message: string, status: number = 400)
+	{
+		super(message);
+		this.name = '';
+		this.status = status;
+	}
+}
+
 export class ServerError extends Error 
 {
 	code: string | undefined;
-	constructor(message: string, code?: string)
+	statusCode: number;
+	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
 		this.name = ''
+		this.statusCode = statusCode;
 		this.code = code;
 	}
 }
@@ -12,10 +25,12 @@ export class ServerError extends Error
 export class DatabaseError extends Error 
 {
 	code: string | undefined;
-	constructor(message: string, code?: string)
+	statusCode: number;
+	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
 		this.name = ''
+		this.statusCode = statusCode;
 		this.code = code;
 	}
 }
@@ -23,10 +38,12 @@ export class DatabaseError extends Error
 export class UserError extends Error
 {
 	code: string | undefined;
-	constructor(message: string, code?: string)
+	statusCode: number;
+	constructor(message: string, code?: string, statusCode: number = 400)
 	{
 		super(message);
 		this.name = '';
+		this.statusCode = statusCode;
 		this.code = code;
 	}
 }
@@ -34,10 +51,12 @@ export class UserError extends Error
 export class TournamentError extends Error
 {
 	code: string | undefined;
-	constructor(message: string, code?: string)
+	statusCode: number;
+	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
 		this.name = '';
+		this.statusCode = statusCode;
 		this.code = code;
 	}
 }
@@ -45,10 +64,12 @@ export class TournamentError extends Error
 export class BracketError extends Error
 {
 	code: string | undefined;
-	constructor(message: string, code?: string)
+	statusCode: number;
+	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
 		this.name = ''
+		this.statusCode = statusCode;
 		this.code = code;
 	}
 }
@@ -70,3 +91,11 @@ export enum errClient {
 	UNAUTHENTICATED_PLAYER = 'UNAUTHENTICATED_PLAYER',
 	NONEXISTING_PLAYER = 'NONEXISTING_PLAYER'
 };
+
+export enum errDatabase {
+	USERNAME_ALREADY_TAKEN = 'USERNAME_ALREADY_TAKEN',
+	ALIAS_ALREADY_TAKEN = 'ALIAS_ALREADY_TAKEN',
+	PLAYER_NOT_FOUND = 'PLAYER_NOT_FOUND'
+}
+
+//TODO adapts erros numbers for each thrown error

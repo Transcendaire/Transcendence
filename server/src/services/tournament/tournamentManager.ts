@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { match } from 'assert';
 import { getDatabase } from '../../db/databaseSingleton.js';
 import { DatabaseError, errTournament, TournamentError } from "@app/shared/errors.js";
+import { CustomGameSettings } from '@app/shared/types.js';
 
 export class TournamentManagerService 
 {
@@ -20,11 +21,12 @@ export class TournamentManagerService
 	 * @brief Creates a new tournament
 	 * @param name Tournament name
 	 * @param maxPlayers Maximum number of players allowed
+	 * @param settings Game settings (powerUps, maxScore, etc.)
 	 * @returns Tournament ID
 	 * @throws {TournamentError} If tournament name already exists
 	 * @throws {DatabaseError} If tournament creation fails
 	 */
-	public createTournament(name: string, maxPlayers: number): string
+	public createTournament(name: string, maxPlayers: number, settings?: CustomGameSettings): string
 	{
 		try {
 			const existingTournament = this.db.getTournament(undefined, name)
@@ -36,11 +38,9 @@ export class TournamentManagerService
 			}
 			this.db.createTournament(name, maxPlayers);
 			const tournamentData = this.db.getTournament(undefined, name);
-
 			if (!tournamentData)
 				throw new DatabaseError(`Impossible de trouver le tournoi ${name} dans la base de données`);
-			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking);
-
+			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking, settings);
 			this.tournamentsMap.set(tournamentData.id, tournament);
 			return tournamentData.id;
 		} catch (error) {

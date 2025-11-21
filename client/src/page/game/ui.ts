@@ -44,11 +44,14 @@ export function setupDisconnectionHandlers(): void
     });
 }
 
-export function showGameOver(winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean): void
+export function showGameOver(winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
 {
     gameState.setGameRunning(false);
     const isWinner = winner === gameState.currentPlayerRole;
-    const message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
+    let message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
+    if (forfeit) {
+        message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
+    }
     const scoreText = `Score final : ${score1} - ${score2}`;
     
     gameState.ctx.save();

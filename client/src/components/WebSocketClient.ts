@@ -21,7 +21,7 @@ export class WebSocketClient
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
-    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => void;
     
     public onLobbyCreated?: (lobbyId: string, lobby: Lobby) => void;
     public onLobbyUpdate?: (lobby: Lobby) => void;
@@ -110,7 +110,11 @@ export class WebSocketClient
                 
             case 'gameStart':
                 if (message.playerRole) {
-                    console.log(`[WEBSOCKET] Jeu demarre! Vous etes: ${message.playerRole}`);
+                    console.log(`[WEBSOCKET] Jeu demarre! Vous etes: ${message.playerRole}, Custom: ${message.isCustom}`);
+                    if (message.isCustom !== undefined) {
+                        this._isCustomGame = message.isCustom;
+                        console.log(`[WEBSOCKET] Mode Custom défini: ${this._isCustomGame}`);
+                    }
                     if (this._onGameStart) {
                         this._onGameStart(message.playerRole);
                     } else {
@@ -133,8 +137,8 @@ export class WebSocketClient
                 
             case 'gameOver':
                 if (message.winner && message.score1 !== undefined && message.score2 !== undefined) {
-                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, Should disconnect: ${message.shouldDisconnect}`);
-                    this.onGameOver?.(message.winner, message.score1, message.score2, message.isTournament, message.shouldDisconnect);
+                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, Should disconnect: ${message.shouldDisconnect}, Forfeit: ${message.forfeit}`);
+                    this.onGameOver?.(message.winner, message.score1, message.score2, message.isTournament, message.shouldDisconnect, message.forfeit);
                 }
                 break;
                 

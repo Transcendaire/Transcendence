@@ -24,6 +24,8 @@ export class GameRoomManager
 		player1: Player, 
 		player2: Player, 
 		isCustom: boolean,
+		fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
+		maxScore: number = 5,
 		tournamentMatch?: {
 			tournamentId: string
 			matchId: string
@@ -33,7 +35,7 @@ export class GameRoomManager
 	): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
-		const gameService = new GameService(canvasWidth, canvasHeight, isCustom)
+		const gameService = new GameService(canvasWidth, canvasHeight, isCustom, fruitFrequency, maxScore)
 		const gameLoop = setInterval(() => this.updateGame(gameId), 16)
 		const room: GameRoom = {
 			id: gameId,
@@ -56,12 +58,14 @@ export class GameRoomManager
 	 * @brief Create AI game room
 	 * @param player1 Human player
 	 * @param isCustom Enable power-ups mode
+	 * @param fruitFrequency Frequency of fruit spawning
+	 * @param maxScore Maximum score to win the game
 	 * @returns Created game room ID
 	 */
-	public createAIGame(player1: Player, isCustom: boolean): string
+	public createAIGame(player1: Player, isCustom: boolean, fruitFrequency: 'low' | 'normal' | 'high' = 'normal', maxScore: number = 5): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
-		const gameService = new GameService(canvasWidth, canvasHeight, isCustom)
+		const gameService = new GameService(canvasWidth, canvasHeight, isCustom, fruitFrequency, maxScore)
 		const gameLoop = setInterval(() => this.updateGame(gameId), 16)
 		const player2Input = { up: false, down: false }
 		const room: GameRoom = {

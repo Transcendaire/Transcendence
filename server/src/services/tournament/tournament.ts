@@ -6,6 +6,7 @@ import { errTournament, TournamentError } from "@app/shared/errors.js"
 import { Player } from '../../types.js';
 import { WebsocketHandler } from '@fastify/websocket';
 import { sign } from 'crypto';
+import { CustomGameSettings } from '@app/shared/types.js';
 
 export enum TournamentStatus {
 	CREATED = 'created',
@@ -32,18 +33,25 @@ export class Tournament {
 	private maxRound: number = 0;
 	private status: TournamentStatus = TournamentStatus.CREATED;
 	private players: Map<string, TournamentPlayer> = new Map();
+	private settings: CustomGameSettings;
 
 	public readonly id: string =  "";
 	public readonly name: string = "";
 	public readonly maxPlayers: number;
 
-	constructor(id: string, name: string, maxPlayers: number, matchmakingService: MatchmakingService)
+	constructor(id: string, name: string, maxPlayers: number, matchmakingService: MatchmakingService, settings?: CustomGameSettings)
 	{
 		this.id = id;
 		this.name = name;
 		this.maxPlayers = maxPlayers;
 		this.matchmakingService = matchmakingService;
 		this.bracketService = new SingleEliminationBracket(id, name);
+		this.settings = settings || {
+			maxScore: 5,
+			powerUpsEnabled: false,
+			fruitFrequency: 'normal'
+		};
+		console.log(`[TOURNAMENT] Created with settings: powerUps=${this.settings.powerUpsEnabled}, maxScore=${this.settings.maxScore}`);
 	}
 
 
@@ -196,8 +204,15 @@ export class Tournament {
 		for (let i = 0; i < this.bracket![this.currRound]!.length; i++)
 		{
 			const currMatch = this.bracket![this.currRound]![i];
-
 			console.log(`[TOURNAMENT] Match ${i}: ${currMatch?.player1Alias} vs ${currMatch?.player2Alias}`);
+			if (currMatch?.player2Alias === '~TBD') {
+				console.log(`[TOURNAMENT] Match ${i} is a bye match, ${currMatch.player1Alias} advances automatically`);
+				currMatch.status = 'completed';
+				currMatch.winnerId = currMatch.player1Id;
+				this.bracketService.updateMatchResult(currMatch, currMatch.player1Id);
+				continue;
+			}
+			
 			this.startMatch(currMatch!);
 		}
 	}
@@ -230,7 +245,9 @@ export class Tournament {
 		const gameId = gameRoomManager.createGame(
 			{ socket: player1.socket, name: player1.alias, id: player1.id },
 			{ socket: player2.socket, name: player2.alias, id: player2.id },
-			false,
+			this.settings.powerUpsEnabled,
+			this.settings.fruitFrequency,
+			this.settings.maxScore,
 			{
 				tournamentId: this.id,
 				matchId: match.id,
@@ -241,6 +258,7 @@ export class Tournament {
 				}
 			}
 		);
+		console.log(`[TOURNAMENT] Game ${gameId} started with powerUps: ${this.settings.powerUpsEnabled}`);
 
 		console.log(`[TOURNAMENT] Started game ${gameId} for match ${match.id}`);
 		
@@ -248,17 +266,19 @@ export class Tournament {
 		{
 			player1.socket.send(JSON.stringify({
 				type: 'gameStart',
-				playerRole: 'player1'
+				playerRole: 'player1',
+				isCustom: this.settings.powerUpsEnabled
 			}));
-			console.log(`[TOURNAMENT] Sent gameStart to ${player1.alias} as player1`);
+			console.log(`[TOURNAMENT] Sent gameStart to ${player1.alias} as player1 (custom: ${this.settings.powerUpsEnabled})`);
 		}
 		if (player2.socket.readyState === 1)
 		{
 			player2.socket.send(JSON.stringify({
 				type: 'gameStart',
-				playerRole: 'player2'
+				playerRole: 'player2',
+				isCustom: this.settings.powerUpsEnabled
 			}));
-			console.log(`[TOURNAMENT] Sent gameStart to ${player2.alias} as player2`);
+			console.log(`[TOURNAMENT] Sent gameStart to ${player2.alias} as player2 (custom: ${this.settings.powerUpsEnabled})`);
 		}
 		
 		(match as any).gameId = gameId;

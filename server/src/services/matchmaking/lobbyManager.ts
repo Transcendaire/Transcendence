@@ -39,6 +39,7 @@ export class LobbyManager
 		playerName: string,
 		lobbyName: string,
 		lobbyType: 'tournament' | 'multiplayergame',
+		maxPlayers: number,
 		settings: CustomGameSettings
 	): string | null
 	{
@@ -62,14 +63,14 @@ export class LobbyManager
 			type: lobbyType,
 			settings: settings,
 			players: [creatorPlayer],
-			maxPlayers: lobbyType === 'tournament' ? 16 : 6,
+			maxPlayers: maxPlayers,
 			status: 'waiting',
 			createdAt: Date.now()
 		}
 
 		this.lobbies.set(lobbyId, lobby)
 		this.trackSocket(socket, lobbyId, playerId)
-		console.log(`[LOBBY] Created ${lobbyType} lobby "${lobbyName}" (${lobbyId}) by ${playerName}`)
+		console.log(`[LOBBY] Created ${lobbyType} lobby "${lobbyName}" (${lobbyId}) by ${playerName}, maxPlayers: ${maxPlayers}, powerUps: ${settings.powerUpsEnabled}`)
 		this.broadcastLobbyListToAll()
 		return lobbyId
 	}
@@ -249,13 +250,12 @@ export class LobbyManager
 		{
 			try {
 				const uniqueTournamentName = `${lobby.name}-${Date.now()}`
-				const tournamentId = this.tournamentManager.createTournament(uniqueTournamentName, lobby.players.length)
+				const tournamentId = this.tournamentManager.createTournament(uniqueTournamentName, lobby.players.length, lobby.settings)
 				const tournament = this.tournamentManager.getTournament(tournamentId)
 				
 				if (!tournament)
 					return "Failed to create tournament"
 				
-				// Add all players to tournament with their sockets
 				const sockets = this.lobbyToSockets.get(lobbyId)
 				console.log(`[LOBBY] Adding ${lobby.players.length} players to tournament`)
 				for (const player of lobby.players)
@@ -280,8 +280,6 @@ export class LobbyManager
 					}
 				}
 				console.log(`[LOBBY] All players added, starting tournament`)
-				
-				// Start the tournament
 				tournament.runTournament()
 				console.log(`[LOBBY] Tournament ${tournamentId} started with ${lobby.players.length} players`)
 			} catch (error) {
@@ -290,18 +288,13 @@ export class LobbyManager
 			}
 		}
 		else
-		{
-			// Handle multiplayer game (not implemented yet)
 			console.log(`[LOBBY] Multiplayer game start not yet implemented`)
-		}
-		
 		const sockets = this.lobbyToSockets.get(lobbyId)
 		if (sockets)
 		{
 			for (const sock of sockets)
 				this.untrackSocket(sock)
 		}
-		
 		this.lobbies.delete(lobbyId)
 		this.lobbyToSockets.delete(lobbyId)
 		this.broadcastLobbyListToAll()

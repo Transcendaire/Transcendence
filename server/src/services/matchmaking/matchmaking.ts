@@ -80,7 +80,7 @@ export class MatchmakingService
 				break
 			case 'createCustomLobby':
 				this.handleCreateLobby(socket, message.playerName, message.name, 
-					message.lobbyType, message.settings)
+					message.lobbyType, message.maxPlayers, message.settings)
 				break
 			case 'joinLobby':
 				this.handleJoinLobby(socket, message.playerName, message.lobbyId)
@@ -163,12 +163,41 @@ export class MatchmakingService
 		{
 			const isPlayer1 = gameRoom.player1.socket === socket
 			const opponent = isPlayer1 ? gameRoom.player2 : gameRoom.player1
+			const disconnectedPlayer = isPlayer1 ? gameRoom.player1 : gameRoom.player2
 
-			if (opponent.socket && opponent.id !== 'AI')
-				this.sendMessage(opponent.socket, { type: 'waiting' })
-			this.gameRoomManager.endGame(gameRoom.id)
+			if (gameRoom.tournamentMatch)
+			{
+				console.log(`[MATCHMAKING] Player ${disconnectedPlayer.name} disconnected from tournament match, ${opponent.name} wins by forfeit`)
+				const gameState = gameRoom.gameService.getGameState()
+				const winner = isPlayer1 ? 'player2' : 'player1'
+				const isFinalMatch = gameRoom.tournamentMatch.isFinalMatch
+				
+				if (opponent.socket && opponent.id !== 'AI')
+				{
+					this.sendMessage(opponent.socket, {
+						type: 'gameOver',
+						winner,
+						score1: gameState.player1.score,
+						score2: gameState.player2.score,
+						isTournament: true,
+						shouldDisconnect: isFinalMatch,
+						forfeit: true
+					})
+				}
+				gameRoom.tournamentMatch.onComplete(
+					opponent.id,
+					isPlayer1 ? gameState.player2.score : gameState.player1.score,
+					isPlayer1 ? gameState.player1.score : gameState.player2.score
+				)
+				this.gameRoomManager.endGame(gameRoom.id)
+			}
+			else
+			{
+				if (opponent.socket && opponent.id !== 'AI')
+					this.sendMessage(opponent.socket, { type: 'waiting' })
+				this.gameRoomManager.endGame(gameRoom.id)
+			}
 		}
-
 		this.playerSockets.delete(socket)
 	}
 
@@ -184,6 +213,7 @@ export class MatchmakingService
 		playerName: string,
 		name: string,
 		lobbyType: 'tournament' | 'multiplayergame',
+		maxPlayers: number,
 		settings: any
 	): void
 	{
@@ -191,7 +221,7 @@ export class MatchmakingService
 		if (player)
 			player.name = playerName
 		const lobbyId = this.lobbyManager.createLobby(socket, playerName, 
-			name, lobbyType, settings)
+			name, lobbyType, maxPlayers, settings)
 
 		if (!lobbyId)
 		{

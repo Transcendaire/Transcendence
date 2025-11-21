@@ -93,15 +93,44 @@
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
-                    <option value="Normal">Normal</option>
-                    <option value="Custom">Custom</option>
+                    <option value="Normal">Sans PowerUps</option>
+                    <option value="Custom">Avec PowerUps</option>
+                </select>
+            </div>
+            
+            <div class="hidden" id="powerfruitsfrequency">
+                <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    Fréquence des fruits
+                </label>
+                <select id="fruitFrequencySelect"
+                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                                px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                                focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                                font-quency">
+                    <option value="low">Peu de fruits</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="high">Beaucoup de fruits</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                    Points pour gagner
+                </label>
+                <select id="maxScoreSelect"
+                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                                px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                                focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                                font-quency">
+                    <option value="3">3 points</option>
+                    <option value="5" selected>5 points</option>
+                    <option value="11">11 points</option>
                 </select>
             </div>
                 
-                
             <div>
                 <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
-                    Nombre de joueurs
+                    Nombre maximum de joueurs
                 </label>
                 <select id="nbPlayer"
                         class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
@@ -109,9 +138,10 @@
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
                     <option value="2">2</option>
-                    <option value="4">4</opton>
+                    <option value="4">4</option>
                     <option value="8">8</option>
-                    <option value="16">16</option>
+                    <option value="16" selected>16</option>
+
                 </select>
             </div>
                 

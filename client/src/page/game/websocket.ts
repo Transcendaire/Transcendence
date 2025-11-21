@@ -56,8 +56,8 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
         alert(error);
     };
     
-    wsClient.onGameOver = (winner: 'player1' | 'player2', score1: number, score2: number) => {
-        showGameOver(winner, score1, score2);
+    wsClient.onGameOver = (winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => {
+        showGameOver(winner, score1, score2, isTournament, shouldDisconnect, forfeit);
     };
     
     console.log('[GAME] Tous les callbacks configurés');

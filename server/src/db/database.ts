@@ -48,8 +48,8 @@ export class DatabaseService {
 			`CREATE TABLE IF NOT EXISTS users (
 			id TEXT UNIQUE PRIMARY KEY,
 			login TEXT UNIQUE NOT NULL, 
-			password TEXT, //*this is hashed
-			alias TEXT UNIQUE NOT NULL, //*pseudo but called it alias for concordance
+			password TEXT, -- this is hashed
+			alias TEXT UNIQUE NOT NULL, -- pseudo but called it alias for concordance
 			created_at INTEGER NOT NULL,
 			tournament_alias TEXT,
 			games_played INTEGER DEFAULT 0,

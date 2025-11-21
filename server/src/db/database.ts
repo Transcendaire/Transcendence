@@ -1,19 +1,9 @@
 import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
-import { Player } from "../types.js"
+import { Player, User } from "../types.js"
 import { DatabaseError, errDatabase } from "@app/shared/errors.js"
 import { getDatabase } from "./databaseSingleton.js";
-// import { create } from "domain";
-
-
-	//ToDo use a rest api to broadcast info to players of  a tournament based on events (end of game, tournament...)
-	//! If tournament is launched a dn the number of players is even, fill the remaining with ai opponents
-	//? Use status variable of players table if a player is AI or creating another variable 
-	//ToDo loadFromDatabase() to retrieve tournament when server restarts
-	//ToDo savreBracketToDatabase() to store each match with initial state
-	//ToDo updateMAtchInDatabase() after the match
-	//ToDo check that the bracket's tournament doesnt already exists in the database before creating a bracket
- 
+	
 /**
  * @brief Validates alias format and constraints
  * @param alias The alias string to validate
@@ -114,15 +104,15 @@ export class DatabaseService {
 		const id = randomUUID();
 		const currDate = Date.now();
 		this.db.prepare(`
-			INSERT INTO users (id, login, password, alias, created_at, tournament_alias, games_played, games_won, online)
-			VALUES (?, ?, ?, ?, ?, 0)`
+			INSERT INTO users (id, login, password, alias, created_at)
+			VALUES (?, ?, ?, ?, ?)`
 		).run(id, login.trim(), hashedPassword, alias.trim(), currDate);
 		this.createPlayer(alias, id, currDate);
 
 		return id;
 	}
 
-	public getUserByLogin(login: string)
+	public getUserByLogin(login: string): User | undefined
 	{
 		return this.db.prepare('SELECT * FROM users where login = ?').get(login);
 	}
@@ -130,6 +120,11 @@ export class DatabaseService {
 	public getUserById(id: string)
 	{
 		return this.db.prepare('SELECT * FROM users where id = ?').get(id);
+	}
+
+	public getUserByAlias(alias: string)
+	{
+		return this.db.prepare('SELECT * FROM users where alias = ?').get(alias);
 	}
 
 	/**
@@ -171,6 +166,20 @@ export class DatabaseService {
 		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
 	}
 
+	public getUserBy(type: string, value: string)
+	{
+		const columnMap: Record<string,string> = {
+			"id": "SELECT * FROM users WHERE id= ?",
+			"login": "SELECT * FROM users WHERE alias= ?",
+			"alias": "SELECT * FROM users WHERE created_at= ?",
+			"all": "SELECT * FROM users"
+		};
+		const query: string | undefined = columnMap[type];
+
+		if (!query)
+			throw new DatabaseError(`Invalid data request in ${type}`);
+		return this.db.prepare(query).get(value) as (User | undefined);
+	}
 
 	/**
 	 * @brief Creates a new player in the database

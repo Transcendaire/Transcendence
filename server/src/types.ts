@@ -8,6 +8,18 @@ export type Player = {
 	createdAt: number;
 }
 
+export type User = {
+	id: string;
+	login: string;
+	password?: string;
+	alias: string;
+	createdAt: number;
+	tournamentAlias?: string;
+	gamesPlayed: number;
+	gamesWon: number;
+	online: boolean;
+}
+
 export type Message = 
 | { type: "join_tournament"; alias: string }
 | { type: "player_input"; direction: "up" | "down" }

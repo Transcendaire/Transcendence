@@ -82,7 +82,7 @@ function initLoginModal(loginModal: HTMLElement)
     });
 }
 
-function initsigninModal(signinModal: HTMLElement)
+async function initsigninModal(signinModal: HTMLElement)
 {
     const signinButton = getEl("signinButton") as HTMLButtonElement;
     const cancelSigninButton = getEl("cancelSigninButton") as HTMLButtonElement
@@ -96,14 +96,44 @@ function initsigninModal(signinModal: HTMLElement)
     signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
 
 
-    const subscribe = () => {
+    const subscribe = async () => {
 
-        const username = usernameInput.value;
-        const alias = aliasInput.value;
-        const password = (passwordInput.value === confirmPasswordInput.value ? passwordInput.value : "");
+        const username = usernameInput.value.trim();
+        const alias = aliasInput.value.trim();
+        const password = passwordInput.value.trim();
+		const passworldValidation = confirmPasswordInput.value.trim();
 
-        if (inputParser.parsePlayerName(username) === false) 
-            alert(`${username} n'est pas un nom valide`);
+		try {
+
+			const response = await fetch('/api/auth/register', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					login: username, 
+					password,
+					passworldValidation,
+					alias
+				})
+			});
+
+			const data = await response.json();
+			if (!response.ok)
+			{
+				alert(data.error || 'Erreur lors de l\'inscription');
+				return ;
+			}
+			alert(data.message || 'Inscription réussie !');
+			playerName = alias;
+			isLoggedIn = true;
+			hide(signinModal);
+			updateUI()
+		} catch (error) {
+			const message = String(error);
+			console.error('Erreur: ', message);
+			alert(message);
+		}
+        // if (inputParser.parsePlayerName(username) === false) 
+        //     alert(`${username} n'est pas un nom valide`);
     }
 
     checkSignInInput.onclick = subscribe;

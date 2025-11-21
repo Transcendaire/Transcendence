@@ -6,11 +6,11 @@ import { registerErrorRoutes } from './error.routes.js'
 
 export async function registerRoutes(server: FastifyInstance)
 {
-    // await registerAuthRoutes(server)
+	await registerErrorRoutes(server);
     
     await registerWebSocketRoutes(server)
     
     await registerStaticRoutes(server)
-
-	await registerErrorRoutes(server);
+	
+    await registerAuthRoutes(server)
 }

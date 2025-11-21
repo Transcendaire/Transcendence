@@ -14,8 +14,15 @@ export async function createApp() { //*no network binding. Just registering stuf
     console.log('  Dist path:', paths.dist)
     console.log('  Index path:', paths.index)
 
-	await registerPlugins(server);
-	await registerRoutes(server);
-	
+	try {
+		await registerPlugins(server);
+		console.log('✅ Plugins registered')
+		await registerRoutes(server);
+		console.log('✅ Routes registered')
+	} catch (error) {
+		console.error('[ERROR] ', error);
+		throw error;
+	}
+
 	return server;
 }

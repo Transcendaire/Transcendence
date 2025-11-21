@@ -16,7 +16,7 @@ export class ServerError extends Error
 	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
-		this.name = ''
+		this.name = '';
 		this.statusCode = statusCode;
 		this.code = code;
 	}
@@ -29,7 +29,7 @@ export class DatabaseError extends Error
 	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
-		this.name = ''
+		this.name = '';
 		this.statusCode = statusCode;
 		this.code = code;
 	}
@@ -68,7 +68,7 @@ export class BracketError extends Error
 	constructor(message: string, code?: string, statusCode: number = 500)
 	{
 		super(message);
-		this.name = ''
+		this.name = '';
 		this.statusCode = statusCode;
 		this.code = code;
 	}
@@ -86,6 +86,7 @@ export enum errTournament {
 };
 
 export enum errClient {
+	DUPLICATE_LOGIN = 'DUPLICATE_LOGIN',
 	DUPLICATE_NAME = 'DUPLICATE_NAME',
 	ALREADY_IN_TOURNAMENT = 'ALREADY_IN_TOURNAMENT',
 	UNAUTHENTICATED_PLAYER = 'UNAUTHENTICATED_PLAYER',

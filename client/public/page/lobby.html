@@ -1,5 +1,5 @@
-<div id="tournamentContainer" class="container mx-auto px-4 py-8 mt-20">
-    <div class="flex md:flex-row flex-col gap-6 justify-center items-center mb-8">
+<div id="tournamentContainer" class="container mx-auto px-4 py-8">
+    <div class="flex md:flex-row flex-col gap-6 justify-center items-center">
             
         <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl w-80 min-w-[370px] max-w-lg min-h-[500px] max-h-[800px] hidden md:block">
             <div class="flex items-center justify-between mb-6">
@@ -14,7 +14,7 @@
                 </span>
             </div>
                 
-            <div id="playersList" 
+            <div id="friendsList" 
                 class="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
             </div>
         </div>
@@ -79,8 +79,8 @@
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
-                    <option value="Tournament">Tournoi</option>
-                    <option value="MultiplayerGame">Multiplayer</option>
+                    <option value="tournament">Tournoi</option>
+                    <option value="multiplayerGame">Multiplayer</option>
                  </select>
             </div>
 
@@ -137,19 +137,19 @@
     <div class="flex flex-col justify-start bg-sonpi16-black rounded-3xl p-6 max-w-2xl min-h-[700px] mx-auto mt-20 ">
 
         <div class="border-b border-sonpi16-orange">
-            <h2 id="roomName" class="text-2xl font-bold text-sonpi16-orange font-quency item text-center ">${RoomName}</h2>
+            <h2 id="roomName" class="text-2xl font-bold text-sonpi16-orange font-quency item text-center "></h2>
         </div>
 
         <div id="playersList" 
             class="overflow-y-auto grid grid-cols-2 items-start
                 scroll-smooth gap-4 max-w-full max-h-[550px] p-7 ">
-
         </div>
 
         <div class="flex flex-row justify-between mt-auto">
-            <span id="playerCount" class="text-sonpi16-orange px-6 py-3 rounded-xl font-bold">${nbPlayer}/${maxPlayer}</span>
-            <button id="startGame" class="bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">Lancer la partie</button>
+            <span id="modalPlayerCount" class="text-sonpi16-orange px-6 py-3 rounded-xl font-bold"></span>
+            <button id="startGame" class="hidden font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">Lancer la partie</button>
             <button id="quitRoom" class="font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">quitter la partie</button>
         </div>  
     </div>
 </div>
+    

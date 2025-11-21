@@ -10,5 +10,93 @@
     <script src="./config/config-tailwind.js"></script>
 </head>
 <body class="min-h-screen bg-sonpi16-orange">
+
+<div id="loginModal" class=" fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-sonpi16-black relative rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+    <button id="cancelLoginButton" 
+            class="absolute top-2 right-4 text-sonpi16-orange hover:text-white 
+               text-3xl font-bold transition-all hover:rotate-90 duration-300">
+              ×
+    </button>
+    <button class="mt-2 flex flex-row border border-sonpi16-orange 
+            w-full py-2 rounded-md justify-center items-center hover:border-sonpi16-orange
+             bg-sonpi16-orange bg-opacity-20">
+      <img class="inline h-10 px-3" src="./assets/g.webp" alt="glogo">
+      <p class="text-sonpi16-orange text-2xl font-bold">Google Connect</p>
+    </button>
+
+    <p class="font-quency border-t-2 my-3 py-1 w-4/5 mx-auto"></p>
+
+    <input id="usernameCheck" 
+            type="text" 
+            placeholder="Nom d'utilisateur" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                          px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                          focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency"/>
+    <input id="passwordCheck" 
+              type="text" 
+              placeholder="mot de passe" 
+              class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                        px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
+                        focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency" />
+
+      <button id="checkInput" 
+              class="font-quency mt-3 bg-sonpi16-orange
+               text-white px-4 py-2 rounded font-bold w-full hover:bg-orange-600 transition">Connexion
+      </button>
+      <button id="signinRedirect" class="block font-quency border-t-2 mt-3 py-1 w-4/5 mx-auto text-sonpi16-orange hover:text-white hover:underline">
+        Creer un compte ?
+      </button>
+  </div>
+</div>
+
+<div id="signinModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+  <div class="bg-sonpi16-black relative rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
+    <button id="cancelSigninButton" 
+            class="absolute top-2 right-4 text-sonpi16-orange hover:text-white 
+               text-3xl font-bold transition-all hover:rotate-90 duration-300">
+              ×
+    </button>
+    <button class="mt-2 flex flex-row border border-sonpi16-orange 
+            w-full py-2 rounded-md justify-center items-center hover:border-sonpi16-orange
+             bg-sonpi16-orange bg-opacity-20">
+      <img class="inline h-10 px-3 " src="./assets/g.webp" alt="glogo">
+      <p class="text-sonpi16-orange text-2xl font-bold">Inscription avec Google</p>
+    </button>
+
+    <p class="font-quency border-t-2 my-3 py-1 w-4/5 mx-auto"></p>
+
+    <input id="newUser" 
+            type="text" 
+            placeholder="Nom d'utilisateur" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                          px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                          focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency"/>
+    <input id="createPassword" 
+              type="text" 
+              placeholder="mot de passe" 
+              class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                        px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
+                        focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency" />
+
+    <input id="passwordConfirmation" 
+            type="text" 
+            placeholder="confirmez le mot de passe" 
+            class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                        px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
+                        focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                        font-quency" />
+
+      <button id="checkSignInInput" 
+              class="font-quency mt-3 bg-sonpi16-orange
+               text-white px-4 py-2 rounded font-bold w-full hover:bg-orange-600 transition">S'inscrire
+      </button>
+    </div>
+</div>
+         
 </body>
 </html>

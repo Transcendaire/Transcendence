@@ -11,8 +11,10 @@ function initHomePage(): void
 {
     const gameModeModal = getEl("gameModeModal");
     const loginModal = getEl("loginModal");
+    const signinModal = getEl("signinModal");
     const waitingModal = getEl("waitingModal");
     const playButton = getEl("playButton") as HTMLButtonElement;
+    const redirect = getEl("signinRedirect") as HTMLButtonElement;
 
     console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
     updateUI();
@@ -33,40 +35,78 @@ function initHomePage(): void
         else
             show(loginModal);
     });
+    
+    redirect.addEventListener('click', () => {
+        hide(loginModal);
+        show(signinModal);
+    })
 
     initWaitingModal(waitingModal);
     initLoginModal(loginModal);
+    initsigninModal(signinModal);
     initGameModeModal(gameModeModal);
 }
 
 function initLoginModal(loginModal: HTMLElement)
 {
-    const LoginButton = getEl("loginButton") as HTMLButtonElement;
+    const loginButton = getEl("loginButton") as HTMLButtonElement;
+    const checkButton = getEl("checkInput") as HTMLButtonElement;
     const cancelLoginButton = getEl("cancelLoginButton") as HTMLButtonElement;
+    const playerInput = getEl("usernameCheck") as HTMLInputElement;
+    const passwordInput = getEl("passwordCheck") as HTMLInputElement;
 
-    setupGlobalModalEvents(loginModal, LoginButton, cancelLoginButton);
+    setupGlobalModalEvents(loginModal, loginButton, cancelLoginButton);
+    loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
 
-    const connectAsInvite = () => 
+
+    const connect = () => 
     {
-        const playerInput = getPlayerName();
+        const username = playerInput.value;
+        const password = passwordInput.value;
         
-        console.log(`playerInput = ${playerInput}`)
-        if (inputParser.parsePlayerName(playerInput) === false) 
-            alert(`${playerInput} n'est pas un nom valide`);
+        console.log(`username = ${username}`)
+        if (inputParser.parsePlayerName(username) === false) 
+            alert(`${username} n'est pas un nom valide`);
         else 
         {
-            playerName = playerInput;
+            playerName = username;
             isLoggedIn = true;
             hide(loginModal)
             updateUI();
         }
     }
 
-    const ckeckInput = getEl("checkPlayerNameInput");
-    ckeckInput.addEventListener('click', connectAsInvite);
-    ckeckInput.addEventListener('keydown', (event: KeyboardEvent) => {
-        if (event.key === 'Enter') connectAsInvite
+    checkButton.addEventListener('click', connect);
+    checkButton.addEventListener('keydown', (event: KeyboardEvent) => {
+        if (event.key === 'Enter') connect
     });
+}
+
+function initsigninModal(signinModal: HTMLElement)
+{
+    const signinButton = getEl("signinButton") as HTMLButtonElement;
+    const cancelSigninButton = getEl("cancelSigninButton") as HTMLButtonElement
+    const usernameInput = getEl("newUser") as HTMLInputElement;
+    const aliasInput = getEl("newAlias") as HTMLInputElement;
+    const passwordInput = getEl("createPassword") as HTMLInputElement;
+    const confirmPasswordInput = getEl("passwordConfirmation") as HTMLInputElement;
+    const checkSignInInput = getEl("checkSignInInput") as HTMLButtonElement;
+
+    setupGlobalModalEvents(signinModal, signinButton, cancelSigninButton);
+    signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
+
+
+    const subscribe = () => {
+
+        const username = usernameInput.value;
+        const alias = aliasInput.value;
+        const password = (passwordInput.value === confirmPasswordInput.value ? passwordInput.value : "");
+
+        if (inputParser.parsePlayerName(username) === false) 
+            alert(`${username} n'est pas un nom valide`);
+    }
+
+    checkSignInInput.onclick = subscribe;
 }
 
 function initGameModeModal(gameModeModal: HTMLElement)
@@ -139,22 +179,21 @@ function updateUI(): void {
     const loginButton = getEl("loginButton");
     const logoutButton = getEl("logoutButton");
     const profileButton = getEl("profileButton");
+    const signinButton = getEl("signinButton");
     
     if (isLoggedIn) {
         hide(loginButton);
+        hide(signinButton);
         show(logoutButton);
         show(profileButton);
         console.log('[HOME] UI: Connecté');
     } else {
-        hide(profileButton);
         show(loginButton);
+        show(signinButton);
+        hide(profileButton);
         hide(logoutButton);
         console.log('[HOME] UI: Non connecté');
     }
-}
-
-function getPlayerName(): string {
-    return (document.getElementById("playerNameInput") as HTMLInputElement).value;
 }
 
 function setupWebsocket(waitingModal: HTMLElement)

@@ -28,4 +28,10 @@ export interface GameRoom
 	player2PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
 	ai?: AIPlayer
 	isCustom: boolean
+	tournamentMatch?: {
+		tournamentId: string
+		matchId: string
+		isFinalMatch: boolean
+		onComplete: (winnerId: string, score1: number, score2: number) => void
+	}
 }

@@ -18,6 +18,31 @@ export type PowerUpFruit = {
 	rotation: number;
 }
 
+export type CustomGameSettings = {
+	maxScore: number;
+	powerUpsEnabled: boolean;
+	fruitFrequency: 'low' | 'normal' | 'high';
+}
+
+export type LobbyPlayer = {
+	id: string;
+	name: string;
+	isBot: boolean;
+	isReady: boolean;
+}
+
+export type Lobby = {
+	id: string;
+	creatorId: string;
+	name: string;
+	type: 'tournament' | 'multiplayergame';
+	settings: CustomGameSettings;
+	players: LobbyPlayer[];
+	maxPlayers: number;
+	status: 'waiting' | 'starting' | 'playing';
+	createdAt: number;
+}
+
 export type GameState = {
 	player1: {
 		paddle: { y: number };
@@ -59,13 +84,27 @@ export type WebSocketMessage =
 | { type: "joinCustomAI"; playerName: string }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
-| { type: "gameStart"; playerRole: 'player1' | 'player2' }
+| { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number }
+| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number; isTournament?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
 | { type: "ping" }
 | { type: "pong" }
+| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; maxPlayers: number; settings: CustomGameSettings }
+| { type: "joinLobby"; playerName: string; lobbyId: string }
+| { type: "leaveLobby"; lobbyId: string }
+| { type: "deleteLobby"; lobbyId: string }
+| { type: "addBot"; lobbyId: string }
+| { type: "removeBot"; lobbyId: string; botId: string }
+| { type: "startLobby"; lobbyId: string }
+| { type: "requestLobbyList" }
+| { type: "lobbyCreated"; lobbyId: string; lobby: Lobby }
+| { type: "lobbyUpdate"; lobby: Lobby }
+| { type: "lobbyList"; lobbies: Lobby[] }
+| { type: "lobbyError"; message: string }
+| { type: "waitingForMatch"; message: string }
+| { type: "tournamentComplete"; champion: string; tournamentName: string }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

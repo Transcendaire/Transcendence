@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { match } from 'assert';
 import { getDatabase } from '../../db/databaseSingleton.js';
 import { DatabaseError, errTournament, TournamentError } from "@app/shared/errors.js";
+import { CustomGameSettings } from '@app/shared/types.js';
 
 export class TournamentManagerService 
 {
@@ -20,24 +21,27 @@ export class TournamentManagerService
 	 * @brief Creates a new tournament
 	 * @param name Tournament name
 	 * @param maxPlayers Maximum number of players allowed
+	 * @param settings Game settings (powerUps, maxScore, etc.)
 	 * @returns Tournament ID
 	 * @throws {TournamentError} If tournament name already exists
 	 * @throws {DatabaseError} If tournament creation fails
 	 */
-	public createTournament(name: string, maxPlayers: number): string
+	public createTournament(name: string, maxPlayers: number, settings?: CustomGameSettings): string
 	{
 		try {
-			if (this.db.getTournament(undefined, name))
-				throw new TournamentError(`Le tournoi ${name} existe déjà et ne peut pas être créé`, errTournament.ALREADY_EXISTING)
+			const existingTournament = this.db.getTournament(undefined, name)
+			if (existingTournament)
+			{
+				console.log(`[TOURNAMENT_MANAGER] Tournament ${name} already exists in DB, deleting it`)
+				this.db.deleteTournament(existingTournament.id, undefined)
+				this.tournamentsMap.delete(existingTournament.id)
+			}
 			this.db.createTournament(name, maxPlayers);
-
 			const tournamentData = this.db.getTournament(undefined, name);
 			if (!tournamentData)
 				throw new DatabaseError(`Impossible de trouver le tournoi ${name} dans la base de données`);
-
-			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking);
+			const tournament = new Tournament(tournamentData.id, name, maxPlayers, this.matchmaking, settings);
 			this.tournamentsMap.set(tournamentData.id, tournament);
-
 			return tournamentData.id;
 		} catch (error) {
 			console.error(`createTournament: error creating tournament ${name}: `, error);

@@ -90,7 +90,8 @@ MathUtils::MathUtils(double precision)
  * @param values The vector of double values to average
  * @return The arithmetic mean of the values
  */
-double MathUtils::computeAverage(const std::vector<double>& values) {
+double MathUtils::computeAverage(const std::vector<double>& values)
+{
     double sum = 0.0;
     int count = values.size(); // One line after start vars declaration
     

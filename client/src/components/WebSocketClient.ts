@@ -1,4 +1,4 @@
-import { GameState, GameInput, WebSocketMessage } from "/dist/shared/types.js";
+import { GameState, GameInput, WebSocketMessage, Lobby } from "/dist/shared/types.js";
 
 /**
  * @brief WebSocket client for real-time game communication
@@ -21,7 +21,12 @@ export class WebSocketClient
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
-    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => void;
+    
+    public onLobbyCreated?: (lobbyId: string, lobby: Lobby) => void;
+    public onLobbyUpdate?: (lobby: Lobby) => void;
+    public onLobbyList?: (lobbies: Lobby[]) => void;
+    public onLobbyError?: (message: string) => void;
     
     public get onGameStart() {
         return this._onGameStart;
@@ -105,7 +110,11 @@ export class WebSocketClient
                 
             case 'gameStart':
                 if (message.playerRole) {
-                    console.log(`[WEBSOCKET] Jeu demarre! Vous etes: ${message.playerRole}`);
+                    console.log(`[WEBSOCKET] Jeu demarre! Vous etes: ${message.playerRole}, Custom: ${message.isCustom}`);
+                    if (message.isCustom !== undefined) {
+                        this._isCustomGame = message.isCustom;
+                        console.log(`[WEBSOCKET] Mode Custom défini: ${this._isCustomGame}`);
+                    }
                     if (this._onGameStart) {
                         this._onGameStart(message.playerRole);
                     } else {
@@ -128,8 +137,50 @@ export class WebSocketClient
                 
             case 'gameOver':
                 if (message.winner && message.score1 !== undefined && message.score2 !== undefined) {
-                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}`);
-                    this.onGameOver?.(message.winner, message.score1, message.score2);
+                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, Should disconnect: ${message.shouldDisconnect}, Forfeit: ${message.forfeit}`);
+                    this.onGameOver?.(message.winner, message.score1, message.score2, message.isTournament, message.shouldDisconnect, message.forfeit);
+                }
+                break;
+                
+            case 'lobbyCreated':
+                if (message.lobbyId && message.lobby) {
+                    console.log(`[WEBSOCKET] Lobby créé: ${message.lobbyId}`);
+                    this.onLobbyCreated?.(message.lobbyId, message.lobby);
+                }
+                break;
+                
+            case 'lobbyUpdate':
+                if (message.lobby) {
+                    console.log(`[WEBSOCKET] Mise à jour du lobby: ${message.lobby.id}`);
+                    this.onLobbyUpdate?.(message.lobby);
+                }
+                break;
+                
+            case 'lobbyList':
+                if (message.lobbies) {
+                    console.log(`[WEBSOCKET] Liste des lobbies reçue: ${message.lobbies.length}`);
+                    this.onLobbyList?.(message.lobbies);
+                }
+                break;
+                
+            case 'lobbyError':
+                if (message.message) {
+                    console.error(`[WEBSOCKET] Erreur lobby: ${message.message}`);
+                    this.onLobbyError?.(message.message);
+                }
+                break;
+                
+            case 'waitingForMatch':
+                if (message.message) {
+                    console.log(`[WEBSOCKET] ${message.message}`);
+                    this.onWaitingForPlayer?.();
+                }
+                break;
+                
+            case 'tournamentComplete':
+                if (message.champion && message.tournamentName) {
+                    console.log(`[WEBSOCKET] Tournament ${message.tournamentName} terminé! Champion: ${message.champion}`);
+                    alert(`🏆 Tournoi "${message.tournamentName}" terminé!\nChampion: ${message.champion}`);
                 }
                 break;
                 
@@ -283,6 +334,19 @@ export class WebSocketClient
     public isCustomGame(): boolean
     {
         return this._isCustomGame;
+    }
+
+    /**
+     * @brief Send a generic WebSocket message
+     * @param message WebSocketMessage to send
+     */
+    public sendMessage(message: WebSocketMessage): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify(message));
+        } else {
+            console.error('[WEBSOCKET] Impossible d\'envoyer le message, WebSocket non connecté');
+        }
     }
 }
 

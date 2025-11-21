@@ -36,7 +36,7 @@ export class QuickMatchService
 		{
 			const opponent = waitingQueue.pop()!
 			console.log(`[QUICK_MATCH] Creating ${modeStr} game: ${opponent.name} vs ${player.name}`)
-			const gameId = this.gameRoomManager.createGame(opponent, player, isCustom)
+			const gameId = this.gameRoomManager.createGame(opponent, player, isCustom, 'normal', 5)
 			this.sendMessage(opponent.socket, { type: 'gameStart', playerRole: 'player1' })
 			this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player2' })
 		}
@@ -62,7 +62,7 @@ export class QuickMatchService
 			name: playerName,
 			id: Math.random().toString(36).substr(2, 9)
 		}
-		const gameId = this.gameRoomManager.createAIGame(player, isCustom)
+		const gameId = this.gameRoomManager.createAIGame(player, isCustom, 'normal', 5)
 		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom})`)
 		this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1' })
 	}

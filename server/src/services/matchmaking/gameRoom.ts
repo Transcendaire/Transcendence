@@ -2,7 +2,8 @@ import { WebSocket } from 'ws'
 import { GameState, WebSocketMessage } from '../../types.js'
 import { Player, GameRoom } from './types.js'
 import { GameService } from '../game/game.js'
-import { AIPlayer } from '../AIPlayer.js'
+import { AIPlayer } from '../aiplayer/AIPlayer.js'
+import { BadAIPlayer } from '../aiplayer/BadAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 
 /**
@@ -78,7 +79,7 @@ export class GameRoomManager
 			player2Input: player2Input,
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
 			player2PrevSlots: { slot1: false, slot2: false, slot3: false },
-			ai: new AIPlayer('player2', gameService, player2Input),
+			ai: new BadAIPlayer('player2', gameService, player2Input),
 			isCustom
 		}
 		room.ai!.start()

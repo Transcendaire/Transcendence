@@ -9,23 +9,32 @@ import { canvasHeight, canvasWidth, paddleOffset } from '@app/shared/consts.js'
  */
 export class BadAIPlayer extends AIPlayer
 {
-    constructor(playerId: 'player1' | 'player2', gameService: import('../game/game.js').GameService,
-        inputState: { up: boolean; down: boolean })
-    {
-        super(playerId, gameService, inputState)
-    }
+	constructor(
+		playerId: 'player1' | 'player2',
+		gameService: import('../game/game.js').GameService,
+		inputState: {
+			up: boolean
+			down: boolean
+			slot1?: boolean
+			slot2?: boolean
+			slot3?: boolean
+		}
+	)
+	{
+		super(playerId, gameService, inputState)
+	}
 
     public decide(oldBallX: number, oldBallY: number, newBallX: number, newBallY: number,
         gameState: { player1: Player; player2: Player; ball: Ball })
     {
-        if (this.isBallComing(oldBallX, newBallX)) {
+        if (this.isBallComing(oldBallX, newBallX))
+        {
             this.targetY = this.calculateOptimalPosition(oldBallX, oldBallY, newBallX, newBallY)
             console.log('[AI] Ball coming, target Y:', this.targetY)
         }
-        else {
-            this.targetY = canvasHeight / 2
-            console.log('[AI] Ball going away, going to middle')
-        }
+        else
+            this.goToMiddle()
+            
     }
 
     public calculateOptimalPosition(oldBallX: number, oldBallY: number,
@@ -40,11 +49,12 @@ export class BadAIPlayer extends AIPlayer
         console.log('[AI] Predicted ball Y:', predictedBallY, 'velX:', velX, 'velY:', velY)
         return predictedBallY
     }
-
-    public goToPredictedBallPosition(oldBall: Ball, newBall: Ball, ai: Player): { up: boolean; down: boolean }
+    
+    public isBallComing(oldBallX: number, newBallX: number): boolean
     {
-        return this.goToPoint(ai.paddle, this.calculateOptimalPosition(oldBall.positionX, oldBall.positionY, newBall.positionX, newBall.positionY))
+        return oldBallX - newBallX < 0
     }
+
 
     protected refreshAndDecide(): void
     {
@@ -54,7 +64,8 @@ export class BadAIPlayer extends AIPlayer
         const deltaX = Math.abs(currentBallX - this.oldBallX)
         const deltaY = Math.abs(currentBallY - this.oldBallY)
 
-        if (deltaX > 300 || deltaY > 300) {
+        if (deltaX > 300 || deltaY > 300)
+        {
             console.log('[AIPlayer] Ball reset detected')
             this.oldBallX = canvasWidth / 2
             this.oldBallY = canvasHeight / 2

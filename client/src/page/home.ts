@@ -59,21 +59,40 @@ function initLoginModal(loginModal: HTMLElement)
     loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
 
 
-    const connect = () => 
+    const connect = async () => 
     {
-        const username = playerInput.value;
+		console.log('Connect button clicked\n') 	 	
         const password = passwordInput.value;
+        const username = playerInput.value;
         
         console.log(`username = ${username}`)
-        if (inputParser.parsePlayerName(username) === false) 
-            alert(`${username} n'est pas un nom valide`);
-        else 
-        {
-            playerName = username;
-            isLoggedIn = true;
-            hide(loginModal)
-            updateUI();
-        }
+        console.log(`password = ${password}`)
+
+		try {
+			const response = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					login: username,
+					password
+				})
+			});
+			const data = await response.json();
+			if (!response.ok)
+			{
+				alert(data.error || 'Erreur lors de la connexion');
+				return ;
+			}
+			isLoggedIn = true;
+			hide(loginModal)
+			updateUI();
+
+		} catch (error)
+		{
+			const message = String(error);
+			console.error('Erreur (connect): ', message);
+			alert(message);
+		}
     }
 
     checkButton.addEventListener('click', connect);
@@ -101,17 +120,21 @@ async function initsigninModal(signinModal: HTMLElement)
         const username = usernameInput.value.trim();
         const alias = aliasInput.value.trim();
         const password = passwordInput.value.trim();
-		const passworldValidation = confirmPasswordInput.value.trim();
+		const passwordValidation = confirmPasswordInput.value.trim();
 
+
+		 console.log('Form values:', { username, alias, password, passwordValidation });
+    	 console.log('confirmPasswordInput element:', confirmPasswordInput);
+    	 console.log('confirmPasswordInput value raw:', confirmPasswordInput.value);
 		try {
-
+			console.log('subscribe button clicked');
 			const response = await fetch('/api/auth/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					login: username, 
 					password,
-					passworldValidation,
+					passwordValidation,
 					alias
 				})
 			});
@@ -129,11 +152,9 @@ async function initsigninModal(signinModal: HTMLElement)
 			updateUI()
 		} catch (error) {
 			const message = String(error);
-			console.error('Erreur: ', message);
+			console.error('Erreur (subscribe): ', message);
 			alert(message);
 		}
-        // if (inputParser.parsePlayerName(username) === false) 
-        //     alert(`${username} n'est pas un nom valide`);
     }
 
     checkSignInInput.onclick = subscribe;

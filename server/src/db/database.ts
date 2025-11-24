@@ -24,7 +24,8 @@ export class DatabaseService {
 	private db: any;
 
 	constructor() {
-		this.db = new Database('transcendaire.db');
+		const dbPath = process.env.DB_PATH || 'transcendaire.db'
+		this.db = new Database(dbPath);
 		this.setDatabase();
 	}
 

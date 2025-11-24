@@ -1,5 +1,6 @@
 import { BadRequest, UserError, errClient } from "@app/shared/errors.js"
 import { getDatabase } from "../db/databaseSingleton.js"
+import { verifyPassword } from "../utils/passwords.js";
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).+$/;
 const db = getDatabase()
@@ -7,6 +8,11 @@ const db = getDatabase()
 export function validateRegistering(requestBody: any) //*purely simple parsing (no duplicates check and so on)
 {
 	const {login, password, passwordValidation, alias } = requestBody;
+
+	console.log(`[login] : ${login}\n
+				[password] : ${password}\n
+				[passwordValidation] : ${[passwordValidation]}\n
+				[alias] : ${alias}`);
 
 	if (typeof login !== 'string')
 		throw new BadRequest('Veuillez entrer votre nom d\'utilisateur');
@@ -52,4 +58,27 @@ export function checkForDuplicatesAtRegistering(login: string, alias: string)
 	if (db.getUserByAlias(alias))
 		throw new UserError('L\'alias choisi existe déjà', errClient.DUPLICATE_NAME, 409);
 
+}
+
+export function validateLoggingIn(requestBody: any)
+{
+	const { login, password } = requestBody;
+
+	console.log(`[login] : ${login}\n[password] : ${password}`);
+
+	if (!login)
+		throw new BadRequest('Veuillez entrer votre nom d\'utilisateur');
+
+	if (!password)
+		throw new BadRequest('Veuillez entrer votre mot de passe');
+
+	const user = db.getUserByLogin(login);
+	if (!user)
+		throw new BadRequest('Nom d\'utilisateur et/ou mot de passe incorrect', 404);
+
+	console.log(`Found user: login=${user.login}, alias=${user.alias}, id=${user.id}`);
+
+	const hashedPassword = user.password;
+	if (verifyPassword(password, hashedPassword!) === false)
+		throw new BadRequest('Nom d\'utilisateur et/ou mot de passe incorrect', 404);
 }

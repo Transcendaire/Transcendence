@@ -24,11 +24,14 @@ services:
     container_name: transcendence-server
     expose:
       - "8080"
+    volumes:
+      - database-volume:/app/data
     networks:
       - transcendence
     environment:
       - NODE_ENV=production
       - PORT=8080
+      - DB_PATH=/app/data/transcendaire.db
     restart: unless-stopped
 
   client:
@@ -43,6 +46,7 @@ services:
 
 volumes:
   client-build:
+  database-volume:
 
 networks:
   transcendence:

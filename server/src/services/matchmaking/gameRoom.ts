@@ -2,7 +2,9 @@ import { WebSocket } from 'ws'
 import { GameState, WebSocketMessage } from '../../types.js'
 import { Player, GameRoom } from './types.js'
 import { GameService } from '../game/game.js'
-import { AIPlayer } from '../AIPlayer.js'
+import { AIPlayer } from '../aiplayer/AIPlayer.js'
+import { EasyAIPlayer } from '../aiplayer/EasyAIPlayer.js'
+import { NormalAIPlayer } from '../aiplayer/NormalAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 
 /**
@@ -58,16 +60,26 @@ export class GameRoomManager
 	 * @brief Create AI game room
 	 * @param player1 Human player
 	 * @param isCustom Enable power-ups mode
+	 * @param difficulty AI difficulty (0=easy, 1=normal, 2=hard)
 	 * @param fruitFrequency Frequency of fruit spawning
 	 * @param maxScore Maximum score to win the game
 	 * @returns Created game room ID
 	 */
-	public createAIGame(player1: Player, isCustom: boolean, fruitFrequency: 'low' | 'normal' | 'high' = 'normal', maxScore: number = 5): string
+	public createAIGame(
+		player1: Player,
+		isCustom: boolean,
+		difficulty: number = 1,
+		fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
+		maxScore: number = 5
+	): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
-		const gameService = new GameService(canvasWidth, canvasHeight, isCustom, fruitFrequency, maxScore)
+		const gameService = new GameService(
+			canvasWidth, canvasHeight, isCustom, fruitFrequency, maxScore
+		)
 		const gameLoop = setInterval(() => this.updateGame(gameId), 16)
 		const player2Input = { up: false, down: false }
+		const aiPlayer = this.createAIPlayer(difficulty, gameService, player2Input)
 		const room: GameRoom = {
 			id: gameId,
 			player1,
@@ -78,12 +90,35 @@ export class GameRoomManager
 			player2Input: player2Input,
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
 			player2PrevSlots: { slot1: false, slot2: false, slot3: false },
-			ai: new AIPlayer('player2', gameService, player2Input),
+			ai: aiPlayer,
 			isCustom
 		}
 		room.ai!.start()
 		this.activeGames.set(gameId, room)
 		return gameId
+	}
+
+	/**
+	 * @brief Instantiate AI player based on difficulty
+	 * @param difficulty 0=easy, 1=normal, 2=hard
+	 * @param gameService Game service instance
+	 * @param inputState AI input state reference
+	 * @returns AIPlayer instance
+	 */
+	private createAIPlayer(
+		difficulty: number,
+		gameService: GameService,
+		inputState: { up: boolean; down: boolean }
+	): AIPlayer
+	{
+		switch (difficulty)
+		{
+			case 0:
+				return new EasyAIPlayer('player2', gameService, inputState)
+			case 1:
+			default:
+				return new NormalAIPlayer('player2', gameService, inputState)
+		}
 	}
 
 	/**

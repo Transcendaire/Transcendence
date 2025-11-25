@@ -212,7 +212,6 @@ export class Tournament {
 				this.bracketService.updateMatchResult(currMatch, currMatch.player1Id);
 				continue;
 			}
-			
 			this.startMatch(currMatch!);
 		}
 	}

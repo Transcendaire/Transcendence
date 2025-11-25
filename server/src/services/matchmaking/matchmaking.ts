@@ -65,11 +65,12 @@ export class MatchmakingService
 				break
 			case 'joinAI':
 				if (message.playerName)
-					this.addAIGame(socket, message.playerName, false)
-				break
-			case 'joinCustomAI':
-				if (message.playerName)
-					this.addAIGame(socket, message.playerName, true)
+				{
+					const difficulty = message.difficulty ?? 1
+					const enablePowerUps = message.enablePowerUps ?? false
+					const maxScore = message.maxScore ?? 5
+					this.addAIGame(socket, message.playerName, enablePowerUps, difficulty, maxScore)
+				}
 				break
 			case 'input':
 				if (message.data)
@@ -111,8 +112,16 @@ export class MatchmakingService
 	 * @param socket Player's WebSocket connection
 	 * @param playerName Player's name
 	 * @param isCustom Whether this is a custom mode game
+	 * @param difficulty AI difficulty (0=easy, 1=normal, 2=hard)
+	 * @param maxScore Score needed to win
 	 */
-	private addAIGame(socket: WebSocket, playerName: string, isCustom: boolean): void
+	private addAIGame(
+		socket: WebSocket,
+		playerName: string,
+		isCustom: boolean,
+		difficulty: number = 1,
+		maxScore: number = 5
+	): void
 	{
 		if (this.playerSockets.has(socket))
 			this.removePlayer(socket)
@@ -123,7 +132,7 @@ export class MatchmakingService
 			id: Math.random().toString(36).substr(2, 9)
 		}
 		this.playerSockets.set(socket, player)
-		this.quickMatch.createAIMatch(socket, playerName, isCustom)
+		this.quickMatch.createAIMatch(socket, playerName, isCustom, difficulty, maxScore)
 	}
 
 	/**

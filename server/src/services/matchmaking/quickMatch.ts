@@ -54,16 +54,26 @@ export class QuickMatchService
 	 * @param socket Player's WebSocket
 	 * @param playerName Player's name
 	 * @param isCustom Enable custom mode
+	 * @param difficulty AI difficulty (0=easy, 1=normal, 2=hard)
+	 * @param maxScore Score needed to win
 	 */
-	public createAIMatch(socket: WebSocket, playerName: string, isCustom: boolean): void
+	public createAIMatch(
+		socket: WebSocket,
+		playerName: string,
+		isCustom: boolean,
+		difficulty: number = 1,
+		maxScore: number = 5
+	): void
 	{
 		const player: Player = {
 			socket,
 			name: playerName,
 			id: Math.random().toString(36).substr(2, 9)
 		}
-		const gameId = this.gameRoomManager.createAIGame(player, isCustom, 'normal', 5)
-		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom})`)
+		const gameId = this.gameRoomManager.createAIGame(
+			player, isCustom, difficulty, 'normal', maxScore
+		)
+		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom}, difficulty: ${difficulty}, maxScore: ${maxScore})`)
 		this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1' })
 	}
 

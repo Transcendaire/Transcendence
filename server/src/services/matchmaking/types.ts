@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws'
 import { GameService } from '../game/game.js'
-import { AIPlayer } from '../AIPlayer.js'
+import { AIPlayer } from '../aiplayer/AIPlayer.js'
 
 /**
  * @brief Player connected to matchmaking system

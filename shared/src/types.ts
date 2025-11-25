@@ -43,25 +43,20 @@ export type Lobby = {
 	createdAt: number;
 }
 
+export type PlayerState = {
+	paddle: { y: number; x?: number };
+	score: number;
+	lives?: number;
+	isEliminated?: boolean;
+	itemSlots?: PowerUpType[];
+	pendingPowerUps?: PowerUpType[];
+	selectedSlots?: boolean[];
+	hitStreak?: number;
+	chargingPowerUp?: PowerUpType;
+}
+
 export type GameState = {
-	player1: {
-		paddle: { y: number };
-		score: number;
-		itemSlots?: PowerUpType[];
-		pendingPowerUps?: PowerUpType[];
-		selectedSlots?: boolean[];
-		hitStreak?: number;
-		chargingPowerUp?: PowerUpType;
-	};
-	player2: {
-		paddle: { y: number };
-		score: number;
-		itemSlots?: PowerUpType[];
-		pendingPowerUps?: PowerUpType[];
-		selectedSlots?: boolean[];
-		hitStreak?: number;
-		chargingPowerUp?: PowerUpType;
-	};
+	players: PlayerState[];
 	ball: {
 		x: number;
 		y: number;

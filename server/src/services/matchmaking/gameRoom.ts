@@ -1,7 +1,7 @@
 import { WebSocket } from 'ws'
 import { GameState, WebSocketMessage } from '../../types.js'
 import { Player, GameRoom } from './types.js'
-import { GameService } from '../game/game.js'
+import { GameService, PlayerInput } from '../game/game.js'
 import { AIPlayer } from '../aiplayer/AIPlayer.js'
 import { EasyAIPlayer } from '../aiplayer/EasyAIPlayer.js'
 import { NormalAIPlayer } from '../aiplayer/NormalAIPlayer.js'
@@ -195,25 +195,29 @@ export class GameRoomManager
 		room.player2PrevSlots.slot2 = room.player2Input.slot2 || false
 		room.player2PrevSlots.slot3 = room.player2Input.slot3 || false
 
-		const p1Input = {
-			up: room.player1Input.up,
-			down: room.player1Input.down,
-			...(slot1Pressed && { slot1: true }),
-			...(slot2Pressed && { slot2: true }),
-			...(slot3Pressed && { slot3: true })
-		}
-		const p2Input = {
-			up: room.player2Input.up,
-			down: room.player2Input.down,
-			...(p2slot1Pressed && { slot1: true }),
-			...(p2slot2Pressed && { slot2: true }),
-			...(p2slot3Pressed && { slot3: true })
-		}
-		const gameOver = room.gameService.updateGame(16, p1Input, p2Input)
+		const inputs: PlayerInput[] = [
+			{
+				up: room.player1Input.up,
+				down: room.player1Input.down,
+				...(slot1Pressed && { slot1: true }),
+				...(slot2Pressed && { slot2: true }),
+				...(slot3Pressed && { slot3: true })
+			},
+			{
+				up: room.player2Input.up,
+				down: room.player2Input.down,
+				...(p2slot1Pressed && { slot1: true }),
+				...(p2slot2Pressed && { slot2: true }),
+				...(p2slot3Pressed && { slot3: true })
+			}
+		]
+		const gameOver = room.gameService.updateGame(16, inputs)
 		if (gameOver)
 		{
 			const gameState = room.gameService.getGameState()
-			const winner = gameState.player1.score > gameState.player2.score ? 'player1' : 'player2'
+			const p1 = gameState.players[0]!
+			const p2 = gameState.players[1]!
+			const winner = p1.score > p2.score ? 'player1' : 'player2'
 			const winnerId = winner === 'player1' ? room.player1.id : room.player2.id
 			const isTournament = !!room.tournamentMatch
 			const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
@@ -222,8 +226,8 @@ export class GameRoomManager
 				this.sendMessage(room.player1.socket, { 
 					type: 'gameOver', 
 					winner, 
-					score1: gameState.player1.score, 
-					score2: gameState.player2.score,
+					score1: p1.score, 
+					score2: p2.score,
 					isTournament,
 					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
 				})
@@ -231,8 +235,8 @@ export class GameRoomManager
 				this.sendMessage(room.player2.socket, { 
 					type: 'gameOver', 
 					winner, 
-					score1: gameState.player1.score, 
-					score2: gameState.player2.score,
+					score1: p1.score, 
+					score2: p2.score,
 					isTournament,
 					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
 				})
@@ -240,7 +244,7 @@ export class GameRoomManager
 			if (room.tournamentMatch)
 			{
 				console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
-				room.tournamentMatch.onComplete(winnerId, gameState.player1.score, gameState.player2.score)
+				room.tournamentMatch.onComplete(winnerId, p1.score, p2.score)
 			}
 			
 			this.endGame(gameId)
@@ -248,24 +252,15 @@ export class GameRoomManager
 		}
 		const gameState = room.gameService.getGameState()
 		const stateMessage: GameState = {
-			player1: {
-				paddle: { y: gameState.player1.paddle.positionY },
-				score: gameState.player1.score,
-				itemSlots: gameState.player1.itemSlots,
-				pendingPowerUps: gameState.player1.pendingPowerUps,
-				selectedSlots: gameState.player1.selectedSlots,
-				hitStreak: gameState.player1.hitStreak,
-				chargingPowerUp: gameState.player1.chargingPowerUp
-			},
-			player2: {
-				paddle: { y: gameState.player2.paddle.positionY },
-				score: gameState.player2.score,
-				itemSlots: gameState.player2.itemSlots,
-				pendingPowerUps: gameState.player2.pendingPowerUps,
-				selectedSlots: gameState.player2.selectedSlots,
-				hitStreak: gameState.player2.hitStreak,
-				chargingPowerUp: gameState.player2.chargingPowerUp
-			},
+			players: gameState.players.map(p => ({
+				paddle: { y: p.paddle.positionY },
+				score: p.score,
+				itemSlots: p.itemSlots,
+				pendingPowerUps: p.pendingPowerUps,
+				selectedSlots: p.selectedSlots,
+				hitStreak: p.hitStreak,
+				chargingPowerUp: p.chargingPowerUp
+			})),
 			ball: {
 				x: gameState.ball.positionX,
 				y: gameState.ball.positionY,

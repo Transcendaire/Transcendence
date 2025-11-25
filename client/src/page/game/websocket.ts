@@ -72,14 +72,19 @@ function updateGameState(serverGameState: GameState): void
         return
     }
 
+    const p1 = serverGameState.players[0]
+    const p2 = serverGameState.players[1]
+    if (!p1 || !p2)
+        return
+
     const oldScore1 = gameState.player1.score;
     const oldScore2 = gameState.player2.score;
 
-    gameState.player1.paddle.positionY = serverGameState.player1.paddle.y;
-    gameState.player1.score = serverGameState.player1.score;
+    gameState.player1.paddle.positionY = p1.paddle.y;
+    gameState.player1.score = p1.score;
     
-    gameState.player2.paddle.positionY = serverGameState.player2.paddle.y;
-    gameState.player2.score = serverGameState.player2.score;
+    gameState.player2.paddle.positionY = p2.paddle.y;
+    gameState.player2.score = p2.score;
     
     gameState.ball.positionX = serverGameState.ball.x;
     gameState.ball.positionY = serverGameState.ball.y;
@@ -89,27 +94,21 @@ function updateGameState(serverGameState: GameState): void
     gameState.setCloneBalls(serverGameState.cloneBalls || []);
     gameState.setFruits(serverGameState.fruits || []);
 
-    if (gameState.player1.score > oldScore1) {
+    if (gameState.player1.score > oldScore1)
         console.log(`[GAME] POINT POUR PLAYER 1! Score: ${gameState.player1.score} - ${gameState.player2.score}`);
-    }
-    if (gameState.player2.score > oldScore2) {
+    if (gameState.player2.score > oldScore2)
         console.log(`[GAME] POINT POUR PLAYER 2! Score: ${gameState.player1.score} - ${gameState.player2.score}`);
+
+    if (wsClient.isCustomGame())
+    {
+        if (p1.itemSlots)
+            renderPowerUps('player1', p1.itemSlots, p1.selectedSlots, p1.pendingPowerUps, p1.hitStreak, p1.chargingPowerUp);
+        if (p2.itemSlots)
+            renderPowerUps('player2', p2.itemSlots, p2.selectedSlots, p2.pendingPowerUps, p2.hitStreak, p2.chargingPowerUp);
     }
 
-    if (wsClient.isCustomGame()) {
-        if (serverGameState.player1.itemSlots) {
-            renderPowerUps('player1', serverGameState.player1.itemSlots, 
-                serverGameState.player1.selectedSlots, serverGameState.player1.pendingPowerUps,
-                serverGameState.player1.hitStreak, serverGameState.player1.chargingPowerUp);
-        }
-        if (serverGameState.player2.itemSlots) {
-            renderPowerUps('player2', serverGameState.player2.itemSlots,
-                serverGameState.player2.selectedSlots, serverGameState.player2.pendingPowerUps,
-                serverGameState.player2.hitStreak, serverGameState.player2.chargingPowerUp);
-        }
-    }
-
-    if (Math.random() < 0.05) { 
+    if (Math.random() < 0.05)
+    { 
         console.log('[GAME] Etat du jeu:', {
             score: `${gameState.player1.score} - ${gameState.player2.score}`,
             ball: {
@@ -117,8 +116,8 @@ function updateGameState(serverGameState: GameState): void
                 velocity: `(${Math.round(serverGameState.ball.vx)}, ${Math.round(serverGameState.ball.vy)})`
             },
             paddles: {
-                player1: Math.round(serverGameState.player1.paddle.y),
-                player2: Math.round(serverGameState.player2.paddle.y)
+                player1: Math.round(p1.paddle.y),
+                player2: Math.round(p2.paddle.y)
             },
             playerRole: gameState.currentPlayerRole
         });

@@ -178,6 +178,8 @@ export class MatchmakingService
 			{
 				console.log(`[MATCHMAKING] Player ${disconnectedPlayer.name} disconnected from tournament match, ${opponent.name} wins by forfeit`)
 				const gameState = gameRoom.gameService.getGameState()
+				const p1 = gameState.players[0]!
+				const p2 = gameState.players[1]!
 				const winner = isPlayer1 ? 'player2' : 'player1'
 				const isFinalMatch = gameRoom.tournamentMatch.isFinalMatch
 				
@@ -186,8 +188,8 @@ export class MatchmakingService
 					this.sendMessage(opponent.socket, {
 						type: 'gameOver',
 						winner,
-						score1: gameState.player1.score,
-						score2: gameState.player2.score,
+						score1: p1.score,
+						score2: p2.score,
 						isTournament: true,
 						shouldDisconnect: isFinalMatch,
 						forfeit: true
@@ -195,8 +197,8 @@ export class MatchmakingService
 				}
 				gameRoom.tournamentMatch.onComplete(
 					opponent.id,
-					isPlayer1 ? gameState.player2.score : gameState.player1.score,
-					isPlayer1 ? gameState.player1.score : gameState.player2.score
+					isPlayer1 ? p2.score : p1.score,
+					isPlayer1 ? p1.score : p2.score
 				)
 				this.gameRoomManager.endGame(gameRoom.id)
 			}

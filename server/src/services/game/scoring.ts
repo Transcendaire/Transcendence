@@ -70,7 +70,6 @@ export class ScoringManager
             console.log(`[SERVER] GAME OVER! ${player.name} wins ${player.score} - ${opponent.score}`);
             return true;
         }
-
         return false;
     }
 

@@ -20,17 +20,24 @@ services:
       context: .
       dockerfile: ./server/Dockerfile.dev
     container_name: transcendence-server-dev
+
     expose:
       - "8080"
+    ports:
+      - "8081:8081"   # sqlite-web port
+
     volumes:
-      # Permet de modifier server/src/ et voir les changements
       - ./server/src:/app/src:ro
+      - dev-database:/app/data
       - /app/node_modules
-    networks:
-      - transcendence
+
     environment:
       - NODE_ENV=development
       - PORT=8080
+      - DB_PATH=/app/data/transcendaire.db
+
+    networks:
+      - transcendence
     restart: unless-stopped
 
   client:
@@ -39,16 +46,16 @@ services:
       dockerfile: ./client/Dockerfile.dev
     container_name: transcendence-client-dev
     volumes:
-      # Permet de modifier client/src/ et voir les changements
       - ./client/src:/app/src:ro
       - client-build:/output
       - /app/node_modules
-      - /app/public  # Protège le dossier public qui contient shared
+      - /app/public
     networks:
       - transcendence
 
 volumes:
   client-build:
+  dev-database:
 
 networks:
   transcendence:

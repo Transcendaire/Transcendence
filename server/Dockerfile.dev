@@ -1,6 +1,7 @@
 FROM node:20-alpine
 
-RUN apk add --no-cache python3 make g++
+RUN apk add --no-cache python3 py3-pip make g++ sqlite
+RUN pip3 install sqlite-web --break-system-package
 
 # Build shared
 WORKDIR /shared
@@ -13,15 +14,11 @@ RUN npm run build
 # Setup server
 WORKDIR /app
 
-# Installer dépendances server
 COPY server/package*.json ./
 
-# Install shared as a local package (like production)
 RUN npm install /shared
-
 RUN npm ci
 
-# Copier le code
 COPY server/tsconfig.json ./
 COPY server/tsconfig.build.json ./
 COPY server/src ./src
@@ -29,6 +26,6 @@ COPY server/src ./src
 RUN npm run build:server
 
 EXPOSE 8080
+EXPOSE 8081   
 
-# Lancer en watch mode
 CMD ["npm", "run", "dev"]

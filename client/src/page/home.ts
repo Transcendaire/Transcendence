@@ -7,7 +7,7 @@ export let isLoggedIn: boolean = false;
 export let playerName: string = "";
 const inputParser = new inputParserClass();
 
-function initHomePage(): void
+async function initHomePage()
 {
     const gameModeModal = getEl("gameModeModal");
     const loginModal = getEl("loginModal");
@@ -17,17 +17,21 @@ function initHomePage(): void
     const redirect = getEl("signinRedirect") as HTMLButtonElement;
 
     console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
-    updateUI();
-
+	
+	const alias = await getUserWithCookies();
+	console.log(`alias is ${alias}`);
+	if (alias)
+	{
+		playerName = alias;
+		isLoggedIn = true;
+	}
+		
+	updateUI();
     setupWebsocket(waitingModal);
 
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
     getEl("profileButton").addEventListener('click', () => navigate("profile"));
-    getEl("logoutButton").addEventListener('click', () => {
-        isLoggedIn = false;
-        playerName = "";
-        updateUI();
-    });
+    getEl("logoutButton").addEventListener('click', logout)
 
     playButton.addEventListener('click', () => {
         if (isLoggedIn)
@@ -61,10 +65,10 @@ function initLoginModal(loginModal: HTMLElement)
 
     const connect = async () => 
     {
-		console.log('Connect button clicked\n') 	 	
+		console.log('Connect button clicked\n')	
         const password = passwordInput.value;
         const username = playerInput.value;
-        
+
         console.log(`username = ${username}`)
         console.log(`password = ${password}`)
 
@@ -83,6 +87,7 @@ function initLoginModal(loginModal: HTMLElement)
 				alert(data.error || 'Erreur lors de la connexion');
 				return ;
 			}
+			playerName = data.alias;
 			isLoggedIn = true;
 			hide(loginModal)
 			updateUI();
@@ -160,6 +165,8 @@ async function initsigninModal(signinModal: HTMLElement)
     checkSignInInput.onclick = subscribe;
 }
 
+
+
 function initGameModeModal(gameModeModal: HTMLElement)
 {
     gameModeModal.addEventListener('click', (event) => {
@@ -226,6 +233,24 @@ function initWaitingModal(modal: HTMLElement)
         hide(modal);
     });
 }
+
+
+async function logout(): Promise<void>
+{
+	try {
+		const res = await fetch('/api/auth/logout', {
+			method: 'POST',
+			credentials: 'same-origin'
+		});
+	} catch (error) {
+		console.log('erreur logout(): ', error);
+	}
+	isLoggedIn = false;
+	playerName = "";
+	updateUI();
+}
+
+
 function updateUI(): void {
     const loginButton = getEl("loginButton");
     const logoutButton = getEl("logoutButton");
@@ -266,6 +291,23 @@ function setupWebsocket(waitingModal: HTMLElement)
         const playerCountSpan = getEl("playerCount");
         playerCountSpan.textContent = playerCount.toString();
     };
+}
+
+async function getUserWithCookies(): Promise<string | undefined>
+{
+	try {
+
+		const res = await fetch('/api/auth/me'); 
+		const data = await res.json();
+
+		if (res.ok)
+			return data.alias;
+		else
+			return undefined;
+	} catch(error) {
+		console.log('getUserWithCookies(): erreur : ', error);
+	}
+	return undefined;
 }
 
 registerPageInitializer('home', initHomePage);

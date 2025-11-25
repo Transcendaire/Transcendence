@@ -15,7 +15,7 @@ function checkAliasValidity(alias: string): void
 		throw new DatabaseError("Alias cannot be less than 3 characters");
 	if (alias.length > 20)
 		throw new DatabaseError("Alias too long (max 20 characters");
-	if (!/^[a-zA-Z0-9_-]+$/.test(alias))
+	if (!/^[a-zA-Z0-9_!@#$%&*=-]+$/.test(alias))
 		throw new DatabaseError("Alias contains at least one invalid character");
 }
 
@@ -135,7 +135,7 @@ export class DatabaseService {
 	 */
 	public setUserOnlineStatus(userId: string, online: boolean) : void
 	{
-		this.db.prepare('UPDATE users SET online = ? WHERE id = ?').get(online, userId);//! check if it works with a boolean
+		this.db.prepare('UPDATE users SET online = ? WHERE id = ?').run(online ? 1 : 0, userId);//! check if it works with a boolean
 	}
 
 	/**
@@ -193,8 +193,6 @@ export class DatabaseService {
 	 */
 	public createPlayer(alias: string, id: string, currDate: number): string 
 	{
-		checkAliasValidity(alias);
-
 		this.db.prepare("INSERT INTO players (id, alias, created_at, status) VALUES (?, ?, ?, ?)").run(id, alias.trim(), currDate, 'created');
 		return id;
 	}

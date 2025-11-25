@@ -3,6 +3,8 @@ import { getDatabase } from "../db/databaseSingleton.js"
 import { verifyPassword } from "../utils/passwords.js";
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).+$/;
+const LOGIN_PATTERN = /^[a-zA-Z0-9_!@#$%&*=-]+$/;
+const ALIAS_PATTERN = /^[a-zA-Z0-9_-]+$/;
 const db = getDatabase()
 
 export function validateRegistering(requestBody: any) //*purely simple parsing (no duplicates check and so on)
@@ -20,7 +22,7 @@ export function validateRegistering(requestBody: any) //*purely simple parsing (
 		throw new BadRequest('Le nom d\'utilisateur doit être composé d\'au moins 3 caractères.')
 	else if (login.length > 16)
 		throw new BadRequest('Le nom d\'utilisateur ne doit pas faire plus de 16 caractères')
-	if (!/^[a-zA-Z0-9_!@#$%&*=-]+$/.test(login))
+	if (!LOGIN_PATTERN.test(login))
 		throw new BadRequest('Au moins un caractère invalide dans le nom d\'utilisateur')
 	
 	if (typeof alias !== 'string')
@@ -29,7 +31,7 @@ export function validateRegistering(requestBody: any) //*purely simple parsing (
 		throw new BadRequest('L\'alias doit être composé d\'au moins 3 caractères.')
 	else if (alias.length > 16)
 		throw new BadRequest('L\'alias ne doit pas faire plus de 16 caractères')
-	if (!/^[a-zA-Z0-9_!@#$%&*=-]+$/.test(alias))
+	if (!ALIAS_PATTERN.test(alias))
 		throw new BadRequest('Au moins un caractère invalide dans l\'alias')
 	if (login === alias)
 		throw new BadRequest('Le nom d\'utilisateur et l\'alias doivent être différents')

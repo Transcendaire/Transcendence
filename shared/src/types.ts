@@ -80,8 +80,7 @@ export type GameState = {
 export type WebSocketMessage = 
 | { type: "join"; playerName: string }
 | { type: "joinCustom"; playerName: string }
-| { type: "joinAI"; playerName: string }
-| { type: "joinCustomAI"; playerName: string }
+| { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; maxScore?: number }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
 | { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean }

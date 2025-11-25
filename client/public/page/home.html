@@ -32,75 +32,195 @@
             Choisissez votre mode
         </h3>
             
-        <div class="grid md:grid-cols-2 gap-6">
-          <button id="joinGameButton" 
+        <div class="grid md:grid-cols-3 gap-6">
+          <button id="fastGameButton" 
                   class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
                          hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                          border-4 border-transparent hover:border-white 
+                         border-4 border-transparent hover:border-white 
                          flex flex-col items-center gap-4 group">
             <div class="text-6xl">🎮</div>
-              <h4 class="font-quency text-2xl font-bold">1 vs 1</h4>
-                <p class="text-sm opacity-80 group-hover:opacity-100">
-                    Affrontez un joueur en ligne
-                </p>
+            <h4 class="font-quency text-2xl font-bold">Partie Rapide</h4>
+            <p class="text-sm opacity-80 group-hover:opacity-100">
+                Match 1v1 en ligne
+            </p>
           </button>
                 
-          <button id="joinAIButton" 
+          <button id="aiGameButton" 
                   class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
+                         hover:scale-105 transition-all duration-300 hover:shadow-2xl 
+                         border-4 border-transparent hover:border-white 
+                         flex flex-col items-center gap-4 group">
             <div class="text-6xl">🤖</div>
-            <h4 class="font-quency text-2xl font-bold">vs IA</h4>
+            <h4 class="font-quency text-2xl font-bold">Jouer contre l'IA</h4>
             <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Entraînez-vous contre l'ordinateur
+                Entraînez-vous contre l'ordinateur
             </p>
           </button>
       
-                <button id="joinCustomButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">⚡</div>
-                    <h4 class="font-quency text-2xl font-bold">Custom 1v1</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Partie personnalisée avec power-ups
-                    </p>
-                </button>
-                
-                <button id="joinCustomAIButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group">
-                    <div class="text-6xl">⚡🤖</div>
-                    <h4 class="font-quency text-2xl font-bold">Custom vs IA</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Contre l'IA avec power-ups
-                    </p>
-                </button>
-                
-                <button id="tournamentButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
-                               hover:scale-105 transition-all duration-300 hover:shadow-2xl 
-                               border-4 border-transparent hover:border-white 
-                               flex flex-col items-center gap-4 group md:col-span-2">
-                    <div class="text-6xl">🏆</div>
-                    <h4 class="font-quency text-2xl font-bold">Tournoi</h4>
-                    <p class="text-sm opacity-80 group-hover:opacity-100">
-                        Participez à un tournoi épique
-                    </p>
-                </button>
-            </div>
-            
-            <button id="cancelGameModeButton" 
-                    class="mt-8 text-sonpi16-orange hover:text-white transition-colors 
-                           w-full text-center py-3 text-lg font-quency">
-                ← Retour
-            </button>
+          <button id="lobbiesButton" 
+                  class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
+                         hover:scale-105 transition-all duration-300 hover:shadow-2xl 
+                         border-4 border-transparent hover:border-white 
+                         flex flex-col items-center gap-4 group">
+            <div class="text-6xl">🏆</div>
+            <h4 class="font-quency text-2xl font-bold">Lobbies</h4>
+            <p class="text-sm opacity-80 group-hover:opacity-100">
+                Tournois et parties personnalisées
+            </p>
+          </button>
         </div>
+            
+        <button id="cancelGameModeButton" 
+                class="mt-8 text-sonpi16-orange hover:text-white transition-colors 
+                       w-full text-center py-3 text-lg font-quency">
+            ← Retour
+        </button>
     </div>
+  </div>
+
+  <div id="fastGameModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-xl w-full mx-4 transform transition-all duration-300">
+
+        <h3 class="text-3xl font-bold text-sonpi16-orange mb-6 text-center font-quency">
+            Partie Rapide 1v1
+        </h3>
+            
+        <div class="grid grid-cols-2 gap-6">
+          <button id="joinGameButton" 
+                  class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
+                         hover:scale-105 transition-all duration-300 hover:shadow-2xl 
+                         border-4 border-transparent hover:border-white 
+                         flex flex-col items-center gap-4 group">
+            <div class="text-5xl">🎯</div>
+            <h4 class="font-quency text-xl font-bold">Sans Power-Ups</h4>
+            <p class="text-sm opacity-80 group-hover:opacity-100">
+                Mode classique
+            </p>
+          </button>
+                
+          <button id="joinCustomButton" 
+                  class="bg-sonpi16-orange text-sonpi16-black p-6 rounded-xl 
+                         hover:scale-105 transition-all duration-300 hover:shadow-2xl 
+                         border-4 border-transparent hover:border-white 
+                         flex flex-col items-center gap-4 group">
+            <div class="text-5xl">⚡</div>
+            <h4 class="font-quency text-xl font-bold">Avec Power-Ups</h4>
+            <p class="text-sm opacity-80 group-hover:opacity-100">
+                Mode personnalisé
+            </p>
+          </button>
+        </div>
+            
+        <button id="cancelFastGameButton" 
+                class="mt-8 text-sonpi16-orange hover:text-white transition-colors 
+                       w-full text-center py-3 text-lg font-quency">
+            ← Retour
+        </button>
+    </div>
+  </div>
+
+  <div id="aiGameModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-xl w-full mx-4 transform transition-all duration-300">
+
+        <h3 class="text-3xl font-bold text-sonpi16-orange mb-6 text-center font-quency">
+            Jouer contre l'IA
+        </h3>
+        
+        <div class="mb-6">
+            <p class="text-sonpi16-orange font-quency text-lg mb-3">Difficulté</p>
+            <div class="flex gap-4">
+              <button id="difficultyEasyButton" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-sonpi16-orange text-sonpi16-black
+                             border-4 border-white
+                             transition-all duration-300">
+                  Facile
+              </button>
+              <button id="difficultyNormalButton" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-gray-600 text-gray-300
+                             border-4 border-transparent
+                             transition-all duration-300 hover:bg-gray-500">
+                  Normal
+              </button>
+            </div>
+        </div>
+
+        <div class="mb-6">
+            <p class="text-sonpi16-orange font-quency text-lg mb-3">Power-Ups</p>
+            <div class="flex gap-4">
+              <button id="powerUpsOnButton" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-sonpi16-orange text-sonpi16-black
+                             border-4 border-white
+                             transition-all duration-300">
+                  ⚡ Activés
+              </button>
+              <button id="powerUpsOffButton" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-gray-600 text-gray-300
+                             border-4 border-transparent
+                             transition-all duration-300 hover:bg-gray-500">
+                  🎯 Désactivés
+              </button>
+            </div>
+        </div>
+
+        <div class="mb-8">
+            <p class="text-sonpi16-orange font-quency text-lg mb-3">Points pour gagner</p>
+            <div class="flex gap-2">
+              <button id="maxScore3Button" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-gray-600 text-gray-300
+                             border-4 border-transparent
+                             transition-all duration-300 hover:bg-gray-500">
+                  3
+              </button>
+              <button id="maxScore5Button" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-sonpi16-orange text-sonpi16-black
+                             border-4 border-white
+                             transition-all duration-300">
+                  5
+              </button>
+              <button id="maxScore7Button" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-gray-600 text-gray-300
+                             border-4 border-transparent
+                             transition-all duration-300 hover:bg-gray-500">
+                  7
+              </button>
+              <button id="maxScore11Button" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-gray-600 text-gray-300
+                             border-4 border-transparent
+                             transition-all duration-300 hover:bg-gray-500">
+                  11
+              </button>
+              <button id="maxScore21Button" 
+                      class="flex-1 py-3 rounded-xl font-quency font-bold text-lg
+                             bg-gray-600 text-gray-300
+                             border-4 border-transparent
+                             transition-all duration-300 hover:bg-gray-500">
+                  21
+              </button>
+            </div>
+        </div>
+            
+        <button id="launchAIGameButton" 
+                class="w-full bg-sonpi16-blue text-white py-4 rounded-xl font-quency font-bold text-xl
+                       hover:bg-sonpi16-blue transition-all duration-300 hover:scale-105
+                       border-4 border-transparent hover:border-white">
+            Lancer la partie
+        </button>
+            
+        <button id="cancelAIGameButton" 
+                class="mt-4 text-sonpi16-orange hover:text-white transition-colors 
+                       w-full text-center py-3 text-lg font-quency">
+            ← Retour
+        </button>
+    </div>
+  </div>
 
     <h3 class="font-quency text-3xl mt-20 md:mt-0 flex items-center justify-center">Pret pour l'experience ?</h3>
 

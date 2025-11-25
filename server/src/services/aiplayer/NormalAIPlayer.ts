@@ -8,9 +8,9 @@ import {
 } from '@app/shared/consts.js'
 
 /**
- * @brief Better AI using direct ball velocities from game state
+ * @brief Normal AI using direct ball velocities from game state
  */
-export class GoodAIPlayer extends AIPlayer
+export class NormalAIPlayer extends AIPlayer
 {
 	constructor(
 		playerId: 'player1' | 'player2',

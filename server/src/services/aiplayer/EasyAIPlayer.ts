@@ -4,10 +4,10 @@ import { Ball } from '@app/shared/models/Ball.js'
 import { canvasHeight, canvasWidth, paddleOffset } from '@app/shared/consts.js'
 
 /**
- * @brief Naive AI implementation
- * @description  It has a 1 frame delay in reaction time (wait two frames and calculates direction from these two frames)
+ * @brief Easy AI implementation
+ * @description Has a 1 frame delay in reaction time
  */
-export class BadAIPlayer extends AIPlayer
+export class EasyAIPlayer extends AIPlayer
 {
 	constructor(
 		playerId: 'player1' | 'player2',
@@ -34,7 +34,6 @@ export class BadAIPlayer extends AIPlayer
         }
         else
             this.goToMiddle()
-            
     }
 
     public calculateOptimalPosition(oldBallX: number, oldBallY: number,

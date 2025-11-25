@@ -48,7 +48,7 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
     };
 
     wsClient.onDisconnected = () => {
-        alert("Connexion perdue avec le serveur");
+        // alert("Connexion perdue avec le serveur");
         returnToLobby();
     };
     

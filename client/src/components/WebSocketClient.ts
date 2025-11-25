@@ -208,14 +208,26 @@ export class WebSocketClient
     /**
      * @brief Join game against AI
      * @param playerName Player's display name
+     * @param difficulty AI difficulty (0=easy, 1=normal, 2=hard)
+     * @param enablePowerUps Enable power-ups mode
+     * @param maxScore Score needed to win
      */
-    public joinAIGame(playerName: string): void
+    public joinAIGame(
+        playerName: string,
+        difficulty: number = 1,
+        enablePowerUps: boolean = false,
+        maxScore: number = 5
+    ): void
     {
-        this._isCustomGame = false;
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this._isCustomGame = enablePowerUps
+        if (this.ws && this.ws.readyState === WebSocket.OPEN)
+        {
             const message: WebSocketMessage = {
                 type: 'joinAI',
-                playerName
+                playerName,
+                difficulty,
+                enablePowerUps,
+                maxScore
             }
             this.ws.send(JSON.stringify(message))
         }
@@ -228,25 +240,10 @@ export class WebSocketClient
     public joinCustomGame(playerName: string): void
     {
         this._isCustomGame = true;
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN)
+        {
             const message: WebSocketMessage = {
                 type: 'joinCustom',
-                playerName
-            }
-            this.ws.send(JSON.stringify(message))
-        }
-    }
-
-    /**
-     * @brief Join custom game against AI with power-ups
-     * @param playerName Player's display name
-     */
-    public joinCustomAIGame(playerName: string): void
-    {
-        this._isCustomGame = true;
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            const message: WebSocketMessage = {
-                type: 'joinCustomAI',
                 playerName
             }
             this.ws.send(JSON.stringify(message))
@@ -259,13 +256,13 @@ export class WebSocketClient
      */
     public sendInput(input: GameInput): void
     {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN)
+        {
             const message: WebSocketMessage = {
                 type: 'input',
                 data: input
-            };
-            
-            this.ws.send(JSON.stringify(message));
+            }
+            this.ws.send(JSON.stringify(message))
         }
     }
 

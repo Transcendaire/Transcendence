@@ -174,108 +174,21 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 
 function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): void
 {
-    let selectedDifficulty = 0
-    let selectedPowerUps = true
-    let selectedMaxScore = 5
-
     aiGameModal.addEventListener('click', (event) => {
         if (event.target === aiGameModal)
             hide(aiGameModal)
     })
 
-    const diffEasyBtn = getEl("difficultyEasyButton") as HTMLButtonElement
-    const diffNormalBtn = getEl("difficultyNormalButton") as HTMLButtonElement
-    const powerOnBtn = getEl("powerUpsOnButton") as HTMLButtonElement
-    const powerOffBtn = getEl("powerUpsOffButton") as HTMLButtonElement
-    const maxScore3Btn = getEl("maxScore3Button") as HTMLButtonElement
-    const maxScore5Btn = getEl("maxScore5Button") as HTMLButtonElement
-    const maxScore7Btn = getEl("maxScore7Button") as HTMLButtonElement
-    const maxScore11Btn = getEl("maxScore11Button") as HTMLButtonElement
-    const maxScore21Btn = getEl("maxScore21Button") as HTMLButtonElement
-
-    const updateDifficultyUI = () => {
-        if (selectedDifficulty === 0)
-        {
-            diffEasyBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300"
-            diffNormalBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500"
-        }
-        else
-        {
-            diffEasyBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500"
-            diffNormalBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300"
-        }
-    }
-
-    const updatePowerUpsUI = () => {
-        if (selectedPowerUps)
-        {
-            powerOnBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300"
-            powerOffBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500"
-        }
-        else
-        {
-            powerOnBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500"
-            powerOffBtn.className = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300"
-        }
-    }
-
-    const updateMaxScoreUI = () => {
-        const activeClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300"
-        const inactiveClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500"
-        maxScore3Btn.className = selectedMaxScore === 3 ? activeClass : inactiveClass
-        maxScore5Btn.className = selectedMaxScore === 5 ? activeClass : inactiveClass
-        maxScore7Btn.className = selectedMaxScore === 7 ? activeClass : inactiveClass
-        maxScore11Btn.className = selectedMaxScore === 11 ? activeClass : inactiveClass
-        maxScore21Btn.className = selectedMaxScore === 21 ? activeClass : inactiveClass
-    }
-
-    diffEasyBtn.addEventListener('click', () => {
-        selectedDifficulty = 0
-        updateDifficultyUI()
-    })
-
-    diffNormalBtn.addEventListener('click', () => {
-        selectedDifficulty = 1
-        updateDifficultyUI()
-    })
-
-    powerOnBtn.addEventListener('click', () => {
-        selectedPowerUps = true
-        updatePowerUpsUI()
-    })
-
-    powerOffBtn.addEventListener('click', () => {
-        selectedPowerUps = false
-        updatePowerUpsUI()
-    })
-
-    maxScore3Btn.addEventListener('click', () => {
-        selectedMaxScore = 3
-        updateMaxScoreUI()
-    })
-
-    maxScore5Btn.addEventListener('click', () => {
-        selectedMaxScore = 5
-        updateMaxScoreUI()
-    })
-
-    maxScore7Btn.addEventListener('click', () => {
-        selectedMaxScore = 7
-        updateMaxScoreUI()
-    })
-
-    maxScore11Btn.addEventListener('click', () => {
-        selectedMaxScore = 11
-        updateMaxScoreUI()
-    })
-
-    maxScore21Btn.addEventListener('click', () => {
-        selectedMaxScore = 21
-        updateMaxScoreUI()
-    })
+    const difficulty = createToggleGroup(['difficultyEasyButton', 'difficultyNormalButton'], 0);
+    const powerUps = createToggleGroup(['powerUpsOnButton', 'powerUpsOffButton'], 0);
+    const maxScore = createToggleGroup(['maxScore3Button', 'maxScore5Button', 'maxScore7Button', 'maxScore11Button', 'maxScore21Button'], 1);
 
     getEl("launchAIGameButton").addEventListener('click', async () => {
         try {
+            const selectedDifficulty = parseInt(difficulty());
+            const selectedPowerUps = powerUps() === 'true';
+            const selectedMaxScore = parseInt(maxScore());
+            console.log(`game ${selectedDifficulty === 0 ? 'easy' : 'normal'} ${selectedPowerUps === true ? 'avec' : 'sans'} pouvoir de ${selectedMaxScore} points max `);
             await wsClient.connect(`ws://${window.location.host}/ws`)
             wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore)
         } catch (error) {
@@ -298,6 +211,34 @@ function initWaitingModal(modal: HTMLElement)
         hide(modal);
     });
 }
+
+function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () => string {
+    const activeClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300";
+    const inactiveClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500";
+    
+    const buttons = buttonIds.map(id => getEl(id) as HTMLButtonElement);
+    let selectedIndex = initialIndex;
+
+    const update = () => {
+        buttons.forEach((btn, i) => {
+            btn.className = i === selectedIndex ? activeClass : inactiveClass;
+        });
+    };
+
+    buttons.forEach((btn, i) => {
+        btn.addEventListener('click', () => {
+            selectedIndex = i;
+            update();
+        });
+    });
+
+    update();
+
+    console.log(buttons[selectedIndex]?.dataset?.value ?? String(selectedIndex));
+
+    return () => buttons[selectedIndex]?.dataset?.value ?? String(selectedIndex);
+}
+
 function updateUI(): void {
     const loginButton = getEl("loginButton");
     const logoutButton = getEl("logoutButton");

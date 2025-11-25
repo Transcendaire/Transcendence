@@ -27,7 +27,7 @@ async function initHomePage()
 		playerName = alias;
 		isLoggedIn = true;
 	}
-		
+
 	updateUI();
     setupWebsocket(waitingModal);
 

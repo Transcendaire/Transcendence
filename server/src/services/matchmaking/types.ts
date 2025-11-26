@@ -26,6 +26,8 @@ export interface GameRoom
 	player2Input: { up: boolean; down: boolean; slot1?: boolean; slot2?: boolean; slot3?: boolean }
 	player1PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
 	player2PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
+	player1Ping: number
+	player2Ping: number
 	ai?: AIPlayer
 	isCustom: boolean
 	tournamentMatch?: {

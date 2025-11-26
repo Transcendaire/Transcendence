@@ -27,17 +27,17 @@ export class GameRoomManager
 		player2: Player, 
 		isCustom: boolean,
 		fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
-		maxScore: number = 5,
+		lifeCount: number = 5,
 		tournamentMatch?: {
 			tournamentId: string
 			matchId: string
 			isFinalMatch: boolean
-			onComplete: (winnerId: string, score1: number, score2: number) => void
+			onComplete: (winnerId: string, lives1: number, lives2: number) => void
 		}
 	): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
-		const gameService = new GameService(canvasWidth, canvasHeight, isCustom, fruitFrequency, maxScore)
+		const gameService = new GameService(canvasWidth, canvasHeight, isCustom, fruitFrequency, lifeCount, 2, [player1.name, player2.name])
 		const gameLoop = setInterval(() => this.updateGame(gameId), 16)
 		const room: GameRoom = {
 			id: gameId,
@@ -49,6 +49,8 @@ export class GameRoomManager
 			player2Input: { up: false, down: false },
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
 			player2PrevSlots: { slot1: false, slot2: false, slot3: false },
+			player1Ping: 0,
+			player2Ping: 0,
 			isCustom,
 			...(tournamentMatch && { tournamentMatch })
 		}
@@ -70,12 +72,13 @@ export class GameRoomManager
 		isCustom: boolean,
 		difficulty: number = 1,
 		fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
-		maxScore: number = 5
+		lifeCount: number = 5,
+		aiName: string = 'XavierNiel'
 	): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
 		const gameService = new GameService(
-			canvasWidth, canvasHeight, isCustom, fruitFrequency, maxScore
+			canvasWidth, canvasHeight, isCustom, fruitFrequency, lifeCount, 2, [player1.name, aiName]
 		)
 		const gameLoop = setInterval(() => this.updateGame(gameId), 16)
 		const player2Input = { up: false, down: false }
@@ -83,13 +86,15 @@ export class GameRoomManager
 		const room: GameRoom = {
 			id: gameId,
 			player1,
-			player2: { socket: null as any, name: 'AI', id: 'AI' },
+			player2: { socket: null as any, name: aiName, id: 'AI' },
 			gameService,
 			gameLoop,
 			player1Input: { up: false, down: false },
 			player2Input: player2Input,
 			player1PrevSlots: { slot1: false, slot2: false, slot3: false },
 			player2PrevSlots: { slot1: false, slot2: false, slot3: false },
+			player1Ping: 0,
+			player2Ping: 0,
 			ai: aiPlayer,
 			isCustom
 		}
@@ -139,6 +144,28 @@ export class GameRoomManager
 			{
 				room.player2Input = keys
 				break
+			}
+		}
+	}
+
+	/**
+	 * @brief Store ping value received from client
+	 * @param socket Player's WebSocket
+	 * @param pingValue RTT calculated by client
+	 */
+	public handlePing(socket: WebSocket, pingValue: number): void
+	{
+		for (const room of this.activeGames.values())
+		{
+			if (room.player1.socket === socket)
+			{
+				room.player1Ping = pingValue
+				return
+			}
+			else if (room.player2.socket === socket)
+			{
+				room.player2Ping = pingValue
+				return
 			}
 		}
 	}
@@ -217,44 +244,45 @@ export class GameRoomManager
 			const gameState = room.gameService.getGameState()
 			const p1 = gameState.players[0]!
 			const p2 = gameState.players[1]!
-			const winner = p1.score > p2.score ? 'player1' : 'player2'
-			const winnerId = winner === 'player1' ? room.player1.id : room.player2.id
-			const isTournament = !!room.tournamentMatch
-			const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
-			
-			if (room.player1.socket)
-				this.sendMessage(room.player1.socket, { 
-					type: 'gameOver', 
-					winner, 
-					score1: p1.score, 
-					score2: p2.score,
-					isTournament,
-					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
-				})
-			if (room.player2.socket && room.player2.id !== 'AI')
-				this.sendMessage(room.player2.socket, { 
-					type: 'gameOver', 
-					winner, 
-					score1: p1.score, 
-					score2: p2.score,
-					isTournament,
-					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
-				})
-			
-			if (room.tournamentMatch)
-			{
-				console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
-				room.tournamentMatch.onComplete(winnerId, p1.score, p2.score)
-			}
-			
-			this.endGame(gameId)
+		const winner = p1.lives > p2.lives ? 'player1' : 'player2'
+		const winnerId = winner === 'player1' ? room.player1.id : room.player2.id
+		const isTournament = !!room.tournamentMatch
+		const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
+		
+		if (room.player1.socket)
+			this.sendMessage(room.player1.socket, { 
+				type: 'gameOver', 
+				winner, 
+				lives1: p1.lives, 
+				lives2: p2.lives,
+				isTournament,
+				shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
+			})
+		if (room.player2.socket && room.player2.id !== 'AI')
+			this.sendMessage(room.player2.socket, { 
+				type: 'gameOver', 
+				winner, 
+				lives1: p1.lives, 
+				lives2: p2.lives,
+				isTournament,
+				shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
+			})
+		
+		if (room.tournamentMatch)
+		{
+			console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
+			room.tournamentMatch.onComplete(winnerId, p1.lives, p2.lives)
+		}			this.endGame(gameId)
 			return
 		}
 		const gameState = room.gameService.getGameState()
 		const stateMessage: GameState = {
-			players: gameState.players.map(p => ({
+			players: gameState.players.map((p, index) => ({
 				paddle: { y: p.paddle.positionY },
-				score: p.score,
+				lives: p.lives,
+				isEliminated: p.isEliminated(),
+				name: p.name,
+				ping: index === 0 ? room.player1Ping : room.player2Ping,
 				itemSlots: p.itemSlots,
 				pendingPowerUps: p.pendingPowerUps,
 				selectedSlots: p.selectedSlots,

@@ -4,7 +4,7 @@ export const paddleSize: number = 100
 export const paddleOffset = 30;
 export const curveAcceleration = 300;
 export const speedBoost = 1.5;
-export const maxScore = 5;
+export const defaultLifeCount = 5;
 
 export const GEOMETRY_CONFIG = {
 	2: { shape: 'rectangle', radius: 400 },

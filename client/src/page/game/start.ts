@@ -4,7 +4,7 @@ import { paddleOffset } from "/dist/shared/consts.js";
 import { setupGameEventListeners } from './input.js';
 import * as gameState from './gameState.js';
 
-export function startGame(playerRole: 'player1' | 'player2', gameLoop: (time: number) => void): void
+export function startGame(playerRole: 'player1' | 'player2', gameLoop: (time: number) => void, player1Name: string, player2Name: string): void
 {
     console.log('[GAME] ========== startGame() appelé ==========');
     console.log('[GAME] Role:', playerRole);
@@ -17,10 +17,11 @@ export function startGame(playerRole: 'player1' | 'player2', gameLoop: (time: nu
     }
     
     const gameScreen = document.getElementById("gameScreen");
-    const yourRoleSpan = document.getElementById("yourRole");
     const waitingDiv = document.getElementById("waiting");
+    const player1NameDiv = document.getElementById("player1Name");
+    const player2NameDiv = document.getElementById("player2Name");
     
-    if (!gameScreen || !yourRoleSpan) {
+    if (!gameScreen || !player1NameDiv || !player2NameDiv) {
         console.error('[GAME] Éléments DOM manquants!');
         return;
     }
@@ -29,23 +30,28 @@ export function startGame(playerRole: 'player1' | 'player2', gameLoop: (time: nu
         waitingDiv.classList.add("hidden");
     
     gameScreen.classList.remove("hidden");
-    yourRoleSpan.textContent = playerRole === 'player1' ? 'Joueur 1 (Gauche)' : 'Joueur 2 (Droite)';
     
     console.log('[GAME] Initialisation des objets du jeu...');
-    gameState.setPlayer1(new Player("Player 1", paddleOffset));
-    gameState.setPlayer2(new Player("Player 2", gameState.canvas.width - paddleOffset - 10));
+    gameState.setPlayer1(new Player(player1Name, paddleOffset));
+    gameState.setPlayer2(new Player(player2Name, gameState.canvas.width - paddleOffset - 10));
     gameState.setBall(new Ball(gameState.canvas.width / 2, gameState.canvas.height / 2));
     gameState.setCloneBalls([]);
     gameState.setFruits([]);
+    
+    player1NameDiv.textContent = gameState.player1.name;
+    player2NameDiv.textContent = gameState.player2.name;
+    
     setupGameEventListeners();
 
     gameState.setGameRunning(true);
     gameState.setLastTime(0);
     
-    if (gameState.animationFrameId === null) {
-        console.log('[GAME] Démarrage de la boucle de rendu');
-        gameState.setAnimationFrameId(requestAnimationFrame(gameLoop));
-    } else {
-        console.log('[GAME] Boucle de rendu déjà active');
+    if (gameState.animationFrameId !== null) {
+        console.log('[GAME] Annulation de la boucle de rendu précédente');
+        cancelAnimationFrame(gameState.animationFrameId);
+        gameState.setAnimationFrameId(null);
     }
+    
+    console.log('[GAME] Démarrage de la boucle de rendu');
+    gameState.setAnimationFrameId(requestAnimationFrame(gameLoop));
 }

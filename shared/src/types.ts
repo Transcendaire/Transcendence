@@ -19,7 +19,7 @@ export type PowerUpFruit = {
 }
 
 export type CustomGameSettings = {
-	maxScore: number;
+	lifeCount: number;
 	powerUpsEnabled: boolean;
 	fruitFrequency: 'low' | 'normal' | 'high';
 }
@@ -45,9 +45,10 @@ export type Lobby = {
 
 export type PlayerState = {
 	paddle: { y: number; x?: number };
-	score: number;
-	lives?: number;
+	lives: number;
 	isEliminated?: boolean;
+	name?: string;
+	ping?: number;
 	itemSlots?: PowerUpType[];
 	pendingPowerUps?: PowerUpType[];
 	selectedSlots?: boolean[];
@@ -75,15 +76,15 @@ export type GameState = {
 export type WebSocketMessage = 
 | { type: "join"; playerName: string }
 | { type: "joinCustom"; playerName: string }
-| { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; maxScore?: number }
+| { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; lifeCount?: number }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
-| { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean }
+| { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean; player1Name: string; player2Name: string }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number; isTournament?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
+| { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
-| { type: "ping" }
+| { type: "ping"; pingValue?: number }
 | { type: "pong" }
 | { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; maxPlayers: number; settings: CustomGameSettings }
 | { type: "joinLobby"; playerName: string; lobbyId: string }

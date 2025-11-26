@@ -24,7 +24,6 @@ export function render(): void
         renderCloneBall(clone);
     });
     renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
-    renderScore();
 }
 
 export function renderPaddle(paddle: { positionX: number; positionY: number; height: number; }, color: string): void
@@ -89,12 +88,26 @@ export function renderCloneBall(clone: { x: number; y: number; vx: number; vy: n
     gameState.ctx.restore();
 }
 
-export function renderScore(): void
+export function renderHearts(player: 'player1' | 'player2', lives: number): void
 {
-    gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
-    gameState.ctx.font = `bold 48px ${FONTS.QUENCY_PIXEL}`;
-    gameState.ctx.textAlign = "center";
-    gameState.ctx.fillText(`${gameState.player1.score} - ${gameState.player2.score}`, gameState.canvas.width / 2, 60);
+    const container = document.getElementById(
+        `heartsPlayer${player === 'player1' ? '1' : '2'}`
+    );
+    
+    if (!container)
+        return;
+    
+    container.innerHTML = '';
+    
+    for (let i = 0; i < lives; i++) {
+        const heart = document.createElement('div');
+        heart.className = 'w-16 h-16 flex items-center justify-center';
+        heart.style.color = COLORS.SONPI16_ORANGE;
+        heart.style.fontFamily = FONTS.QUENCY_PIXEL;
+        heart.style.fontSize = '48px';
+        heart.textContent = '♥';
+        container.appendChild(heart);
+    }
 }
 
 export function renderPowerUps(player: 'player1' | 'player2',
@@ -113,6 +126,7 @@ export function renderPowerUps(player: 'player1' | 'player2',
         './assets/images/16-256x.png'
     ];
     const powerUpNames = ['Son', 'Pi', '16'];
+    const outlineFilter = `drop-shadow(2px 0 0 ${COLORS.SONPI16_BLACK}) drop-shadow(-2px 0 0 ${COLORS.SONPI16_BLACK}) drop-shadow(0 2px 0 ${COLORS.SONPI16_BLACK}) drop-shadow(0 -2px 0 ${COLORS.SONPI16_BLACK})`;
 
     if (!container)
         return;
@@ -126,49 +140,53 @@ export function renderPowerUps(player: 'player1' | 'player2',
         const isCharging = chargingPowerUp === powerUpNames[index];
         const chargingLevel = isCharging ? (hitStreak || 0) : 0;
 
-        slotDiv.className = `w-12 h-12 border-2 bg-sonpi16-black rounded flex items-center justify-center`;
+        slotDiv.className = `w-16 h-16 border-2 bg-sonpi16-orange rounded flex items-center justify-center transition-all duration-300`;
         
         if (isSelected) {
-            slotDiv.style.borderColor = COLORS.SONPI16_ORANGE;
+            slotDiv.style.borderColor = COLORS.SONPI16_BLACK;
             slotDiv.style.borderWidth = '3px';
+            slotDiv.style.transform = 'scale(1.2)';
         } else {
-            slotDiv.style.borderColor = COLORS.SONPI16_ORANGE;
+            slotDiv.style.borderColor = COLORS.SONPI16_BLACK;
         }
 
         const imgContainer = document.createElement('div');
-        imgContainer.className = 'w-10 h-10 relative';
+        imgContainer.className = 'w-12 h-12 relative';
 
         const img = document.createElement('img');
         img.src = slotImages[index]!;
-        img.className = 'w-10 h-10 absolute top-0 left-0';
+        img.className = 'w-12 h-12 absolute top-0 left-0';
         img.alt = `Slot ${index + 1}`;
         
-        if (!hasItem && !isCharging) {
-            img.style.filter = 'grayscale(100%) brightness(0.5)';
-        } else if (isCharging && chargingLevel < 3) {
-            const fillPercentage = (chargingLevel / 3) * 100;
-            img.style.clipPath = `inset(${100 - fillPercentage}% 0 0 0)`;
-            
-            const grayImg = document.createElement('img');
-            grayImg.src = slotImages[index]!;
-            grayImg.className = 'w-10 h-10 absolute top-0 left-0';
-            grayImg.style.filter = 'grayscale(100%) brightness(0.5)';
-            grayImg.style.clipPath = `inset(0 0 ${fillPercentage}% 0)`;
-            
-            imgContainer.appendChild(grayImg);
+        if (!hasItem) {
+            img.style.filter = outlineFilter;
         }
         
         imgContainer.appendChild(img);
+
+        if (hasItem || isCharging) {
+            const fillDiv = document.createElement('div');
+            fillDiv.className = 'w-12 h-12 absolute top-0 left-0';
+            fillDiv.style.backgroundColor = COLORS.SONPI16_BLACK;
+            
+            const maskStyle = `url(${slotImages[index]}) center / contain no-repeat`;
+            fillDiv.style.mask = maskStyle;
+            fillDiv.style.webkitMask = maskStyle;
+            
+            if (!hasItem) {
+                fillDiv.style.filter = outlineFilter;
+            }
+            
+            if (hasItem) {
+                fillDiv.style.clipPath = 'inset(0 0 0 0)';
+            } else {
+                const fillPercentage = (chargingLevel / 3) * 100;
+                fillDiv.style.clipPath = `inset(${100 - fillPercentage}% 0 0 0)`;
+            }
+            imgContainer.appendChild(fillDiv);
+        }
+        
         slotDiv.appendChild(imgContainer);
         container.appendChild(slotDiv);
-    }
-
-    if (pendingPowerUps && pendingPowerUps.length > 0) {
-        const pendingContainer = document.createElement('div');
-        pendingContainer.className = 'mt-2 text-xs';
-        pendingContainer.style.color = COLORS.SONPI16_ORANGE;
-        pendingContainer.style.fontFamily = FONTS.QUENCY_PIXEL;
-        pendingContainer.textContent = `Pending: ${pendingPowerUps.filter(p => p !== null).length}`;
-        container.appendChild(pendingContainer);
     }
 }

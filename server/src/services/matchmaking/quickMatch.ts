@@ -37,8 +37,8 @@ export class QuickMatchService
 			const opponent = waitingQueue.pop()!
 			console.log(`[QUICK_MATCH] Creating ${modeStr} game: ${opponent.name} vs ${player.name}`)
 			const gameId = this.gameRoomManager.createGame(opponent, player, isCustom, 'normal', 5)
-			this.sendMessage(opponent.socket, { type: 'gameStart', playerRole: 'player1' })
-			this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player2' })
+			this.sendMessage(opponent.socket, { type: 'gameStart', playerRole: 'player1', player1Name: opponent.name, player2Name: player.name })
+			this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player2', player1Name: opponent.name, player2Name: player.name })
 		}
 		else
 		{
@@ -62,7 +62,7 @@ export class QuickMatchService
 		playerName: string,
 		isCustom: boolean,
 		difficulty: number = 1,
-		maxScore: number = 5
+		lifeCount: number = 5
 	): void
 	{
 		const player: Player = {
@@ -70,11 +70,12 @@ export class QuickMatchService
 			name: playerName,
 			id: Math.random().toString(36).substr(2, 9)
 		}
+		const aiName = difficulty === 0 ? 'XavierNiestre' : difficulty === 1 ? 'XavierNiel' : 'XavierMiel';
 		const gameId = this.gameRoomManager.createAIGame(
-			player, isCustom, difficulty, 'normal', maxScore
+			player, isCustom, difficulty, 'normal', lifeCount, aiName
 		)
-		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom}, difficulty: ${difficulty}, maxScore: ${maxScore})`)
-		this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1' })
+		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom}, difficulty: ${difficulty}, lifeCount: ${lifeCount})`)
+		this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1', player1Name: player.name, player2Name: aiName })
 	}
 
 	/**

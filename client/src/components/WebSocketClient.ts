@@ -11,17 +11,17 @@ export class WebSocketClient
     private reconnectDelay = 1000;
     private lastPingTime = 0;
     private latency = 0;
-    private pendingGameStart: 'player1' | 'player2' | null = null;
+    private pendingGameStart: { role: 'player1' | 'player2', player1Name?: string, player2Name?: string } | null = null;
     private _isCustomGame = false;
     private intentionalDisconnect = false;
     
     public onGameState?: (gameState: GameState) => void;
     public onWaitingForPlayer?: () => void;
-    private _onGameStart: ((playerRole: 'player1' | 'player2') => void) | null = null;
+    private _onGameStart: ((playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string) => void) | null = null;
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
-    public onGameOver?: (winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => void;
     
     public onLobbyCreated?: (lobbyId: string, lobby: Lobby) => void;
     public onLobbyUpdate?: (lobby: Lobby) => void;
@@ -32,11 +32,11 @@ export class WebSocketClient
         return this._onGameStart;
     }
     
-    public set onGameStart(callback: ((playerRole: 'player1' | 'player2') => void) | null) {
+    public set onGameStart(callback: ((playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string) => void) | null) {
         this._onGameStart = callback;
         if (callback && this.pendingGameStart) {
-            console.log('[WEBSOCKET] Appel du callback gameStart en attente avec role:', this.pendingGameStart);
-            callback(this.pendingGameStart);
+            console.log('[WEBSOCKET] Appel du callback gameStart en attente avec role:', this.pendingGameStart.role);
+            callback(this.pendingGameStart.role, this.pendingGameStart.player1Name, this.pendingGameStart.player2Name);
             this.pendingGameStart = null;
         }
     }
@@ -115,11 +115,13 @@ export class WebSocketClient
                         this._isCustomGame = message.isCustom;
                         console.log(`[WEBSOCKET] Mode Custom défini: ${this._isCustomGame}`);
                     }
+                    const player1Name = message.player1Name;
+                    const player2Name = message.player2Name;
                     if (this._onGameStart) {
-                        this._onGameStart(message.playerRole);
+                        this._onGameStart(message.playerRole, player1Name, player2Name);
                     } else {
                         console.log('[WEBSOCKET] Callback onGameStart pas encore défini, mise en attente...');
-                        this.pendingGameStart = message.playerRole;
+                        this.pendingGameStart = { role: message.playerRole, player1Name, player2Name };
                     }
                 }
                 break;
@@ -136,9 +138,9 @@ export class WebSocketClient
                 break;
                 
             case 'gameOver':
-                if (message.winner && message.score1 !== undefined && message.score2 !== undefined) {
+                if (message.winner && message.lives1 !== undefined && message.lives2 !== undefined) {
                     console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, Should disconnect: ${message.shouldDisconnect}, Forfeit: ${message.forfeit}`);
-                    this.onGameOver?.(message.winner, message.score1, message.score2, message.isTournament, message.shouldDisconnect, message.forfeit);
+                    this.onGameOver?.(message.winner, message.lives1, message.lives2, message.isTournament, message.shouldDisconnect, message.forfeit);
                 }
                 break;
                 
@@ -227,7 +229,7 @@ export class WebSocketClient
                 playerName,
                 difficulty,
                 enablePowerUps,
-                maxScore
+                lifeCount: maxScore
             }
             this.ws.send(JSON.stringify(message))
         }
@@ -269,10 +271,11 @@ export class WebSocketClient
     public sendPing(): void
     {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-            this.lastPingTime = Date.now();
             const message: WebSocketMessage = {
-                type: 'ping'
+                type: 'ping',
+                pingValue: this.latency
             };
+            this.lastPingTime = Date.now();
             this.ws.send(JSON.stringify(message));
         }
     }

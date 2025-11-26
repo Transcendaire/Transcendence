@@ -29,16 +29,16 @@ export function setLastTime(t: number): void {
     lastTime = t;
 }
 
-export function setPlayer1(p: Player): void {
-    player1 = p;
+export function setPlayer1(p: Player | null): void {
+    player1 = p as Player;
 }
 
-export function setPlayer2(p: Player): void {
-    player2 = p;
+export function setPlayer2(p: Player | null): void {
+    player2 = p as Player;
 }
 
-export function setBall(b: Ball): void {
-    ball = b;
+export function setBall(b: Ball | null): void {
+    ball = b as Ball;
 }
 
 export function setCloneBalls(cb: Array<{ x: number; y: number; vx: number; vy: number }>): void {

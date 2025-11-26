@@ -68,8 +68,8 @@ export class MatchmakingService
 				{
 					const difficulty = message.difficulty ?? 1
 					const enablePowerUps = message.enablePowerUps ?? false
-					const maxScore = message.maxScore ?? 5
-					this.addAIGame(socket, message.playerName, enablePowerUps, difficulty, maxScore)
+					const lifeCount = message.lifeCount ?? 5
+					this.addAIGame(socket, message.playerName, enablePowerUps, difficulty, lifeCount)
 				}
 				break
 			case 'input':
@@ -77,6 +77,7 @@ export class MatchmakingService
 					this.gameRoomManager.updatePlayerInput(socket, message.data.keys)
 				break
 			case 'ping':
+				this.gameRoomManager.handlePing(socket, message.pingValue ?? 0)
 				this.sendMessage(socket, { type: 'pong' })
 				break
 			case 'createCustomLobby':
@@ -120,7 +121,7 @@ export class MatchmakingService
 		playerName: string,
 		isCustom: boolean,
 		difficulty: number = 1,
-		maxScore: number = 5
+		lifeCount: number = 5
 	): void
 	{
 		if (this.playerSockets.has(socket))
@@ -132,7 +133,7 @@ export class MatchmakingService
 			id: Math.random().toString(36).substr(2, 9)
 		}
 		this.playerSockets.set(socket, player)
-		this.quickMatch.createAIMatch(socket, playerName, isCustom, difficulty, maxScore)
+		this.quickMatch.createAIMatch(socket, playerName, isCustom, difficulty, lifeCount)
 	}
 
 	/**
@@ -188,8 +189,8 @@ export class MatchmakingService
 					this.sendMessage(opponent.socket, {
 						type: 'gameOver',
 						winner,
-						score1: p1.score,
-						score2: p2.score,
+						lives1: p1.lives,
+						lives2: p2.lives,
 						isTournament: true,
 						shouldDisconnect: isFinalMatch,
 						forfeit: true
@@ -197,8 +198,8 @@ export class MatchmakingService
 				}
 				gameRoom.tournamentMatch.onComplete(
 					opponent.id,
-					isPlayer1 ? p2.score : p1.score,
-					isPlayer1 ? p1.score : p2.score
+					isPlayer1 ? p2.lives : p1.lives,
+					isPlayer1 ? p1.lives : p2.lives
 				)
 				this.gameRoomManager.endGame(gameRoom.id)
 			}

@@ -240,7 +240,7 @@ function initCreationModal(createLobbyModal: HTMLElement)
         
         const powerUpsEnabled = mode.toLowerCase() === 'custom';
         const settings = {
-            maxScore: maxScore,
+            lifeCount: maxScore,
             powerUpsEnabled: powerUpsEnabled,
             fruitFrequency: powerUpsEnabled ? fruitFrequency : 'normal' as 'low' | 'normal' | 'high'
         };

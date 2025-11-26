@@ -150,38 +150,36 @@ export class CollisionManager
 	/**
 	 * @brief Check scoring for a specific side
 	 * @param players Array of players
-	 * @param scorerIndex Index of player who scores
+	 * @param loserIndex Index of player who loses a life
 	 * @param ball Game ball
 	 * @param cloneBalls Array of clone balls to clear
 	 * @param cond Condition for scoring
 	 * @param canvasWidth Width of canvas
 	 * @param canvasHeight Height of canvas
 	 * @param isCustomMode Whether custom mode is enabled
-	 * @param maxScore Maximum score to win
 	 * @returns True if game should end
 	 */
 	private static checkSide(
 		players: Player[],
-		scorerIndex: number,
+		loserIndex: number,
 		ball: Ball,
 		cloneBalls: CloneBall[],
 		cond: boolean,
 		canvasWidth: number,
 		canvasHeight: number,
-		isCustomMode: boolean,
-		maxScore: number
+		isCustomMode: boolean
 	): boolean
 	{
-		const scorer = players[scorerIndex];
-		const loserIndex = scorerIndex === 0 ? 1 : 0;
 		const loser = players[loserIndex];
-		if (!scorer || !loser)
+		const winnerIndex = loserIndex === 0 ? 1 : 0;
+		const winner = players[winnerIndex];
+		if (!loser || !winner)
 			return false;
 		if (ScoringManager.checkScoreCondition(ball, cond))
 		{
 			if (cloneBalls.length > 0)
 				CloneBallManager.clear(cloneBalls);
-			return ScoringManager.handleScore(scorer, loser, ball, canvasWidth, canvasHeight, isCustomMode, maxScore);
+			return ScoringManager.handleScore(loser, winner, ball, canvasWidth, canvasHeight, isCustomMode);
 		}
 		return false;
 	}
@@ -194,7 +192,6 @@ export class CollisionManager
 	 * @param canvasWidth Width of canvas
 	 * @param canvasHeight Height of canvas
 	 * @param isCustomMode Whether custom mode is enabled
-	 * @param maxScore Maximum score to win
 	 * @returns Tuple of [gameOver, lastTouchedPlayerIndex]
 	 */
 	public static checkAll(
@@ -203,8 +200,7 @@ export class CollisionManager
 		cloneBalls: CloneBall[],
 		canvasWidth: number,
 		canvasHeight: number,
-		isCustomMode: boolean,
-		maxScore: number
+		isCustomMode: boolean
 	): [boolean, number]
 	{
 		CollisionDetector.checkYCollisions(ball, canvasHeight);
@@ -215,9 +211,9 @@ export class CollisionManager
 			lastTouchedPlayerIndex = p1Touch;
 		if (p2Touch >= 0)
 			lastTouchedPlayerIndex = p2Touch;
-		let gameOver = CollisionManager.checkSide(players, 1, ball, cloneBalls, ball.positionX < 0, canvasWidth, canvasHeight, isCustomMode, maxScore);
+		let gameOver = CollisionManager.checkSide(players, 0, ball, cloneBalls, ball.positionX < 0, canvasWidth, canvasHeight, isCustomMode);
 		if (!gameOver)
-			gameOver = CollisionManager.checkSide(players, 0, ball, cloneBalls, ball.positionX > canvasWidth, canvasWidth, canvasHeight, isCustomMode, maxScore);
+			gameOver = CollisionManager.checkSide(players, 1, ball, cloneBalls, ball.positionX > canvasWidth, canvasWidth, canvasHeight, isCustomMode);
 		return [gameOver, lastTouchedPlayerIndex];
 	}
 }

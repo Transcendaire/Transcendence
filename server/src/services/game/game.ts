@@ -2,7 +2,7 @@ import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
 import { CloneBall } from "@app/shared/models/CloneBall.js";
 import { PowerUpFruit } from "@app/shared/types.js";
-import { paddleOffset, FRUIT_FREQUENCY, maxScore as defaultMaxScore } from "@app/shared/consts.js";
+import { paddleOffset, FRUIT_FREQUENCY, defaultLifeCount } from "@app/shared/consts.js";
 import { CloneBallManager } from "./cloneBalls.js";
 import { FruitManager } from "./fruits.js";
 import { CollisionManager } from "./collisions.js";
@@ -29,7 +29,7 @@ export class GameService
 	public lastTouchedPlayerIndex: number;
 	public readonly fruitSpawnInterval: number;
 	public readonly maxFruits: number;
-	public readonly maxScore: number;
+	public readonly lifeCount: number;
 	public readonly canvasWidth: number;
 	public readonly canvasHeight: number;
 	public readonly isCustomMode: boolean;
@@ -40,7 +40,7 @@ export class GameService
 	 * @param canvasHeight Height of the game canvas
 	 * @param isCustomMode Enable custom mode with power-ups
 	 * @param fruitFrequency Frequency of fruit spawning
-	 * @param maxScore Maximum score to win the game
+	 * @param lifeCount Number of lives per player
 	 * @param playerCount Number of players (2-5)
 	 */
 	constructor(
@@ -48,8 +48,9 @@ export class GameService
 		canvasHeight: number,
 		isCustomMode: boolean = false,
 		fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
-		maxScore: number = defaultMaxScore,
-		playerCount: number = 2
+		lifeCount: number = defaultLifeCount,
+		playerCount: number = 2,
+		playerNames: string[] = []
 	)
 	{
 		this.canvasWidth = canvasWidth;
@@ -63,19 +64,21 @@ export class GameService
 		this.lastTouchedPlayerIndex = -1;
 		this.fruitSpawnInterval = FRUIT_FREQUENCY[fruitFrequency];
 		this.maxFruits = fruitFrequency === 'low' ? 2 : fruitFrequency === 'normal' ? 4 : 7;
-		this.maxScore = maxScore;
-		this.initGame(playerCount);
+		this.lifeCount = lifeCount;
+		this.initGame(playerCount, lifeCount, playerNames);
 	}
 
 	/**
 	 * @brief Initialize game objects with default positions
 	 * @param playerCount Number of players
+	 * @param lifeCount Number of lives per player
 	 */
-	private initGame(playerCount: number): void
+	private initGame(playerCount: number, lifeCount: number, playerNames: string[] = []): void
 	{
+		const defaultNames = ['Player 1', 'Player 2', 'Player 3', 'Player 4', 'Player 5'];
 		this.players = [];
-		this.players.push(new Player("Player 1", paddleOffset));
-		this.players.push(new Player("Player 2", this.canvasWidth - paddleOffset - 10));
+		this.players.push(new Player(playerNames[0] ?? defaultNames[0]!, paddleOffset, lifeCount));
+		this.players.push(new Player(playerNames[1] ?? defaultNames[1]!, this.canvasWidth - paddleOffset - 10, lifeCount));
 		this.ball = new Ball(this.canvasWidth / 2, this.canvasHeight / 2);
 	}
 
@@ -165,8 +168,7 @@ export class GameService
 			this.cloneBalls,
 			this.canvasWidth,
 			this.canvasHeight,
-			this.isCustomMode,
-			this.maxScore
+			this.isCustomMode
 		);
 		if (lastTouch >= 0)
 		{

@@ -185,5 +185,66 @@ export class Ball
         this.ballStart(false);
     }
 
-    
+    /**
+     * @brief Reset ball to specific center with random direction (for polygon mode)
+     * @param centerX X position of center
+     * @param centerY Y position of center
+     * @param randomDirection Use random direction instead of opposite
+     */
+    public resetToPoint(centerX: number, centerY: number, randomDirection: boolean = true): void
+    {
+        this.positionX = centerX;
+        this.positionY = centerY;
+        this.isCurving = false;
+        this.curveDirection = 0;
+        this.isBoosted = false;
+        this.previousSpeed = 0;
+        if (randomDirection)
+        {
+            const angle = Math.random() * Math.PI * 2;
+            const speed = 200;
+            this.velocityX = Math.cos(angle) * speed;
+            this.velocityY = Math.sin(angle) * speed;
+        }
+        else
+            this.ballStart(false);
+    }
+
+    /**
+     * @brief Push ball toward a point (for polygon boundary correction)
+     * @param targetX Target X position
+     * @param targetY Target Y position
+     * @param distance Distance to push
+     */
+    public pushToward(targetX: number, targetY: number, distance: number): void
+    {
+        const dx = targetX - this.positionX;
+        const dy = targetY - this.positionY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0)
+        {
+            this.positionX += (dx / dist) * distance;
+            this.positionY += (dy / dist) * distance;
+        }
+    }
+
+    /**
+     * @brief Push ball away from a point
+     * @param pointX Point X position
+     * @param pointY Point Y position
+     * @param distance Distance to push
+     */
+    public pushAwayFrom(pointX: number, pointY: number, distance: number): void
+    {
+        const dx = this.positionX - pointX;
+        const dy = this.positionY - pointY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist > 0)
+        {
+            this.positionX += (dx / dist) * distance;
+            this.positionY += (dy / dist) * distance;
+        }
+    }
 }

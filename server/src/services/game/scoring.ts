@@ -1,5 +1,6 @@
 import { Player } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
+import { Point2D } from "@app/shared/types.js";
 import { paddleSize } from "@app/shared/consts.js";
 
 /**
@@ -70,6 +71,21 @@ export class ScoringManager
             return true;
         }
         return false;
+    }
+
+    /**
+     * @brief Handle polygon mode scoring (no winner, just loser loses life)
+     * @param loser Player who lost a life
+     * @param ball Ball object
+     * @param center Polygon center for ball reset
+     * @returns True if player is eliminated
+     */
+    public static handlePolygonScore(loser: Player, ball: Ball, center: Point2D): boolean
+    {
+        loser.loseLife();
+        console.log(`[BR] ${loser.name} lost a life! ${loser.lives} remaining`);
+        ball.resetToPoint(center.x, center.y, true);
+        return loser.isEliminated();
     }
 
     /**

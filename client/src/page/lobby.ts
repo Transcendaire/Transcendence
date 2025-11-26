@@ -232,9 +232,9 @@ function initCreationModal(createLobbyModal: HTMLElement)
             return;
         }
         
-        const type = gameType?.value || 'multiplayerGame';
-        const lobbyType: 'tournament' | 'multiplayergame' = 
-            type.toLowerCase() === 'tournament' ? 'tournament' : 'multiplayergame';
+        const type = gameType?.value || 'battleroyale';
+        const lobbyType: 'tournament' | 'battleroyale' = 
+            type.toLowerCase() === 'tournament' ? 'tournament' : 'battleroyale';
 
         console.log(`[LOBBY] Création d'un lobby: ${name}, type: ${type}, mode: ${mode}, joueurs: ${maxPlayers}`);
         

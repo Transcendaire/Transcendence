@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws'
 import { GameState, WebSocketMessage } from '../../types.js'
-import { Player, GameRoom } from './types.js'
+import { LobbyPlayer } from '@app/shared/types.js'
+import { Player, GameRoom, BattleRoyaleRoom, BattleRoyalePlayer } from './types.js'
 import { GameService, PlayerInput } from '../game/game.js'
 import { AIPlayer } from '../aiplayer/AIPlayer.js'
 import { EasyAIPlayer } from '../aiplayer/EasyAIPlayer.js'
@@ -13,6 +14,7 @@ import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 export class GameRoomManager
 {
 	private activeGames: Map<string, GameRoom> = new Map()
+	private battleRoyaleGames: Map<string, BattleRoyaleRoom> = new Map()
 
 	/**
 	 * @brief Create game room for 1v1 match
@@ -127,6 +129,194 @@ export class GameRoomManager
 	}
 
 	/**
+	 * @brief Create Battle Royale game room for 3-6 players
+	 * @param lobbyPlayers Array of lobby players
+	 * @param sockets Map of player IDs to WebSockets
+	 * @param isCustom Enable power-ups mode
+	 * @param fruitFrequency Frequency of fruit spawning
+	 * @param lifeCount Number of lives per player
+	 * @returns Created game room ID
+	 */
+	public createBattleRoyaleGame(
+		lobbyPlayers: LobbyPlayer[],
+		sockets: Map<string, WebSocket>,
+		isCustom: boolean,
+		fruitFrequency: 'low' | 'normal' | 'high' = 'normal',
+		lifeCount: number = 5
+	): string
+	{
+		const gameId = Math.random().toString(36).substr(2, 9)
+		const playerNames = lobbyPlayers.map(p => p.name)
+		const playerCount = lobbyPlayers.length
+		const gameService = new GameService(
+			canvasWidth, canvasHeight, isCustom, fruitFrequency, lifeCount, playerCount, playerNames
+		)
+		const brPlayers: BattleRoyalePlayer[] = lobbyPlayers.map(lp => ({
+			socket: lp.isBot ? null : (sockets.get(lp.id) || null),
+			name: lp.name,
+			id: lp.id,
+			isBot: lp.isBot,
+			input: { up: false, down: false },
+			prevSlots: { slot1: false, slot2: false, slot3: false },
+			ping: 0
+		}))
+		const room: BattleRoyaleRoom = {
+			id: gameId,
+			players: brPlayers,
+			gameService,
+			gameLoop: setInterval(() => this.updateBattleRoyaleGame(gameId), 16),
+			isCustom
+		}
+		this.battleRoyaleGames.set(gameId, room)
+		for (let i = 0; i < brPlayers.length; i++)
+		{
+			const player = brPlayers[i]!
+			if (player.socket)
+			{
+				this.sendMessage(player.socket, {
+					type: 'gameStart',
+					playerRole: `player${i + 1}` as 'player1' | 'player2',
+					isCustom,
+					player1Name: playerNames[0] || 'Player 1',
+					player2Name: playerNames[1] || 'Player 2'
+				})
+			}
+		}
+		console.log(`[GAME_ROOM] Battle Royale game ${gameId} created with ${playerCount} players`)
+		return gameId
+	}
+
+	/**
+	 * @brief Update Battle Royale game state and broadcast to players
+	 * @param gameId Battle Royale room ID
+	 */
+	private updateBattleRoyaleGame(gameId: string): void
+	{
+		const room = this.battleRoyaleGames.get(gameId)
+		if (!room) return
+
+		const inputs: PlayerInput[] = room.players.map((player, index) => {
+			const slot1 = !!(player.input.slot1 && !player.prevSlots.slot1)
+			const slot2 = !!(player.input.slot2 && !player.prevSlots.slot2)
+			const slot3 = !!(player.input.slot3 && !player.prevSlots.slot3)
+			player.prevSlots.slot1 = player.input.slot1 || false
+			player.prevSlots.slot2 = player.input.slot2 || false
+			player.prevSlots.slot3 = player.input.slot3 || false
+			return {
+				up: player.input.up,
+				down: player.input.down,
+				...(slot1 && { slot1: true }),
+				...(slot2 && { slot2: true }),
+				...(slot3 && { slot3: true })
+			}
+		})
+
+		const gameOver = room.gameService.updateGame(16, inputs)
+		if (gameOver)
+		{
+			this.handleBattleRoyaleGameOver(room)
+			this.endBattleRoyaleGame(gameId)
+			return
+		}
+		this.broadcastBattleRoyaleState(room)
+	}
+
+	/**
+	 * @brief Handle Battle Royale game over
+	 * @param room Battle Royale room
+	 */
+	private handleBattleRoyaleGameOver(room: BattleRoyaleRoom): void
+	{
+		const gameState = room.gameService.getGameState()
+		const alivePlayers = gameState.players.filter(p => !p.isEliminated())
+		const winnerIndex = gameState.players.findIndex(p => !p.isEliminated())
+		const winner = winnerIndex >= 0 ? `player${winnerIndex + 1}` : 'player1'
+
+		for (let i = 0; i < room.players.length; i++)
+		{
+			const player = room.players[i]!
+			if (player.socket)
+			{
+				const isWinner = i === winnerIndex
+				this.sendMessage(player.socket, {
+					type: 'gameOver',
+					winner: winner as 'player1' | 'player2',
+					lives1: gameState.players[0]?.lives || 0,
+					lives2: gameState.players[1]?.lives || 0,
+					isTournament: false,
+					shouldDisconnect: true
+				})
+			}
+		}
+		console.log(`[GAME_ROOM] Battle Royale ${room.id} ended, winner: ${winner}`)
+	}
+
+	/**
+	 * @brief Broadcast Battle Royale state to all players
+	 * @param room Battle Royale room
+	 */
+	private broadcastBattleRoyaleState(room: BattleRoyaleRoom): void
+	{
+		const gameState = room.gameService.getGameState()
+		const polygonData = room.gameService.getPolygonData()
+		const baseState = {
+			players: gameState.players.map((p, index) => ({
+				paddle: {
+					y: p.paddle.positionY,
+					x: p.paddle.positionX,
+					angle: p.paddle.angle,
+					sidePosition: p.paddle.sidePosition
+				},
+				lives: p.lives,
+				isEliminated: p.isEliminated(),
+				name: p.name,
+				ping: room.players[index]?.ping || 0,
+				itemSlots: p.itemSlots,
+				pendingPowerUps: p.pendingPowerUps,
+				selectedSlots: p.selectedSlots,
+				hitStreak: p.hitStreak,
+				chargingPowerUp: p.chargingPowerUp
+			})),
+			ball: {
+				x: gameState.ball.positionX,
+				y: gameState.ball.positionY,
+				vx: gameState.ball.velocityX,
+				vy: gameState.ball.velocityY
+			},
+			cloneBalls: gameState.cloneBalls.map(clone => ({
+				x: clone.positionX,
+				y: clone.positionY,
+				vx: clone.velocityX,
+				vy: clone.velocityY
+			})),
+			fruits: gameState.fruits,
+			isBattleRoyale: true
+		}
+		const stateMessage: GameState = polygonData
+			? { ...baseState, polygonData }
+			: baseState
+		for (const player of room.players)
+		{
+			if (player.socket)
+				this.sendMessage(player.socket, { type: 'gameState', data: stateMessage })
+		}
+	}
+
+	/**
+	 * @brief End Battle Royale game and cleanup
+	 * @param gameId Battle Royale room ID
+	 */
+	public endBattleRoyaleGame(gameId: string): void
+	{
+		const room = this.battleRoyaleGames.get(gameId)
+		if (!room) return
+		if (room.gameLoop)
+			clearInterval(room.gameLoop)
+		this.battleRoyaleGames.delete(gameId)
+		console.log(`[GAME_ROOM] Battle Royale ${gameId} cleaned up`)
+	}
+
+	/**
 	 * @brief Update player input for a game room
 	 * @param socket Player's WebSocket
 	 * @param keys Input state
@@ -138,12 +328,21 @@ export class GameRoomManager
 			if (room.player1.socket === socket)
 			{
 				room.player1Input = keys
-				break
+				return
 			}
 			else if (room.player2.socket === socket)
 			{
 				room.player2Input = keys
-				break
+				return
+			}
+		}
+		for (const room of this.battleRoyaleGames.values())
+		{
+			const player = room.players.find(p => p.socket === socket)
+			if (player)
+			{
+				player.input = keys
+				return
 			}
 		}
 	}
@@ -165,6 +364,15 @@ export class GameRoomManager
 			else if (room.player2.socket === socket)
 			{
 				room.player2Ping = pingValue
+				return
+			}
+		}
+		for (const room of this.battleRoyaleGames.values())
+		{
+			const player = room.players.find(p => p.socket === socket)
+			if (player)
+			{
+				player.ping = pingValue
 				return
 			}
 		}

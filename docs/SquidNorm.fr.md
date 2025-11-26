@@ -104,9 +104,23 @@ double MathUtils::computeAverage(const std::vector<double>& values)
     for (it = values.begin(); it != values.end(); ++it)
         if (*it < 0) // If there's only one line instruction in loops, no brackets needed but still put a \n and indent
             sum -= *it * 2; // Same in conditions
+	for (it = values.begin(); it != values.end(); ++it)
+	{ // If multiple lines, use brackets and put them on their own line
+		double adjustedValue = *it;
+		if (adjustedValue < 0)
+			adjustedValue = -adjustedValue;
+		sum += adjustedValue;
+	}
     return sum / count;
 }
 ```
+
+# Fondamentaux
+- Ne pas mettre de commentaire a linterieur des fonctions et classes, seulement en entete comme explique plus haut
+- Boucles et conditions:
+	- D'une instruction doivent etre ecrites sans accolades {}, mais toujours avec un retour a la ligne avant et indentées
+	- Plusieurs instructions doivent etre ecrites avec accolades {}, chaque accolade sur leur propre ligne
+- Ecrire des commentaires doxygen-type au dessus des fonctions/classes en anglais. En aucun cas a linterieur des fonctions/classes.
 
 En suivant ces règles, vous faciliterez la collaboration et la compréhension 
 pour les humains et les IA.

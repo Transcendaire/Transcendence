@@ -1,3 +1,24 @@
+export type Point2D = {
+	x: number;
+	y: number;
+}
+
+export type SideData = {
+	start: Point2D;
+	end: Point2D;
+	center: Point2D;
+	angle: number;
+	length: number;
+}
+
+export type PolygonData = {
+	vertices: Point2D[];
+	sides: SideData[];
+	center: Point2D;
+	radius: number;
+	cornerRadius: number;
+}
+
 export type GameInput = {
 	playerId: string;
 	keys: {
@@ -35,7 +56,7 @@ export type Lobby = {
 	id: string;
 	creatorId: string;
 	name: string;
-	type: 'tournament' | 'multiplayergame';
+	type: 'tournament' | 'battleroyale';
 	settings: CustomGameSettings;
 	players: LobbyPlayer[];
 	maxPlayers: number;
@@ -44,7 +65,12 @@ export type Lobby = {
 }
 
 export type PlayerState = {
-	paddle: { y: number; x?: number };
+	paddle: {
+		y: number;
+		x?: number;
+		angle?: number;
+		sidePosition?: number;
+	};
 	lives: number;
 	isEliminated?: boolean;
 	name?: string;
@@ -71,6 +97,8 @@ export type GameState = {
 		vy: number;
 	}>;
 	fruits?: PowerUpFruit[];
+	polygonData?: PolygonData;
+	isBattleRoyale?: boolean;
 }
 
 export type WebSocketMessage = 
@@ -86,7 +114,7 @@ export type WebSocketMessage =
 | { type: "surrender" }
 | { type: "ping"; pingValue?: number }
 | { type: "pong" }
-| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; maxPlayers: number; settings: CustomGameSettings }
+| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'battleroyale'; maxPlayers: number; settings: CustomGameSettings }
 | { type: "joinLobby"; playerName: string; lobbyId: string }
 | { type: "leaveLobby"; lobbyId: string }
 | { type: "deleteLobby"; lobbyId: string }

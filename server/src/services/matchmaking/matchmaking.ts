@@ -217,14 +217,14 @@ export class MatchmakingService
 	 * @brief Handle custom lobby creation
 	 * @param socket Creator's WebSocket
 	 * @param name Lobby name
-	 * @param lobbyType Type of lobby (tournament or multiplayergame)
+	 * @param lobbyType Type of lobby (tournament or battleroyale)
 	 * @param settings Game settings
 	 */
 	private handleCreateLobby(
 		socket: WebSocket,
 		playerName: string,
 		name: string,
-		lobbyType: 'tournament' | 'multiplayergame',
+		lobbyType: 'tournament' | 'battleroyale',
 		maxPlayers: number,
 		settings: any
 	): void

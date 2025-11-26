@@ -1,29 +1,193 @@
-import { PowerUpFruit } from "/dist/shared/types.js";
+import { PowerUpFruit, Point2D, PlayerState } from "/dist/shared/types.js";
 import { COLORS, FONTS } from "../../components/consts.js";
 import * as gameState from './gameState.js';
+import {
+	getPolygonVertices,
+	getSideData,
+	drawPolygonArena,
+	drawCornerZones,
+	getPaddleCorners,
+	getPaddlePositionOnSide
+} from './polygon.js';
 
+/**
+ * @brief Main render function - delegates to classic or polygon mode
+ */
 export function render(): void
 {
-    if (!gameState.ctx || !gameState.canvas) return;
-    
-    gameState.ctx.fillStyle = COLORS.SONPI16_BLACK;
-    gameState.ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
+	if (!gameState.ctx || !gameState.canvas) return;
 
-    if (!gameState.player1 || !gameState.player2 || !gameState.ball) {
-        console.warn('[GAME] render() appelé mais objets pas encore initialisés');
-        return;
-    }
+	gameState.ctx.fillStyle = COLORS.SONPI16_BLACK;
+	gameState.ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
 
-    renderPaddle(gameState.player1.paddle, COLORS.SONPI16_ORANGE);
-    renderPaddle(gameState.player2.paddle, COLORS.SONPI16_ORANGE);
+	if (gameState.isBattleRoyale)
+	{
+		if (gameState.polygonData)
+		{
+			gameState.canvas.style.border = 'none';
+			renderPolygonMode();
+		}
+		else
+		{
+			gameState.canvas.style.border = '2px solid ' + COLORS.SONPI16_ORANGE;
+			renderBattleRoyaleClassicMode();
+		}
+	}
+	else
+	{
+		gameState.canvas.style.border = '2px solid ' + COLORS.SONPI16_ORANGE;
+		renderClassicMode();
+	}
+}
 
-    gameState.fruits.forEach(fruit => {
-        renderFruit(fruit);
-    });
-    gameState.cloneBalls.forEach(clone => {
-        renderCloneBall(clone);
-    });
-    renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
+/**
+ * @brief Render classic 2-player rectangle mode
+ */
+function renderClassicMode(): void
+{
+	if (!gameState.player1 || !gameState.player2 || !gameState.ball)
+	{
+		console.warn('[GAME] render() appelé mais objets pas encore initialisés');
+		return;
+	}
+
+	const isPlayer1 = gameState.currentPlayerRole === 'player1';
+	renderPaddle(gameState.player1.paddle, isPlayer1 ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE);
+	renderPaddle(gameState.player2.paddle, isPlayer1 ? COLORS.SONPI16_ORANGE : COLORS.SONPI16_BLUE);
+
+	gameState.fruits.forEach(fruit => renderFruit(fruit));
+	gameState.cloneBalls.forEach(clone => renderCloneBall(clone));
+	renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
+}
+
+/**
+ * @brief Render Battle Royale in classic mode (when only 2 players remain)
+ */
+function renderBattleRoyaleClassicMode(): void
+{
+	const players = gameState.allPlayers;
+	const activePlayers = players.filter(p => !p.isEliminated);
+
+	if (activePlayers.length < 2 || !gameState.ball)
+	{
+		console.warn('[GAME] BR classic mode: pas assez de joueurs ou balle non initialisée');
+		return;
+	}
+
+	const player1 = activePlayers[0]!;
+	const player2 = activePlayers[1]!;
+	const player1Idx = players.indexOf(player1);
+	const player2Idx = players.indexOf(player2);
+
+	const currentPlayer = players[gameState.playerIndex];
+	const isSpectator = currentPlayer?.isEliminated ?? true;
+	const isCurrentPlayer1 = !isSpectator && player1Idx === gameState.playerIndex;
+	const isCurrentPlayer2 = !isSpectator && player2Idx === gameState.playerIndex;
+
+	const paddle1 = {
+		positionX: player1.paddle.x ?? 20,
+		positionY: player1.paddle.y,
+		height: 100
+	};
+	const paddle2 = {
+		positionX: player2.paddle.x ?? (gameState.canvas.width - 30),
+		positionY: player2.paddle.y,
+		height: 100
+	};
+
+	const color1 = isCurrentPlayer1 ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE;
+	const color2 = isCurrentPlayer2 ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE;
+
+	renderPaddle(paddle1, color1);
+	renderPaddle(paddle2, color2);
+
+	gameState.fruits.forEach(fruit => renderFruit(fruit));
+	gameState.cloneBalls.forEach(clone => renderCloneBall(clone));
+	renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
+
+	renderBRClassicUI(player1, player2, color1, color2);
+}
+
+/**
+ * @brief Render UI for BR classic mode (names and lives)
+ */
+function renderBRClassicUI(
+	player1: PlayerState,
+	player2: PlayerState,
+	color1: string,
+	color2: string
+): void
+{
+	const ctx = gameState.ctx;
+	const y = 25;
+
+	ctx.font = `16px ${FONTS.QUENCY_PIXEL}`;
+	ctx.textBaseline = 'middle';
+
+	ctx.fillStyle = color1;
+	ctx.textAlign = 'left';
+	ctx.fillText(player1.name || 'P1', 50, y);
+	const lives1 = player1.lives;
+	for (let i = 0; i < lives1; i++)
+		ctx.fillText('♥', 50 + (player1.name?.length ?? 2) * 10 + 10 + i * 15, y);
+
+	ctx.fillStyle = color2;
+	ctx.textAlign = 'right';
+	ctx.fillText(player2.name || 'P2', gameState.canvas.width - 50, y);
+	const lives2 = player2.lives;
+	const p2NameLen = player2.name?.length ?? 2;
+	for (let i = 0; i < lives2; i++)
+		ctx.fillText('♥', gameState.canvas.width - 50 - p2NameLen * 10 - 10 - i * 15, y);
+}
+
+/**
+ * @brief Render polygon Battle Royale mode with N players
+ */
+function renderPolygonMode(): void
+{
+	const polygon = gameState.polygonData!;
+	const players = gameState.allPlayers;
+
+	const activeIndices: number[] = [];
+	for (let i = 0; i < players.length; i++)
+	{
+		if (!players[i]?.isEliminated)
+			activeIndices.push(i);
+	}
+
+	const numSides = polygon.sides.length;
+	const activeSideIndices = Array.from({ length: numSides }, (_, i) => i);
+	const cornerRadius = polygon.cornerRadius ?? 15;
+
+	drawPolygonArena(gameState.ctx, polygon.vertices, activeSideIndices);
+	drawCornerZones(gameState.ctx, polygon.vertices, cornerRadius);
+
+	for (let sideIdx = 0; sideIdx < numSides; sideIdx++)
+	{
+		const playerIdx = activeIndices[sideIdx];
+		if (playerIdx === undefined) continue;
+		const player = players[playerIdx];
+		if (!player) continue;
+		const side = polygon.sides[sideIdx];
+		if (!side) continue;
+
+		const isCurrentPlayer = playerIdx === gameState.playerIndex;
+		const color = isCurrentPlayer ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE;
+
+		const paddleX = player.paddle.x ?? side.center.x;
+		const paddleY = player.paddle.y ?? side.center.y;
+		const paddleAngle = player.paddle.angle ?? side.angle;
+
+		renderPolygonPaddleAtPosition(paddleX, paddleY, paddleAngle, 60, 10, color);
+	}
+
+	gameState.fruits.forEach(fruit => renderFruit(fruit));
+	gameState.cloneBalls.forEach(clone => renderCloneBall(clone));
+
+	if (gameState.ball)
+		renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
+
+	renderPolygonUI(players, polygon, activeIndices);
 }
 
 export function renderPaddle(paddle: { positionX: number; positionY: number; height: number; }, color: string): void
@@ -189,4 +353,107 @@ export function renderPowerUps(player: 'player1' | 'player2',
         slotDiv.appendChild(imgContainer);
         container.appendChild(slotDiv);
     }
+}
+
+/**
+ * @brief Render a rotated paddle at a specific position
+ * @param x Paddle center X
+ * @param y Paddle center Y
+ * @param angle Paddle rotation angle
+ * @param paddleLength Paddle length
+ * @param paddleWidth Paddle width
+ * @param color Paddle color
+ */
+function renderPolygonPaddleAtPosition(
+	x: number,
+	y: number,
+	angle: number,
+	paddleLength: number,
+	paddleWidth: number,
+	color: string
+): void
+{
+	gameState.ctx.save();
+	gameState.ctx.translate(x, y);
+	gameState.ctx.rotate(angle);
+	gameState.ctx.fillStyle = color;
+	gameState.ctx.fillRect(-paddleLength / 2, -paddleWidth / 2, paddleLength, paddleWidth);
+	gameState.ctx.fillRect(-paddleLength / 2 + 4, -paddleWidth / 2 - 3, paddleLength - 8, paddleWidth + 6);
+	gameState.ctx.restore();
+}
+
+/**
+ * @brief Render a rotated paddle for polygon mode (using sidePosition)
+ * @param side SideData for the paddle's side
+ * @param sidePosition Position along side (0-1)
+ * @param angle Paddle rotation angle
+ * @param paddleLength Paddle length
+ * @param paddleWidth Paddle width
+ * @param color Paddle color
+ */
+function renderPolygonPaddle(
+	side: { start: Point2D; end: Point2D; center: Point2D; angle: number; length: number },
+	sidePosition: number,
+	angle: number,
+	paddleLength: number,
+	paddleWidth: number,
+	color: string
+): void
+{
+	const pos = getPaddlePositionOnSide(side, sidePosition, paddleLength, paddleWidth);
+	renderPolygonPaddleAtPosition(pos.x, pos.y, angle, paddleLength, paddleWidth, color);
+}
+
+/**
+ * @brief Render UI elements (lives, names) for polygon mode around the arena
+ * @param players Array of player states
+ * @param polygon PolygonData with vertices and sides
+ * @param activeIndices Array of active player indices mapped to sides
+ */
+function renderPolygonUI(
+	players: PlayerState[],
+	polygon: { vertices: Point2D[]; sides: { center: Point2D; angle: number }[] },
+	activeIndices: number[]
+): void
+{
+	const ctx = gameState.ctx;
+	const numSides = polygon.sides.length;
+
+	for (let sideIdx = 0; sideIdx < numSides; sideIdx++)
+	{
+		const playerIdx = activeIndices[sideIdx];
+		if (playerIdx === undefined) continue;
+		const player = players[playerIdx];
+		if (!player) continue;
+		const side = polygon.sides[sideIdx];
+		if (!side) continue;
+
+		const isCurrentPlayer = playerIdx === gameState.playerIndex;
+		const color = isCurrentPlayer ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE;
+		const normalAngle = side.angle - Math.PI / 2;
+		const offset = 60;
+		const uiX = side.center.x + Math.cos(normalAngle) * offset;
+		const uiY = side.center.y + Math.sin(normalAngle) * offset;
+
+		ctx.save();
+		ctx.translate(uiX, uiY);
+		ctx.rotate(side.angle);
+
+		ctx.fillStyle = color;
+		ctx.font = `16px ${FONTS.QUENCY_PIXEL}`;
+		ctx.textAlign = 'center';
+		ctx.textBaseline = 'middle';
+		ctx.fillText(player.name || `P${playerIdx + 1}`, 0, -15);
+
+		const lives = player.lives;
+		const heartSpacing = 12;
+		const heartsWidth = lives * heartSpacing;
+		const startX = -heartsWidth / 2 + heartSpacing / 2;
+
+		ctx.font = `14px ${FONTS.QUENCY_PIXEL}`;
+		for (let h = 0; h < lives; h++)
+			ctx.fillText('♥', startX + h * heartSpacing, 5);
+
+		ctx.restore();
+	}
 }

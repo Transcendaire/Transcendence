@@ -75,7 +75,7 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
     }
     else
     {
-        const destination = isTournament ? 'lobby' : 'home';
+        const destination = (isTournament || gameState.isBattleRoyale) ? 'lobby' : 'home';
         gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
         setTimeout(() => {
             returnToLobby(destination);
@@ -100,6 +100,10 @@ export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
     gameState.setBall(null);
     gameState.setCloneBalls([]);
     gameState.setFruits([]);
+    gameState.setIsBattleRoyale(false);
+    gameState.setPolygonData(null);
+    gameState.setPlayerIndex(0);
+    gameState.setAllPlayers([]);
     
     if (gameState.animationFrameId !== null) {
         cancelAnimationFrame(gameState.animationFrameId);

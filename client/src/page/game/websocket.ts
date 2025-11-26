@@ -1,9 +1,9 @@
-import { GameState } from "/dist/shared/types.js";
+import { GameState, PolygonData } from "/dist/shared/types.js";
 import { wsClient } from "../../components/WebSocketClient.js";
 import { renderPowerUps, renderHearts } from './canvas.js';
 import { showGameOver, returnToLobby, updatePing } from './ui.js';
 import * as gameState from './gameState.js';
-import { startGame } from './start.js';
+import { startGame, startBattleRoyaleGame } from './start.js';
 
 let savedGameLoop: ((time: number) => void) | null = null;
 
@@ -11,6 +11,10 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
 {
     console.log('[GAME] Configuration des callbacks WebSocket...');
     savedGameLoop = gameLoop;
+    
+    gameState.setIsBattleRoyale(false);
+    gameState.setPolygonData(null);
+    gameState.setAllPlayers([]);
 
     wsClient.onGameStart = (playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string) => {
         console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole);
@@ -51,6 +55,62 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
 }
 
 function updateGameState(serverGameState: GameState): void
+{
+	if (serverGameState.isBattleRoyale)
+	{
+		updateBattleRoyaleState(serverGameState);
+		return;
+	}
+	updateClassicGameState(serverGameState);
+}
+
+/**
+ * @brief Update state for Battle Royale polygon mode
+ */
+function updateBattleRoyaleState(serverGameState: GameState): void
+{
+	if (!gameState.isBattleRoyale && serverGameState.polygonData)
+	{
+		if (!gameState.currentPlayerRole || !savedGameLoop) return;
+
+		const playerNames = serverGameState.players.map((p, i) => p.name || `Player ${i + 1}`);
+		const myIndex = parseInt(gameState.currentPlayerRole.replace('player', '')) - 1;
+
+		startBattleRoyaleGame(
+			myIndex,
+			savedGameLoop,
+			playerNames,
+			serverGameState.polygonData
+		);
+		setTimeout(() => updateBattleRoyaleState(serverGameState), 50);
+		return;
+	}
+
+	if (gameState.isBattleRoyale && !serverGameState.polygonData)
+	{
+		console.log('[GAME] Switching from polygon to classic mode');
+		gameState.setPolygonData(null);
+	}
+
+	gameState.setAllPlayers(serverGameState.players);
+	gameState.setPolygonData(serverGameState.polygonData ?? null);
+
+	if (gameState.ball && serverGameState.ball)
+	{
+		gameState.ball.positionX = serverGameState.ball.x;
+		gameState.ball.positionY = serverGameState.ball.y;
+		gameState.ball.velocityX = serverGameState.ball.vx;
+		gameState.ball.velocityY = serverGameState.ball.vy;
+	}
+
+	gameState.setCloneBalls(serverGameState.cloneBalls || []);
+	gameState.setFruits(serverGameState.fruits || []);
+}
+
+/**
+ * @brief Update state for classic 2-player rectangle mode
+ */
+function updateClassicGameState(serverGameState: GameState): void
 {
     if (!gameState.player1 || !gameState.player2 || !gameState.ball)
     {

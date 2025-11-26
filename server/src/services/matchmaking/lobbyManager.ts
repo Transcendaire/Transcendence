@@ -30,7 +30,7 @@ export class LobbyManager
 	 * @param socket Creator's WebSocket connection
 	 * @param playerName Creator's name
 	 * @param lobbyName Lobby display name
-	 * @param lobbyType Type of lobby (tournament or multiplayergame)
+	 * @param lobbyType Type of lobby (tournament or battleroyale)
 	 * @param settings Game settings
 	 * @returns Created lobby ID or null if player already in lobby
 	 */
@@ -38,7 +38,7 @@ export class LobbyManager
 		socket: WebSocket,
 		playerName: string,
 		lobbyName: string,
-		lobbyType: 'tournament' | 'multiplayergame',
+		lobbyType: 'tournament' | 'battleroyale',
 		maxPlayers: number,
 		settings: CustomGameSettings
 	): string | null
@@ -239,7 +239,7 @@ export class LobbyManager
 			return "Need at least 2 players"
 		if (lobby.type === 'tournament' && lobby.players.length > 16)
 			return "Maximum 16 players for tournaments"
-		if (lobby.type === 'multiplayergame' && lobby.players.length > 6)
+		if (lobby.type === 'battleroyale' && lobby.players.length > 6)
 			return "Maximum 6 players allowed"
 		
 		lobby.status = 'starting'
@@ -288,7 +288,27 @@ export class LobbyManager
 			}
 		}
 		else
-			console.log(`[LOBBY] Multiplayer game start not yet implemented`)
+		{
+			const sockets = this.lobbyToSockets.get(lobbyId)
+			const playerIdToSocket = new Map<string, WebSocket>()
+			if (sockets)
+			{
+				for (const sock of sockets)
+				{
+					const playerId = this.socketToPlayerId.get(sock)
+					if (playerId)
+						playerIdToSocket.set(playerId, sock)
+				}
+			}
+			this.gameRoomManager.createBattleRoyaleGame(
+				lobby.players,
+				playerIdToSocket,
+				lobby.settings.powerUpsEnabled,
+				lobby.settings.fruitFrequency,
+				lobby.settings.lifeCount
+			)
+			console.log(`[LOBBY] Battle Royale game started with ${lobby.players.length} players`)
+		}
 		const sockets = this.lobbyToSockets.get(lobbyId)
 		if (sockets)
 		{

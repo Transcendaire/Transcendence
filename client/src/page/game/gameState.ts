@@ -1,6 +1,6 @@
 import { Player } from "/dist/shared/models/Player.js";
 import { Ball } from "/dist/shared/models/Ball.js";
-import { PowerUpFruit } from "/dist/shared/types.js";
+import { PowerUpFruit, PolygonData, PlayerState, Point2D } from "/dist/shared/types.js";
 
 export let canvas: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;
@@ -16,6 +16,11 @@ export let gameRunning = false;
 export let cleanupHandlers: (() => void)[] = [];
 export let animationFrameId: number | null = null;
 export let isReturningToLobby = false;
+
+export let isBattleRoyale = false;
+export let polygonData: PolygonData | null = null;
+export let playerIndex = 0;
+export let allPlayers: PlayerState[] = [];
 
 export function setCanvas(c: HTMLCanvasElement): void {
     canvas = c;
@@ -73,4 +78,20 @@ export function setAnimationFrameId(id: number | null): void {
 
 export function setIsReturningToLobby(r: boolean): void {
     isReturningToLobby = r;
+}
+
+export function setIsBattleRoyale(b: boolean): void {
+    isBattleRoyale = b;
+}
+
+export function setPolygonData(p: PolygonData | null): void {
+    polygonData = p;
+}
+
+export function setPlayerIndex(i: number): void {
+    playerIndex = i;
+}
+
+export function setAllPlayers(p: PlayerState[]): void {
+    allPlayers = p;
 }

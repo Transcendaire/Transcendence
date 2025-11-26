@@ -2,7 +2,7 @@ import { registerPageInitializer, navigate } from "../router.js";
 import { inputParserClass } from "../components/inputParser.js";
 import { wsClient } from "../components/WebSocketClient.js";
 import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
-import { checkAuthentication, broadcastAuthEvent, initAuth } from "./auth.js";
+import { checkAuthentication, getUserWithCookies, broadcastAuthEvent, initAuth } from "./auth.js";
 
 
 export let isLoggedIn: boolean = false;
@@ -20,30 +20,19 @@ async function initHomePage()
     const playButton = getEl("playButton") as HTMLButtonElement
     const redirect = getEl("signinRedirect") as HTMLButtonElement
 
-    console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
 	
-	// const alias = await getUserWithCookies();
-	// console.log(`alias is ${alias}`);
-	// if (alias)
-	// {
-	// 	playerName = alias;
-	// 	isLoggedIn = true;
-	// }
-
-// 	initAuth((alias?: string) => {
-//     if (alias) {
-//       playerName = alias;
-//       isLoggedIn = true;
-//     } else {
-//       playerName = "";
-//       isLoggedIn = false;
-// 	  if (window.location.hash !== '#home')
-// 		navigate('home');
-//     }
-//     updateUI();
-//   });
-
-	updateUI();
+	initAuth((alias?: string) => {
+		if (alias) {
+			playerName = alias;
+			isLoggedIn = true;
+		} else {
+			playerName = "";
+			isLoggedIn = false;
+		}
+		updateUI();
+	});
+	
+	console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
     setupWebsocket(waitingModal);
 
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
@@ -110,7 +99,7 @@ function initLoginModal(loginModal: HTMLElement)
 			isLoggedIn = true;
 			hide(loginModal)
 			updateUI();
-			// broadcastAuthEvent('login');
+			broadcastAuthEvent('login');
 
 		} catch (error)
 		{
@@ -175,7 +164,7 @@ async function initsigninModal(signinModal: HTMLElement)
 			isLoggedIn = true;
 			hide(signinModal);
 			updateUI()
-			// broadcastAuthEvent('login');
+			broadcastAuthEvent('login');
 		} catch (error) {
 			const message = String(error);
 			console.error('Erreur (subscribe): ', message);
@@ -222,6 +211,12 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 
     const join1v1 = async () => {
         try {
+			if (await checkAuthentication() === false)
+			{
+				alert('Veuillez vous reconnecter');
+				navigate('home');
+				return ;
+			}
             await wsClient.connect(`ws://${window.location.host}/ws`)
             wsClient.joinGame(playerName)
         } catch (error) {
@@ -231,6 +226,12 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 
     const joinCustom = async () => {
         try {
+			if (await checkAuthentication() === false)
+			{
+				alert('Veuillez vous reconnecter');
+				navigate('home');
+				return ;
+			}
             await wsClient.connect(`ws://${window.location.host}/ws`)
             wsClient.joinCustomGame(playerName)
         } catch (error) {
@@ -259,6 +260,12 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
 
     getEl("launchAIGameButton").addEventListener('click', async () => {
         try {
+			if (await checkAuthentication() === false)
+			{
+				navigate('home');
+				alert('Veuillez vous reconnecter');
+				return ;
+			}
             const selectedDifficulty = parseInt(difficulty());
             const selectedPowerUps = powerUps() === 'true';
             const selectedMaxScore = parseInt(maxScore());
@@ -300,7 +307,7 @@ async function logout(): Promise<void>
 	isLoggedIn = false;
 	playerName = "";
 	updateUI();
-	// broadcastAuthEvent('logout');
+	broadcastAuthEvent('logout');
 }
 
 

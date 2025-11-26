@@ -1,4 +1,4 @@
-import { checkAuthentication } from "./page/auth";
+import { checkAuthentication } from "./page/auth.js";
 
 export type Route = 'home' | 'profile' | 'game' | 'lobby';
 
@@ -57,7 +57,7 @@ export async function render(route: Route)
 //     window.history.pushState({ route }, '', `/${route}`);
 //     render(route);
 // }
-
+//!See with Pierre
 export async function navigate(route: Route) {
 
 	const protectedRoutes = ['lobby', 'game', 'profile'];

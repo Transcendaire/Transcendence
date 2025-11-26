@@ -2,3 +2,4 @@
 **/node_modules/
 **/dist/
 transcendaire.db
+update_test.sh

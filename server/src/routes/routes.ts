@@ -3,6 +3,7 @@ import { registerAuthRoutes } from './auth.routes.js'
 import { registerWebSocketRoutes } from './websocket.routes.js'
 import { registerStaticRoutes } from './static.routes.js'
 import { registerErrorRoutes } from './error.routes.js'
+import { registerUserRoutes } from './user.routes.js'
 
 export async function registerRoutes(server: FastifyInstance)
 {
@@ -13,4 +14,6 @@ export async function registerRoutes(server: FastifyInstance)
     await registerStaticRoutes(server)
 	
     await registerAuthRoutes(server)
+
+	await registerUserRoutes(server);
 }

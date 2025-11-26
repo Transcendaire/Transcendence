@@ -165,7 +165,18 @@ export class DatabaseService {
 			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
 
 		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+		this.updatePlayerAlias(userId, newAlias);
 	}
+
+    /**
+     * @brief Updates user's password
+     * @param userId User's UUID
+     * @param hashedPassword New hashed password
+     */
+    public updateUserPassword(userId: string, hashedPassword: string): void
+	{
+        this.db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
+    }
 
 	public getUserBy(type: string, value: string)
 	{
@@ -247,7 +258,6 @@ export class DatabaseService {
 
 		if (!newAlias || newAlias.trim().length < 3)
 			throw new DatabaseError("Le nom doit faire au moins trois caractères");
-		checkAliasValidity(newAlias);
 
 		if (!this.db.prepare("SELECT 1 FROM players WHERE id = ?").get(id))
 			throw new DatabaseError("Player not found");

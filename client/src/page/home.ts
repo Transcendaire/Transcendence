@@ -2,6 +2,8 @@ import { registerPageInitializer, navigate } from "../router.js";
 import { inputParserClass } from "../components/inputParser.js";
 import { wsClient } from "../components/WebSocketClient.js";
 import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
+import { checkAuthentication, broadcastAuthEvent, initAuth } from "./auth.js";
+
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
@@ -20,13 +22,26 @@ async function initHomePage()
 
     console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
 	
-	const alias = await getUserWithCookies();
-	console.log(`alias is ${alias}`);
-	if (alias)
-	{
-		playerName = alias;
-		isLoggedIn = true;
-	}
+	// const alias = await getUserWithCookies();
+	// console.log(`alias is ${alias}`);
+	// if (alias)
+	// {
+	// 	playerName = alias;
+	// 	isLoggedIn = true;
+	// }
+
+// 	initAuth((alias?: string) => {
+//     if (alias) {
+//       playerName = alias;
+//       isLoggedIn = true;
+//     } else {
+//       playerName = "";
+//       isLoggedIn = false;
+// 	  if (window.location.hash !== '#home')
+// 		navigate('home');
+//     }
+//     updateUI();
+//   });
 
 	updateUI();
     setupWebsocket(waitingModal);
@@ -35,8 +50,8 @@ async function initHomePage()
     getEl("profileButton").addEventListener('click', () => navigate("profile"));
     getEl("logoutButton").addEventListener('click', logout)
 
-    playButton.addEventListener('click', () => {
-        if (isLoggedIn)
+    playButton.addEventListener('click', async () => {
+        if (await checkAuthentication())
             show(gameModeModal)
         else
             show(loginModal)
@@ -95,6 +110,7 @@ function initLoginModal(loginModal: HTMLElement)
 			isLoggedIn = true;
 			hide(loginModal)
 			updateUI();
+			// broadcastAuthEvent('login');
 
 		} catch (error)
 		{
@@ -159,6 +175,7 @@ async function initsigninModal(signinModal: HTMLElement)
 			isLoggedIn = true;
 			hide(signinModal);
 			updateUI()
+			// broadcastAuthEvent('login');
 		} catch (error) {
 			const message = String(error);
 			console.error('Erreur (subscribe): ', message);
@@ -283,6 +300,7 @@ async function logout(): Promise<void>
 	isLoggedIn = false;
 	playerName = "";
 	updateUI();
+	// broadcastAuthEvent('logout');
 }
 
 
@@ -312,6 +330,18 @@ function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () =>
     console.log(buttons[selectedIndex]?.dataset?.value ?? String(selectedIndex));
 
     return () => buttons[selectedIndex]?.dataset?.value ?? String(selectedIndex);
+}
+
+async function checkAuthenticationAndUpdateUI()
+{
+	console.log('[CHECK AUTHENTICATION AND UPDATE UI]')
+	if (await checkAuthentication())
+		return true;
+	playerName = "";
+	isLoggedIn = false;
+	// navigate('home');
+	updateUI();
+	return false;
 }
 
 function updateUI(): void {
@@ -354,23 +384,6 @@ function setupWebsocket(waitingModal: HTMLElement)
         const playerCountSpan = getEl("playerCount");
         playerCountSpan.textContent = playerCount.toString();
     };
-}
-
-async function getUserWithCookies(): Promise<string | undefined>
-{
-	try {
-
-		const res = await fetch('/api/auth/me'); 
-		const data = await res.json();
-
-		if (res.ok)
-			return data.alias;
-		else
-			return undefined;
-	} catch(error) {
-		console.log('getUserWithCookies(): erreur : ', error);
-	}
-	return undefined;
 }
 
 registerPageInitializer('home', initHomePage);

@@ -43,8 +43,16 @@ export async function registerPlugins(server: FastifyInstance)
 		if (user)
 			req.user = user;
 		else
-			res.clearCookie('user_id');
+		{
+			res.clearCookie('user_id', {
+				path: '/',
+				httpOnly: true,
+				sameSite: 'lax'
+			});
+			req.cookies.id = "";
+		}
 	})
 
 
 }
+

@@ -1,3 +1,5 @@
+import { checkAuthentication } from "./page/auth";
+
 export type Route = 'home' | 'profile' | 'game' | 'lobby';
 
 const ROUTES: Record<Route, string> = {
@@ -50,11 +52,28 @@ export async function render(route: Route)
     }
 }
 
-export function navigate(route: Route) {
+// export function navigate(route: Route) {
+//     console.log('Navigation vers:', route);
+//     window.history.pushState({ route }, '', `/${route}`);
+//     render(route);
+// }
+
+export async function navigate(route: Route) {
+
+	const protectedRoutes = ['lobby', 'game', 'profile'];
+	if (protectedRoutes.includes(route)) {
+		const isAuthenticated = await checkAuthentication();
+		if (!isAuthenticated)
+		{
+			route = 'home'
+			alert('Veuillez vous reconnecter');
+		}
+	}
     console.log('Navigation vers:', route);
     window.history.pushState({ route }, '', `/${route}`);
     render(route);
 }
+
 
 export function getCurrentRoute(): Route {
 

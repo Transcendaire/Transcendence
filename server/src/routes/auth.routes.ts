@@ -19,6 +19,7 @@ export async function registerAuthRoutes(server: FastifyInstance)
 		const userId = db.createUser(login, hashedPassword, alias);
 
 		res.setCookie('user_id', userId, {
+			path: '/',
 			httpOnly: true,
 			sameSite: 'lax',
 			maxAge: 60 * 60 * 24//*24 hours
@@ -42,6 +43,7 @@ export async function registerAuthRoutes(server: FastifyInstance)
 		console.log('Validation passed for login:', login);
 
 		res.setCookie('user_id', user!.id, {
+			path: '/',
 			httpOnly: true,
 			sameSite: 'lax',
 			maxAge: 60 * 60  * 24//* 24 hours
@@ -64,7 +66,12 @@ export async function registerAuthRoutes(server: FastifyInstance)
 		if (user && user.id)
 			db.setUserOnlineStatus(user.id, false);
 
-		res.clearCookie('user_id');
+		res.clearCookie('user_id', {
+			path: '/',
+			httpOnly: true,
+			sameSite: 'lax'
+		});
+		req.cookies.id = "";
 		return res.code(204).send();
 
 	})

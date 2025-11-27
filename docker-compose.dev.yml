@@ -1,33 +1,17 @@
 services:
-  nginx:
-    build:
-      context: ./nginx
-      dockerfile: Dockerfile
-    container_name: transcendence-nginx-dev
-    ports:
-      - "8080:8080"
-    depends_on:
-      - client
-      - server
-    volumes:
-      - client-build:/usr/share/nginx/html:ro
-    networks:
-      - transcendence
-    restart: unless-stopped
-
   server:
     build:
       context: .
       dockerfile: ./server/Dockerfile.dev
     container_name: transcendence-server-dev
 
-    expose:
-      - "8080"
     ports:
-      - "8081:8081"   # sqlite-web port
+      - "8080:8080"
+      - "8081:8081"
 
     volumes:
       - ./server/src:/app/src:ro
+      - ./shared/src:/shared/src:ro
       - dev-database:/app/data
       - /app/node_modules
 
@@ -45,16 +29,18 @@ services:
       context: .
       dockerfile: ./client/Dockerfile.dev
     container_name: transcendence-client-dev
+    ports:
+      - "5173:5173"
     volumes:
       - ./client/src:/app/src:ro
-      - client-build:/output
+      - ./client/public:/app/public:ro
+      - ./client/index.html:/app/index.html:ro
+      - ./shared/src:/shared/src:ro
       - /app/node_modules
-      - /app/public
     networks:
       - transcendence
 
 volumes:
-  client-build:
   dev-database:
 
 networks:

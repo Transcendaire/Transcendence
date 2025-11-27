@@ -1,27 +1,23 @@
-FROM node:20-alpine
-
-WORKDIR /shared
-COPY shared/ /shared/
-RUN npm install
-RUN npm run build
-
+FROM node:20-alpine AS builder
 
 WORKDIR /app
-RUN mkdir -p public/dist/shared
-RUN cp -r /shared/dist/* public/dist/shared/
 
 COPY client/package*.json ./
 RUN npm install
 
 COPY client/tsconfig.json ./
-COPY client/tailwind.config.js ./
 COPY client/tsconfig.build.json ./
+COPY client/tailwind.config.js ./
+COPY client/postcss.config.js ./
+COPY client/vite.config.ts ./
+COPY client/index.html ./
 COPY client/src ./src
 COPY client/public ./public
+COPY shared ../shared
 
 RUN npm run build
 
 RUN mkdir -p /output && \
-    cp -r /app/public/* /output/
+    cp -r /app/dist/* /output/
 
 CMD ["echo", "Client build complete"]

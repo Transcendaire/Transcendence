@@ -1,7 +1,7 @@
-import { wsClient } from "../../components/WebSocketClient.js";
-import { navigate } from "../../router.js";
-import { COLORS, FONTS } from "../../components/consts.js";
-import * as gameState from './gameState.js';
+import { wsClient } from "../../components/WebSocketClient";
+import { navigate } from "../../router";
+import { COLORS, FONTS } from "../../components/consts";
+import * as gameState from './gameState';
 
 export function setupDisconnectionHandlers(): void
 {

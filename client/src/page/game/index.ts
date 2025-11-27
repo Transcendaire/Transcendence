@@ -1,15 +1,15 @@
-import { Player } from "/dist/shared/models/Player.js";
-import { Ball } from "/dist/shared/models/Ball.js";
-import { wsClient } from "../../components/WebSocketClient.js";
-import { inputParserClass } from "../../components/inputParser.js"
-import { paddleSize, paddleOffset} from "/dist/shared/consts.js";
-import { registerPageInitializer , navigate } from "../../router.js";
-import * as gameState from './gameState.js';
-import { setupGameEventListeners, sendInputToServer } from './input.js';
-import { render } from './canvas.js';
-import { setupDisconnectionHandlers, updatePing } from './ui.js';
-import { setupWebSocketCallbacks } from './websocket.js';
-import { startGame } from './start.js';
+import { Player } from "@shared/models/Player";
+import { Ball } from "@shared/models/Ball";
+import { wsClient } from "../../components/WebSocketClient";
+import { inputParserClass } from "../../components/inputParser"
+import { paddleSize, paddleOffset} from "@shared/consts";
+import { registerPageInitializer , navigate } from "../../router";
+import * as gameState from './gameState';
+import { setupGameEventListeners, sendInputToServer } from './input';
+import { render } from './canvas';
+import { setupDisconnectionHandlers, updatePing } from './ui';
+import { setupWebSocketCallbacks } from './websocket';
+import { startGame } from './start';
 
 const inputParser = new inputParserClass();
 

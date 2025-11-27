@@ -1,9 +1,9 @@
-import { Point2D, PolygonData, SideData } from "/dist/shared/types.js";
+import { Point2D, PolygonData, SideData } from "@shared/types";
 import {
 	BR_PADDLE_LENGTH,
 	BR_PADDLE_WIDTH,
 	BR_PADDLE_INWARD_OFFSET
-} from "/dist/shared/consts.js";
+} from "@shared/consts";
 import { COLORS } from "../../components/consts.js";
 
 /**

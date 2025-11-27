@@ -1,11 +1,13 @@
-import { GameState, PolygonData } from "/dist/shared/types.js";
-import { wsClient } from "../../components/WebSocketClient.js";
-import { renderPowerUps, renderHearts } from './canvas.js';
-import { showGameOver, returnToLobby, updatePing } from './ui.js';
-import * as gameState from './gameState.js';
-import { startGame, startBattleRoyaleGame } from './start.js';
+import type { GameState } from "@shared/types";
+import { wsClient } from "../../components/WebSocketClient";
+import { navigate } from "../../router";
+import { renderPowerUps } from './canvas';
+import { showGameOver, returnToLobby } from './ui';
+import * as gameState from './gameState';
+import { startGame } from './start';
 
 let savedGameLoop: ((time: number) => void) | null = null;
+
 
 export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
 {

@@ -8,7 +8,7 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "cd ../client && npm run build",
     "build:server": "tsc --project tsconfig.build.json",
-    "dev": "concurrently \"tsc --watch\" \"sleep 3 && nodemon --delay 1 --watch dist --ext js --ignore '*.map' dist/index.docker.js\"",
+    "dev": "tsx watch src/index.docker.ts",
     "start": "node dist/index.js",
     "clean": "rm -rf dist"
   },
@@ -19,14 +19,14 @@
     "@types/better-sqlite3": "^7.6.13",
     "bcryptjs": "^3.0.3",
     "better-sqlite3": "^12.4.1",
+    "chalk": "^5.6.2",
     "fastify": "^4.24.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {
     "@types/node": "^24.5.2",
     "@types/ws": "^8.18.1",
-    "concurrently": "^9.2.1",
-    "nodemon": "^3.1.10",
+    "tsx": "^4.19.0",
     "typescript": "^5.9.2"
   }
 }

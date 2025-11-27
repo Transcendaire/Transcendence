@@ -1,8 +1,8 @@
-import {navigate , registerPageInitializer} from "../router.js"
-import { wsClient } from "../components/WebSocketClient.js";
-import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
-import { playerName } from "./home.js";
-import { Lobby, LobbyPlayer } from "/dist/shared/types.js";
+import {navigate , registerPageInitializer} from "../router"
+import { wsClient } from "../components/WebSocketClient";
+import { getEl , show, hide, setupGlobalModalEvents } from "../app";
+import { playerName } from "./home";
+import type { Lobby, LobbyPlayer } from "@shared/types";
 
 let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;

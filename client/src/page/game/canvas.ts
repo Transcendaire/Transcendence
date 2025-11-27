@@ -1,7 +1,7 @@
-import { PowerUpFruit, Point2D, PlayerState } from "/dist/shared/types.js";
-import { BR_PADDLE_LENGTH, BR_PADDLE_WIDTH } from "/dist/shared/consts.js";
-import { COLORS, FONTS } from "../../components/consts.js";
-import * as gameState from './gameState.js';
+import { PowerUpFruit, Point2D, PlayerState } from "@shared/types";
+import { BR_PADDLE_LENGTH, BR_PADDLE_WIDTH } from "@shared/consts";
+import { COLORS, FONTS } from "../../components/consts";
+import * as gameState from './gameState';
 import {
 	getPolygonVertices,
 	getSideData,
@@ -9,7 +9,7 @@ import {
 	drawCornerZones,
 	getPaddleCorners,
 	getPaddlePositionOnSide
-} from './polygon.js';
+} from './polygon';
 
 /**
  * @brief Main render function - delegates to classic or polygon mode

@@ -1,9 +1,9 @@
-import { Player } from "/dist/shared/models/Player.js";
-import { Ball } from "/dist/shared/models/Ball.js";
-import { PolygonData } from "/dist/shared/types.js";
-import { paddleOffset } from "/dist/shared/consts.js";
-import { setupGameEventListeners } from './input.js';
-import * as gameState from './gameState.js';
+import { Player } from "@shared/models/Player";
+import { Ball } from "@shared/models/Ball";
+import { PolygonData } from "@shared/types";
+import { paddleOffset } from "@shared/consts";
+import { setupGameEventListeners } from './input';
+import * as gameState from './gameState';
 
 /**
  * @brief Start classic 2-player game

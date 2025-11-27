@@ -8,6 +8,26 @@ import {
 	getPaddlePositionOnSide
 } from './polygon';
 
+const powerUpImages: HTMLImageElement[] = [];
+const powerUpImagePaths = [
+	'./assets/images/son-256x.png',
+	'./assets/images/pi-256x.png',
+	'./assets/images/16-256x.png'
+];
+let imagesLoaded = false;
+
+function loadPowerUpImages(): void
+{
+	if (imagesLoaded) return;
+	for (let i = 0; i < powerUpImagePaths.length; i++)
+	{
+		const img = new Image();
+		img.src = powerUpImagePaths[i]!;
+		powerUpImages[i] = img;
+	}
+	imagesLoaded = true;
+}
+
 /**
  * @brief Main render function - delegates to classic or polygon mode
  */
@@ -104,6 +124,17 @@ function renderBattleRoyaleClassicMode(): void
 	renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
 
 	renderBRClassicUI(player1, player2, color1, color2);
+
+	const p1Role: 'player1' | 'player2' = isCurrentPlayer1 ? 'player1' : 'player2';
+	const p2Role: 'player1' | 'player2' = isCurrentPlayer2 ? 'player1' : 'player2';
+
+	renderHearts('player1', player1.lives);
+	renderHearts('player2', player2.lives);
+
+	if (player1.itemSlots)
+		renderPowerUps(p1Role, player1.itemSlots, player1.selectedSlots, undefined, player1.hitStreak, player1.chargingPowerUp);
+	if (player2.itemSlots)
+		renderPowerUps(p2Role, player2.itemSlots, player2.selectedSlots, undefined, player2.hitStreak, player2.chargingPowerUp);
 }
 
 /**
@@ -403,7 +434,7 @@ function renderPolygonPaddle(
 }
 
 /**
- * @brief Render UI elements (lives, names) for polygon mode around the arena
+ * @brief Render UI elements (lives, names, powerups) for polygon mode around the arena
  * @param players Array of player states
  * @param polygon PolygonData with vertices and sides
  */
@@ -443,7 +474,7 @@ function renderPolygonUI(
 		ctx.font = `16px ${FONTS.QUENCY_PIXEL}`;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
-		ctx.fillText(player.name || `P${i + 1}`, 0, -15);
+		ctx.fillText(player.name || `P${i + 1}`, 0, -25);
 
 		const lives = player.lives;
 		const heartSpacing = 12;
@@ -452,9 +483,115 @@ function renderPolygonUI(
 
 		ctx.font = `14px ${FONTS.QUENCY_PIXEL}`;
 		for (let h = 0; h < lives; h++)
-			ctx.fillText('♥', startX + h * heartSpacing, 5);
+			ctx.fillText('♥', startX + h * heartSpacing, -8);
+
+		if (player.itemSlots)
+		{
+			renderPolygonPowerUpSlots(
+				ctx,
+				player.itemSlots,
+				player.selectedSlots,
+				player.hitStreak,
+				player.chargingPowerUp,
+				isCurrentPlayer
+			);
+		}
 
 		ctx.restore();
 		sideIdx++;
 	}
+}
+
+/**
+ * @brief Render power-up slots for a player in polygon mode
+ * @param ctx Canvas context
+ * @param itemSlots Player's item slots
+ * @param selectedSlots Which slots are selected
+ * @param hitStreak Current hit streak
+ * @param chargingPowerUp Currently charging power-up
+ * @param isCurrentPlayer Whether this is the current player (for blue color)
+ */
+function renderPolygonPowerUpSlots(
+	ctx: CanvasRenderingContext2D,
+	itemSlots: (string | null)[],
+	selectedSlots?: boolean[],
+	hitStreak?: number,
+	chargingPowerUp?: string | null,
+	isCurrentPlayer?: boolean
+): void
+{
+	loadPowerUpImages();
+
+	const slotSize = 20;
+	const slotSpacing = 24;
+	const totalWidth = 3 * slotSpacing;
+	const startX = -totalWidth / 2 + slotSpacing / 2;
+	const y = 12;
+	const powerUpNames = ['Son', 'Pi', '16'];
+	const bgColor = COLORS.SONPI16_ORANGE;
+
+	for (let i = 0; i < 3; i++)
+	{
+		const x = startX + i * slotSpacing;
+		const hasItem = itemSlots[i] !== null;
+		const isSelected = selectedSlots?.[i] || false;
+		const isCharging = chargingPowerUp === powerUpNames[i];
+		const img = powerUpImages[i];
+
+		ctx.fillStyle = bgColor;
+		ctx.fillRect(x - slotSize / 2, y - slotSize / 2, slotSize, slotSize);
+
+		ctx.strokeStyle = COLORS.SONPI16_BLACK;
+		ctx.lineWidth = isSelected ? 3 : 2;
+		ctx.strokeRect(x - slotSize / 2, y - slotSize / 2, slotSize, slotSize);
+
+		if (img && img.complete)
+		{
+			const imgSize = slotSize - 4;
+			const imgX = x - imgSize / 2;
+			const imgY = y - imgSize / 2;
+			const outlineOffset = 1;
+			const outlineOffsets: [number, number][] = [
+				[outlineOffset, 0], [-outlineOffset, 0], [0, outlineOffset], [0, -outlineOffset]
+			];
+
+			if (!hasItem)
+			{
+				ctx.globalAlpha = 1;
+				ctx.globalCompositeOperation = 'source-over';
+				for (const offset of outlineOffsets)
+				{
+					ctx.drawImage(img, imgX + offset[0], imgY + offset[1], imgSize, imgSize);
+					ctx.fillStyle = COLORS.SONPI16_BLACK;
+					ctx.globalCompositeOperation = 'source-atop';
+					ctx.fillRect(imgX + offset[0] - 2, imgY + offset[1] - 2, imgSize + 4, imgSize + 4);
+					ctx.globalCompositeOperation = 'source-over';
+				}
+			}
+
+			ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+
+			if (hasItem || isCharging)
+			{
+				const chargingLevel = isCharging ? (hitStreak || 0) : 3;
+				const fillPercent = hasItem ? 1 : (chargingLevel / 3);
+				const fillHeight = imgSize * fillPercent;
+				const fillY = imgY + imgSize - fillHeight;
+
+				ctx.save();
+				ctx.beginPath();
+				ctx.rect(imgX, fillY, imgSize, fillHeight);
+				ctx.clip();
+				ctx.fillStyle = COLORS.SONPI16_BLACK;
+				ctx.globalAlpha = 0.9;
+				ctx.drawImage(img, imgX, imgY, imgSize, imgSize);
+				ctx.globalCompositeOperation = 'source-atop';
+				ctx.fillRect(imgX - 1, imgY - 1, imgSize + 2, imgSize + 2);
+				ctx.restore();
+			}
+		}
+	}
+
+	ctx.globalAlpha = 1;
+	ctx.globalCompositeOperation = 'source-over';
 }

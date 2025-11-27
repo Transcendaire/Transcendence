@@ -394,6 +394,71 @@ export class GameRoomManager
 	}
 
 	/**
+	 * @brief Find Battle Royale game by player socket
+	 * @param socket Player's WebSocket
+	 * @returns BR room and player index or undefined
+	 */
+	public findBattleRoyaleByPlayer(socket: WebSocket): { room: BattleRoyaleRoom; playerIndex: number } | undefined
+	{
+		for (const room of this.battleRoyaleGames.values())
+		{
+			const playerIndex = room.players.findIndex(p => p.socket === socket);
+			if (playerIndex >= 0)
+				return { room, playerIndex };
+		}
+		return undefined;
+	}
+
+	/**
+	 * @brief Handle player disconnection from Battle Royale
+	 * @param socket Disconnected player's socket
+	 * @returns True if handled
+	 */
+	public handleBattleRoyaleDisconnect(socket: WebSocket): boolean
+	{
+		const found = this.findBattleRoyaleByPlayer(socket);
+		if (!found)
+			return false;
+		const { room, playerIndex } = found;
+		const player = room.players[playerIndex];
+		if (!player)
+			return false;
+		console.log(`[BR] Player ${player.name} disconnected`);
+		player.socket = null;
+		const gameOver = room.gameService.eliminatePlayer(playerIndex);
+		
+		if (gameOver)
+		{
+			const gameState = room.gameService.getGameState();
+			const winnerIndex = gameState.players.findIndex(p => !p.isEliminated());
+			const winner = gameState.players[winnerIndex];
+			console.log(`[BR] Game Over! Winner: ${winner?.name ?? 'None'}`);
+			
+			for (let i = 0; i < room.players.length; i++)
+			{
+				const p = room.players[i];
+				if (p?.socket)
+				{
+					this.sendMessage(p.socket, {
+						type: 'gameOver',
+						winner: `player${winnerIndex + 1}` as 'player1' | 'player2',
+						lives1: gameState.players[0]?.lives || 0,
+						lives2: gameState.players[1]?.lives || 0,
+						isTournament: false,
+						shouldDisconnect: true
+					});
+				}
+			}
+			this.endBattleRoyaleGame(room.id);
+		}
+		else
+		{
+			this.broadcastBattleRoyaleState(room);
+		}
+		return true;
+	}
+
+	/**
 	 * @brief End game and cleanup resources
 	 * @param gameId Game room ID
 	 */

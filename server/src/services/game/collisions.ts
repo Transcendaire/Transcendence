@@ -421,6 +421,7 @@ export class PolygonCollisionManager
 	 * @param cloneBalls Clone balls to clear
 	 * @param lastHitPlayerIndex Index of last player who hit the ball (-1 if none)
 	 * @param playerIndex Current player index being checked
+	 * @param isCustomMode Whether custom mode is enabled
 	 * @returns True if collision occurred
 	 */
 	public static handlePaddleCollision(
@@ -432,10 +433,13 @@ export class PolygonCollisionManager
 		cloneBalls: CloneBall[],
 		lastHitPlayerIndex: number = -1,
 		playerIndex: number = -1,
-		deltaTime: number = 16
+		deltaTime: number = 16,
+		isCustomMode: boolean = false
 	): boolean
 	{
 		if (!CollisionDetector.isTouchingPolygonPaddle(player, ball, deltaTime))
+			return false;
+		if (lastHitPlayerIndex === playerIndex && playerIndex >= 0)
 			return false;
 
 		const paddleCenter = player.paddle.getCenter();
@@ -448,6 +452,45 @@ export class PolygonCollisionManager
 
 		if (cloneBalls.length > 0)
 			CloneBallManager.clear(cloneBalls);
+		if (isCustomMode)
+			PolygonCollisionManager.handlePowerUpOnHit(player, ball, cloneBalls);
 		return true;
+	}
+
+	private static handlePowerUpOnHit(player: Player, ball: Ball, cloneBalls: CloneBall[]): void
+	{
+		const pendingPowerUps = player.consumePendingPowerUps();
+		if (pendingPowerUps.length > 0)
+		{
+			console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
+			pendingPowerUps.forEach((powerUp) => {
+				if (powerUp === 'Pi')
+				{
+					const curveDirection = Math.random() > 0.5 ? 1 : -1;
+					ball.applyCurve(curveDirection);
+					CloneBallManager.curve(cloneBalls, curveDirection);
+				}
+				else if (powerUp === 'Son')
+				{
+					ball.applySpeedBoost(1.5);
+					CloneBallManager.boost(cloneBalls, 1.5);
+				}
+				else if (powerUp === '16')
+					CloneBallManager.create(cloneBalls, ball, 15);
+			});
+		}
+		if (player.hitStreak === 0 && !player.chargingPowerUp)
+		{
+			const selected = player.selectRandomChargingPowerUp();
+			if (selected)
+				player.incrementHitStreak();
+		}
+		else if (player.chargingPowerUp)
+			player.incrementHitStreak();
+		if (player.hitStreak >= 3 && player.chargingPowerUp)
+		{
+			PowerUpManager.awardRandomPowerUp(player);
+			player.resetHitStreak();
+		}
 	}
 }

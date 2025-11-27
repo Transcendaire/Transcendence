@@ -164,10 +164,14 @@ export class MatchmakingService
 	{
 		const player = this.playerSockets.get(socket)
 		if (!player)
-
 			return
 		this.quickMatch.removeFromQueue(socket)
 		this.lobbyManager.handleDisconnect(socket)
+		if (this.gameRoomManager.handleBattleRoyaleDisconnect(socket))
+		{
+			this.playerSockets.delete(socket)
+			return
+		}
 		const gameRoom = this.gameRoomManager.findGameByPlayer(socket)
 		if (gameRoom)
 		{

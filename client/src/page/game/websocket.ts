@@ -73,7 +73,8 @@ function updateBattleRoyaleState(serverGameState: GameState): void
 {
 	if (!gameState.isBattleRoyale && serverGameState.polygonData)
 	{
-		if (!gameState.currentPlayerRole || !savedGameLoop) return;
+		if (!gameState.currentPlayerRole || !savedGameLoop)
+			return;
 
 		const playerNames = serverGameState.players.map((p, i) => p.name || `Player ${i + 1}`);
 		const myIndex = parseInt(gameState.currentPlayerRole.replace('player', '')) - 1;
@@ -88,15 +89,34 @@ function updateBattleRoyaleState(serverGameState: GameState): void
 		return;
 	}
 
-	if (gameState.isBattleRoyale && !serverGameState.polygonData)
+	if (!gameState.isBattleRoyale && !serverGameState.polygonData)
 	{
-		console.log('[GAME] Switching from polygon to classic mode');
-		gameState.setPolygonData(null);
+		if (!gameState.currentPlayerRole || !savedGameLoop)
+			return;
+		if (!gameState.player1 || !gameState.player2)
+		{
+			const p1 = serverGameState.players[0];
+			const p2 = serverGameState.players[1];
+			if (!p1?.name || !p2?.name)
+				return;
+			const myIndex = parseInt(gameState.currentPlayerRole.replace('player', '')) - 1;
+			gameState.setPlayerIndex(myIndex);
+			startGame(
+				gameState.currentPlayerRole,
+				savedGameLoop,
+				p1.name,
+				p2.name
+			);
+			gameState.setIsBattleRoyale(true);
+			setTimeout(() => updateBattleRoyaleState(serverGameState), 50);
+			return;
+		}
 	}
 
+	if (gameState.isBattleRoyale && !serverGameState.polygonData)
+		gameState.setPolygonData(null);
 	gameState.setAllPlayers(serverGameState.players);
 	gameState.setPolygonData(serverGameState.polygonData ?? null);
-
 	if (gameState.ball && serverGameState.ball)
 	{
 		gameState.ball.positionX = serverGameState.ball.x;
@@ -104,7 +124,6 @@ function updateBattleRoyaleState(serverGameState: GameState): void
 		gameState.ball.velocityX = serverGameState.ball.vx;
 		gameState.ball.velocityY = serverGameState.ball.vy;
 	}
-
 	gameState.setCloneBalls(serverGameState.cloneBalls || []);
 	gameState.setFruits(serverGameState.fruits || []);
 }

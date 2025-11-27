@@ -241,6 +241,22 @@ export class GameService
 	}
 
 	/**
+	 * @brief Force eliminate a player (for disconnection)
+	 * @param playerIndex Index of player to eliminate
+	 * @returns True if game should end (1 or fewer players remaining)
+	 */
+	public eliminatePlayer(playerIndex: number): boolean
+	{
+		const player = this.players[playerIndex];
+		if (!player || player.isEliminated())
+			return this.getActivePlayerCount() <= 1;
+		player.lives = 0;
+		console.log(`[BR] ${player.name} force eliminated (disconnection)`);
+		this.handleElimination(playerIndex);
+		return this.getActivePlayerCount() <= 1;
+	}
+
+	/**
 	 * @brief Handle player elimination and arena resize
 	 * @param playerIndex Index of eliminated player
 	 */
@@ -280,6 +296,9 @@ export class GameService
 			console.log(`[BR] Player ${player.name} paddle reconfigured: pos(${player.paddle.positionX.toFixed(1)}, ${player.paddle.positionY.toFixed(1)}), angle=${player.paddle.angle.toFixed(2)}, isPolygon=${player.paddle.isPolygonMode()}`);
 			sideIndex++;
 		}
+
+		FruitManager.relocateFruits(this.fruits, this.polygonData);
+
 		if (this.polygonData)
 			this.ball.resetToPoint(this.polygonData.center.x, this.polygonData.center.y, true);
 	}
@@ -337,7 +356,8 @@ export class GameService
 				this.cloneBalls,
 				this.lastTouchedPlayerIndex,
 				i,
-				deltaTime
+				deltaTime,
+				this.isCustomMode
 			);
 
 			if (hit)
@@ -430,7 +450,7 @@ export class GameService
 			if (this.fruitSpawnTimer >= this.fruitSpawnInterval)
 			{
 				if (this.fruits.length < this.maxFruits)
-					FruitManager.spawn(this.fruits, this.canvasWidth, this.canvasHeight);
+					FruitManager.spawn(this.fruits, this.canvasWidth, this.canvasHeight, this.polygonData);
 				this.fruitSpawnTimer = 0;
 			}
 			FruitManager.checkCollisions(

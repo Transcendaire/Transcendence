@@ -1,6 +1,6 @@
-import { Player } from "/dist/shared/models/Player.js";
-import { Ball } from "/dist/shared/models/Ball.js";
-import { PowerUpFruit } from "/dist/shared/types.js";
+import { Player } from "@shared/models/Player";
+import { Ball } from "@shared/models/Ball";
+import type { PowerUpFruit } from "@shared/types";
 
 export let canvas: HTMLCanvasElement;
 export let ctx: CanvasRenderingContext2D;

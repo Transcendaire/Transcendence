@@ -1,7 +1,7 @@
-import { registerPageInitializer, navigate } from "../router.js";
-import { inputParserClass } from "../components/inputParser.js";
-import { wsClient } from "../components/WebSocketClient.js";
-import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
+import { registerPageInitializer, navigate } from "../router";
+import { inputParserClass } from "../components/inputParser";
+import { wsClient } from "../components/WebSocketClient";
+import { getEl , show, hide, setupGlobalModalEvents } from "../app";
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";

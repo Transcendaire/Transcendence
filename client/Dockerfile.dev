@@ -1,36 +1,19 @@
 FROM node:20-alpine
 
-# Build shared
-WORKDIR /shared
-COPY shared/ /shared/
-RUN npm install
-RUN npm run build
-
-# Setup CLIENT
 WORKDIR /app
 
-# Copier shared compilé vers public/dist/shared (comme en prod)
-RUN mkdir -p public/dist/shared
-RUN cp -r /shared/dist/* public/dist/shared/
-
-# Installer dépendances CLIENT
 COPY client/package*.json ./
 RUN npm install
 
-# Copier le code CLIENT
 COPY client/tsconfig.json ./
 COPY client/tailwind.config.js ./
-COPY client/tsconfig.build.json ./
+COPY client/postcss.config.js ./
+COPY client/vite.config.ts ./
+COPY client/index.html ./
 COPY client/src ./src
 COPY client/public ./public
+COPY shared ../shared
 
-# Compiler une première fois (CSS + TS)
-RUN npm run build
+EXPOSE 5173
 
-# Copier vers le volume pour nginx
-RUN mkdir -p /output && cp -r /app/public/* /output/
-
-EXPOSE 8080
-
-# Lancer TypeScript et Tailwind en mode watch
-CMD ["sh", "-c", "npm run build && npx concurrently \"npx tsc --project tsconfig.build.json --watch\" \"npx tailwindcss -i ./public/config/input.css -o ./public/config/output.css --watch\""]
+CMD ["npm", "run", "dev"]

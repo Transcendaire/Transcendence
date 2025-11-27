@@ -1,4 +1,9 @@
 import { Point2D, PolygonData, SideData } from "/dist/shared/types.js";
+import {
+	BR_PADDLE_LENGTH,
+	BR_PADDLE_WIDTH,
+	BR_PADDLE_INWARD_OFFSET
+} from "/dist/shared/consts.js";
 import { COLORS } from "../../components/consts.js";
 
 /**
@@ -118,8 +123,8 @@ export function drawCornerZones(
 export function getPaddleCorners(
 	centerX: number,
 	centerY: number,
-	width: number,
-	height: number,
+	width: number = BR_PADDLE_WIDTH,
+	height: number = BR_PADDLE_LENGTH,
 	angle: number
 ): Point2D[]
 {
@@ -160,8 +165,8 @@ export function getPaddleCorners(
 export function getPaddlePositionOnSide(
 	side: SideData,
 	sidePosition: number,
-	paddleLength: number,
-	paddleWidth: number = 10,
+	paddleLength: number = BR_PADDLE_LENGTH,
+	paddleWidth: number = BR_PADDLE_WIDTH,
 	polygonCenter?: Point2D
 ): Point2D
 {
@@ -174,6 +179,7 @@ export function getPaddlePositionOnSide(
 	const normalAngle = side.angle + Math.PI / 2;
 	let normalX = Math.cos(normalAngle);
 	let normalY = Math.sin(normalAngle);
+
 	if (polygonCenter)
 	{
 		const toCenterX = polygonCenter.x - baseX;
@@ -186,7 +192,7 @@ export function getPaddlePositionOnSide(
 		}
 	}
 
-	const inwardOffset = paddleWidth * 1.5;
+	const inwardOffset = paddleWidth * BR_PADDLE_INWARD_OFFSET;
 	return {
 		x: baseX + normalX * inwardOffset,
 		y: baseY + normalY * inwardOffset

@@ -1,4 +1,10 @@
 import { Point2D } from '../types.js';
+import {
+    BR_PADDLE_LENGTH,
+    BR_PADDLE_WIDTH,
+    BR_PADDLE_SPEED,
+    BR_PADDLE_INWARD_OFFSET
+} from '../consts.js';
 
 /**
  * @brief Game paddle for player control
@@ -24,16 +30,16 @@ export class Paddle
      * @brief Constructor
      * @param positionX Initial X position of the paddle
      * @param positionY Initial Y position of the paddle
-     * @param width Paddle width
-     * @param height Paddle height
+     * @param width Paddle width (thickness perpendicular to side in BR mode)
+     * @param height Paddle height (length along side in BR mode)
      * @param speed Movement speed
      */
     constructor(
         positionX: number,
         positionY: number,
-        width: number = 10,
-        height: number = 60,
-        speed: number = 400
+        width: number = BR_PADDLE_WIDTH,
+        height: number = BR_PADDLE_LENGTH,
+        speed: number = BR_PADDLE_SPEED
     )
     {
         this.positionX = positionX;
@@ -114,7 +120,7 @@ export class Paddle
             }
         }
 
-        const inwardOffset = this.width * 1.5;
+        const inwardOffset = this.width * BR_PADDLE_INWARD_OFFSET;
         this.positionX = baseX + normalX * inwardOffset;
         this.positionY = baseY + normalY * inwardOffset;
     }

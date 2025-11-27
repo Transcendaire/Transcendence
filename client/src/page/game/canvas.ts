@@ -1,4 +1,5 @@
 import { PowerUpFruit, Point2D, PlayerState } from "/dist/shared/types.js";
+import { BR_PADDLE_LENGTH, BR_PADDLE_WIDTH } from "/dist/shared/consts.js";
 import { COLORS, FONTS } from "../../components/consts.js";
 import * as gameState from './gameState.js';
 import {
@@ -147,38 +148,36 @@ function renderPolygonMode(): void
 {
 	const polygon = gameState.polygonData!;
 	const players = gameState.allPlayers;
-
-	const activeIndices: number[] = [];
-	for (let i = 0; i < players.length; i++)
-	{
-		if (!players[i]?.isEliminated)
-			activeIndices.push(i);
-	}
-
+	const cornerRadius = polygon.cornerRadius ?? 15;
 	const numSides = polygon.sides.length;
 	const activeSideIndices = Array.from({ length: numSides }, (_, i) => i);
-	const cornerRadius = polygon.cornerRadius ?? 15;
 
 	drawPolygonArena(gameState.ctx, polygon.vertices, activeSideIndices);
 	drawCornerZones(gameState.ctx, polygon.vertices, cornerRadius);
 
-	for (let sideIdx = 0; sideIdx < numSides; sideIdx++)
+	for (let i = 0; i < players.length; i++)
 	{
-		const playerIdx = activeIndices[sideIdx];
-		if (playerIdx === undefined) continue;
-		const player = players[playerIdx];
-		if (!player) continue;
-		const side = polygon.sides[sideIdx];
-		if (!side) continue;
+		const player = players[i];
+		if (!player || player.isEliminated)
+			continue;
 
-		const isCurrentPlayer = playerIdx === gameState.playerIndex;
+		const isCurrentPlayer = i === gameState.playerIndex;
 		const color = isCurrentPlayer ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE;
+		const paddleX = player.paddle.x;
+		const paddleY = player.paddle.y;
+		const paddleAngle = player.paddle.angle;
 
-		const paddleX = player.paddle.x ?? side.center.x;
-		const paddleY = player.paddle.y ?? side.center.y;
-		const paddleAngle = player.paddle.angle ?? side.angle;
+		if (paddleX === undefined || paddleY === undefined || paddleAngle === undefined)
+			continue;
 
-		renderPolygonPaddleAtPosition(paddleX, paddleY, paddleAngle, 60, 10, color);
+		renderPolygonPaddleAtPosition(
+			paddleX,
+			paddleY,
+			paddleAngle,
+			BR_PADDLE_LENGTH,
+			BR_PADDLE_WIDTH,
+			color
+		);
 	}
 
 	gameState.fruits.forEach(fruit => renderFruit(fruit));
@@ -187,7 +186,7 @@ function renderPolygonMode(): void
 	if (gameState.ball)
 		renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
 
-	renderPolygonUI(players, polygon, activeIndices);
+	renderPolygonUI(players, polygon);
 }
 
 export function renderPaddle(paddle: { positionX: number; positionY: number; height: number; }, color: string): void
@@ -408,27 +407,29 @@ function renderPolygonPaddle(
  * @brief Render UI elements (lives, names) for polygon mode around the arena
  * @param players Array of player states
  * @param polygon PolygonData with vertices and sides
- * @param activeIndices Array of active player indices mapped to sides
  */
 function renderPolygonUI(
 	players: PlayerState[],
-	polygon: { vertices: Point2D[]; sides: { center: Point2D; angle: number }[] },
-	activeIndices: number[]
+	polygon: { vertices: Point2D[]; sides: { center: Point2D; angle: number }[] }
 ): void
 {
 	const ctx = gameState.ctx;
-	const numSides = polygon.sides.length;
+	let sideIdx = 0;
 
-	for (let sideIdx = 0; sideIdx < numSides; sideIdx++)
+	for (let i = 0; i < players.length; i++)
 	{
-		const playerIdx = activeIndices[sideIdx];
-		if (playerIdx === undefined) continue;
-		const player = players[playerIdx];
-		if (!player) continue;
-		const side = polygon.sides[sideIdx];
-		if (!side) continue;
+		const player = players[i];
+		if (!player || player.isEliminated)
+			continue;
 
-		const isCurrentPlayer = playerIdx === gameState.playerIndex;
+		const side = polygon.sides[sideIdx];
+		if (!side)
+		{
+			sideIdx++;
+			continue;
+		}
+
+		const isCurrentPlayer = i === gameState.playerIndex;
 		const color = isCurrentPlayer ? COLORS.SONPI16_BLUE : COLORS.SONPI16_ORANGE;
 		const normalAngle = side.angle - Math.PI / 2;
 		const offset = 60;
@@ -443,7 +444,7 @@ function renderPolygonUI(
 		ctx.font = `16px ${FONTS.QUENCY_PIXEL}`;
 		ctx.textAlign = 'center';
 		ctx.textBaseline = 'middle';
-		ctx.fillText(player.name || `P${playerIdx + 1}`, 0, -15);
+		ctx.fillText(player.name || `P${i + 1}`, 0, -15);
 
 		const lives = player.lives;
 		const heartSpacing = 12;
@@ -455,5 +456,6 @@ function renderPolygonUI(
 			ctx.fillText('♥', startX + h * heartSpacing, 5);
 
 		ctx.restore();
+		sideIdx++;
 	}
 }

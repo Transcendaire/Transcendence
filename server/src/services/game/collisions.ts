@@ -3,6 +3,7 @@ import { Ball } from '@app/shared/models/Ball.js';
 import { Paddle } from "@app/shared/models/Paddle.js";
 import { CloneBall } from '@app/shared/models/CloneBall.js';
 import { Point2D } from '@app/shared/types.js';
+import { BR_BALL_PUSH_DISTANCE } from '@app/shared/consts.js';
 import { ScoringManager } from './scoring.js';
 import { CloneBallManager } from './cloneBalls.js';
 import { PowerUpManager } from './powerUps.js';
@@ -397,28 +398,34 @@ export class PolygonCollisionManager
 	{
 		if (lastHitPlayerIndex === playerIndex && playerIndex >= 0)
 			return false;
-
 		if (!CollisionDetector.isTouchingPolygonPaddle(player, ball))
 			return false;
 
 		const normal = geometry.getSideNormal(activePlayerCount, activeSideIndex);
 		const velocityDotNormal = ball.velocityX * normal.x + ball.velocityY * normal.y;
-		
+
 		if (velocityDotNormal > 0)
 			return false;
 
 		const velocity: Point2D = { x: ball.velocityX, y: ball.velocityY };
-		const reflected = geometry.reflectOffSide(
+		const ballCenter: Point2D = {
+			x: ball.positionX + ball.size / 2,
+			y: ball.positionY + ball.size / 2
+		};
+		const paddleCenter = player.paddle.getCenter();
+		const reflected = geometry.reflectOffPaddle(
 			velocity,
 			activePlayerCount,
-			activeSideIndex
+			activeSideIndex,
+			ballCenter,
+			paddleCenter,
+			player.paddle.height
 		);
 
 		ball.velocityX = reflected.x;
 		ball.velocityY = reflected.y;
-
-		ball.positionX += normal.x * 12;
-		ball.positionY += normal.y * 12;
+		ball.positionX += normal.x * BR_BALL_PUSH_DISTANCE;
+		ball.positionY += normal.y * BR_BALL_PUSH_DISTANCE;
 
 		if (cloneBalls.length > 0)
 			CloneBallManager.clear(cloneBalls);

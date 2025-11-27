@@ -30,16 +30,18 @@ export async function registerUserRoutes(server: FastifyInstance)
 	})
 
 	server.put('/api/user/alias', async (req, res) => {
-        const authUser = (req as any).user;
+        const user = (req as any).user;
 
-        if (!authUser || !authUser.id)
+        if (!user || !user.id)
             return res.code(401).send({ message: 'Veuillez vous reconnecter' });
 
         const { newAlias } = req.body as any;
-        const user = req.user;
-        validateNewAlias(newAlias, authUser.id, user.login);
+        validateNewAlias(newAlias, user.id, user.login);
 
-        db.updateUserAlias(authUser.id, newAlias.trim());
+		if (user.alias === newAlias)
+			return res.code(409).send({ message: 'Le nouvel alias doit être différent de l\'ancien' })
+
+        db.updateUserAlias(user.id, newAlias.trim());
         return res.code(200).send({ 
             success: true, 
             message: 'Alias mis à jour avec succès',

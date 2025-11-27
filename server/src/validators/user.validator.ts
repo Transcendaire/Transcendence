@@ -11,11 +11,11 @@ export function validateNewPassword(newPassword: string | undefined)
 	if (!newPassword || newPassword === undefined)
         throw new BadRequest('Le nouveau mot de passe est requis');
     if (newPassword.length < 6)
-        throw new BadRequest('Le mot de passe doit contenir au moins 6 caractères');
+        throw new BadRequest('Le nouveau mot de passe doit contenir au moins 6 caractères');
     if (newPassword.length > 20)
-        throw new BadRequest('Le mot de passe ne peut pas dépasser 20 caractères');
+        throw new BadRequest('Le nouveau mot de passe ne peut pas dépasser 20 caractères');
     if (!PASSWORD_PATTERN.test(newPassword))
-        throw new BadRequest('Le mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial');
+        throw new BadRequest('Le nouveau mot de passe doit contenir au moins une majuscule, une minuscule, un chiffre et un caractère spécial');
 }
 
 export function validateCurrentPassword(currentPassword: string | undefined, hashedPassword: string)
@@ -32,17 +32,17 @@ export function validateNewAlias(newAlias: string | undefined, userId: string, u
     
     const trimmedAlias = newAlias.trim();
     if (trimmedAlias.length < 3)
-        throw new BadRequest('L\'alias doit contenir au moins 3 caractères');
+        throw new BadRequest('Le nouvel alias doit contenir au moins 3 caractères');
     if (trimmedAlias.length > 16)
-        throw new BadRequest('L\'alias ne peut pas dépasser 16 caractères');
+        throw new BadRequest('Le nouvel alias ne peut pas dépasser 16 caractères');
 
     if (!ALIAS_PATTERN.test(trimmedAlias))
-        throw new BadRequest('L\'alias ne peut contenir que des lettres, chiffres, tirets et underscores');
+        throw new BadRequest('Le nouvel alias ne peut contenir que des lettres, chiffres, tirets et underscores');
 
     if (trimmedAlias === userLogin)
-        throw new BadRequest('L\'alias ne peut pas être identique au login');
+        throw new BadRequest('Le nouvel alias ne peut pas être identique au login');
     
     const existingUser = db.getUserByAlias(trimmedAlias);
     if (existingUser && existingUser.id !== userId)
-        throw new UserError('Cet alias est déjà utilisé', errClient.ALIAS_ALREADY_TAKEN);
+        throw new UserError('Cet alias est déjà utilisé', errClient.ALIAS_ALREADY_TAKEN, 409);
 }

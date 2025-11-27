@@ -70,6 +70,8 @@ export type PlayerState = {
 		x?: number;
 		angle?: number;
 		sidePosition?: number;
+		length?: number;
+		width?: number;
 	};
 	lives: number;
 	isEliminated?: boolean;

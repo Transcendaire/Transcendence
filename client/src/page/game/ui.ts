@@ -72,6 +72,11 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
     if (isTournament && !shouldDisconnect)
     {
         gameState.ctx.fillText('En attente du prochain match...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
+        gameState.setPlayer1(null);
+        gameState.setPlayer2(null);
+        gameState.setBall(null);
+        gameState.setCloneBalls([]);
+        gameState.setFruits([]);
     }
     else
     {

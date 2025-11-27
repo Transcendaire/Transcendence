@@ -83,7 +83,10 @@ export class ScoringManager
     public static handlePolygonScore(loser: Player, ball: Ball, center: Point2D): boolean
     {
         loser.loseLife();
-        console.log(`[BR] ${loser.name} lost a life! ${loser.lives} remaining`);
+        const ballPos = { x: ball.positionX + ball.size/2, y: ball.positionY + ball.size/2 };
+        const paddlePos = loser.paddle.getCenter();
+        const dist = Math.sqrt((ballPos.x - paddlePos.x)**2 + (ballPos.y - paddlePos.y)**2);
+        console.log(`[BR] ${loser.name} lost a life! ${loser.lives} remaining | ball(${ballPos.x.toFixed(0)},${ballPos.y.toFixed(0)}) paddle(${paddlePos.x.toFixed(0)},${paddlePos.y.toFixed(0)}) dist=${dist.toFixed(0)}`);
         ball.resetToPoint(center.x, center.y, true);
         return loser.isEliminated();
     }

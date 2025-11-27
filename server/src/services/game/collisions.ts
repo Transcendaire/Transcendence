@@ -3,19 +3,20 @@ import { Ball } from '@app/shared/models/Ball.js';
 import { Paddle } from "@app/shared/models/Paddle.js";
 import { CloneBall } from '@app/shared/models/CloneBall.js';
 import { Point2D } from '@app/shared/types.js';
-import { BR_BALL_PUSH_DISTANCE } from '@app/shared/consts.js';
 import { ScoringManager } from './scoring.js';
 import { CloneBallManager } from './cloneBalls.js';
 import { PowerUpManager } from './powerUps.js';
-import { GeometryManager, isPointInQuad } from './geometry.js';
+import { GeometryManager } from './geometry.js';
 
 /**
  * @brief Collision detection utilities
+ * 
+ * Uses mathematically robust circle vs OBB (Oriented Bounding Box) collision detection.
  */
 export class CollisionDetector
 {
     /**
-     * @brief Check if ball is colliding with paddle
+     * @brief Check if ball is colliding with paddle (classic AABB mode)
      * @param paddle Paddle to check collision with
      * @param ball Ball to check collision for
      * @returns True if collision detected
@@ -54,85 +55,122 @@ export class CollisionDetector
     }
 
     /**
-     * @brief Check ball collision with paddle in polygon mode
+     * @brief Check ball collision with paddle in polygon mode using continuous collision detection
      * @param player Player to check
      * @param ball Ball to check
+     * @param deltaTime Time step for swept collision
      * @returns True if collision detected
      */
-    public static isTouchingPolygonPaddle(player: Player, ball: Ball): boolean
+    public static isTouchingPolygonPaddle(player: Player, ball: Ball, deltaTime: number = 16): boolean
     {
         if (player.isEliminated())
             return false;
-
-        const corners = player.paddle.getCorners();
-        const ballCenter: Point2D = {
-            x: ball.positionX + ball.size / 2,
-            y: ball.positionY + ball.size / 2
-        };
+        const paddle = player.paddle;
+        if (!paddle.isPolygonMode())
+            return false;
+        const paddleCenter = paddle.getCenter();
+        const paddleAngle = paddle.angle;
+        const halfLength = paddle.height / 2;
+        const halfWidth = paddle.width / 2;
         const ballRadius = ball.size / 2;
-
-        if (isPointInQuad(ballCenter, corners))
-            return true;
-
-        return this.circleIntersectsQuad(ballCenter, ballRadius, corners);
-    }
-
-    /**
-     * @brief Check if circle intersects with quadrilateral
-     * @param center Circle center
-     * @param radius Circle radius
-     * @param quad Quadrilateral corners
-     * @returns True if intersection
-     */
-    private static circleIntersectsQuad(
-        center: Point2D,
-        radius: number,
-        quad: Point2D[]
-    ): boolean
-    {
-        for (let i = 0; i < 4; i++)
+        const ballSpeed = Math.sqrt(ball.velocityX ** 2 + ball.velocityY ** 2);
+        const dt = deltaTime / 1000;
+        const travelDist = ballSpeed * dt;
+        const ballPosNow: Point2D = {
+            x: ball.positionX + ballRadius,
+            y: ball.positionY + ballRadius
+        };
+        const ballPosPrev: Point2D = {
+            x: ballPosNow.x - ball.velocityX * dt,
+            y: ballPosNow.y - ball.velocityY * dt
+        };
+        const checkPosition = (pos: Point2D): boolean => {
+            const dx = pos.x - paddleCenter.x;
+            const dy = pos.y - paddleCenter.y;
+            const cos = Math.cos(-paddleAngle);
+            const sin = Math.sin(-paddleAngle);
+            const localX = dx * cos - dy * sin;
+            const localY = dx * sin + dy * cos;
+            const closestX = Math.max(-halfLength, Math.min(halfLength, localX));
+            const closestY = Math.max(-halfWidth, Math.min(halfWidth, localY));
+            const distX = localX - closestX;
+            const distY = localY - closestY;
+            const distSq = distX * distX + distY * distY;
+            const threshold = (ballRadius + 2) * (ballRadius + 2);
+            return distSq <= threshold;
+        };
+        const sampleCount = Math.max(20, Math.ceil(travelDist));
+        for (let i = 0; i <= sampleCount; i++)
         {
-            const p1 = quad[i]!;
-            const p2 = quad[(i + 1) % 4]!;
-            if (this.circleIntersectsSegment(center, radius, p1, p2))
+            const t = i / sampleCount;
+            const samplePos: Point2D = {
+                x: ballPosPrev.x + (ballPosNow.x - ballPosPrev.x) * t,
+                y: ballPosPrev.y + (ballPosNow.y - ballPosPrev.y) * t
+            };
+            if (checkPosition(samplePos))
                 return true;
         }
         return false;
     }
 
     /**
-     * @brief Check if circle intersects with line segment
-     * @param center Circle center
-     * @param radius Circle radius
-     * @param p1 Segment start
-     * @param p2 Segment end
-     * @returns True if intersection
+     * @brief Get penetration depth and direction for collision resolution
+     * @param player Player whose paddle to check
+     * @param ball Ball to check
+     * @returns Object with penetration depth and normal, or null if no collision
      */
-    private static circleIntersectsSegment(
-        center: Point2D,
-        radius: number,
-        p1: Point2D,
-        p2: Point2D
-    ): boolean
+    public static getCollisionInfo(player: Player, ball: Ball): { depth: number; normalX: number; normalY: number } | null
     {
-        const dx = p2.x - p1.x;
-        const dy = p2.y - p1.y;
-        const fx = p1.x - center.x;
-        const fy = p1.y - center.y;
+        if (player.isEliminated())
+            return null;
 
-        const a = dx * dx + dy * dy;
-        const b = 2 * (fx * dx + fy * dy);
-        const c = fx * fx + fy * fy - radius * radius;
+        const paddle = player.paddle;
+        const paddleCenter = paddle.getCenter();
+        const paddleAngle = paddle.angle;
+        const halfLength = paddle.height / 2;
+        const halfWidth = paddle.width / 2;
+        const ballCenter: Point2D = {
+            x: ball.positionX + ball.size / 2,
+            y: ball.positionY + ball.size / 2
+        };
+        const ballRadius = ball.size / 2;
+        const dx = ballCenter.x - paddleCenter.x;
+        const dy = ballCenter.y - paddleCenter.y;
+        const cos = Math.cos(-paddleAngle);
+        const sin = Math.sin(-paddleAngle);
+        const localX = dx * cos - dy * sin;
+        const localY = dx * sin + dy * cos;
+        const closestX = Math.max(-halfLength, Math.min(halfLength, localX));
+        const closestY = Math.max(-halfWidth, Math.min(halfWidth, localY));
+        const distX = localX - closestX;
+        const distY = localY - closestY;
+        const distSquared = distX * distX + distY * distY;
 
-        let discriminant = b * b - 4 * a * c;
-        if (discriminant < 0)
-            return false;
+        if (distSquared >= ballRadius * ballRadius)
+            return null;
 
-        discriminant = Math.sqrt(discriminant);
-        const t1 = (-b - discriminant) / (2 * a);
-        const t2 = (-b + discriminant) / (2 * a);
+        const dist = Math.sqrt(distSquared);
+        const depth = ballRadius - dist;
+        let localNormalX: number;
+        let localNormalY: number;
 
-        return (t1 >= 0 && t1 <= 1) || (t2 >= 0 && t2 <= 1);
+        if (dist > 0.001)
+        {
+            localNormalX = distX / dist;
+            localNormalY = distY / dist;
+        }
+        else
+        {
+            localNormalX = 0;
+            localNormalY = -1;
+        }
+
+        const cosPos = Math.cos(paddleAngle);
+        const sinPos = Math.sin(paddleAngle);
+        const normalX = localNormalX * cosPos - localNormalY * sinPos;
+        const normalY = localNormalX * sinPos + localNormalY * cosPos;
+
+        return { depth, normalX, normalY };
     }
 }
 
@@ -393,39 +431,20 @@ export class PolygonCollisionManager
 		activePlayerCount: number,
 		cloneBalls: CloneBall[],
 		lastHitPlayerIndex: number = -1,
-		playerIndex: number = -1
+		playerIndex: number = -1,
+		deltaTime: number = 16
 	): boolean
 	{
-		if (lastHitPlayerIndex === playerIndex && playerIndex >= 0)
-			return false;
-		if (!CollisionDetector.isTouchingPolygonPaddle(player, ball))
+		if (!CollisionDetector.isTouchingPolygonPaddle(player, ball, deltaTime))
 			return false;
 
-		const normal = geometry.getSideNormal(activePlayerCount, activeSideIndex);
-		const velocityDotNormal = ball.velocityX * normal.x + ball.velocityY * normal.y;
-
-		if (velocityDotNormal > 0)
-			return false;
-
-		const velocity: Point2D = { x: ball.velocityX, y: ball.velocityY };
-		const ballCenter: Point2D = {
-			x: ball.positionX + ball.size / 2,
-			y: ball.positionY + ball.size / 2
-		};
 		const paddleCenter = player.paddle.getCenter();
-		const reflected = geometry.reflectOffPaddle(
-			velocity,
-			activePlayerCount,
-			activeSideIndex,
-			ballCenter,
-			paddleCenter,
-			player.paddle.height
-		);
+		const normal = geometry.getSideNormal(activePlayerCount, activeSideIndex);
 
-		ball.velocityX = reflected.x;
-		ball.velocityY = reflected.y;
-		ball.positionX += normal.x * BR_BALL_PUSH_DISTANCE;
-		ball.positionY += normal.y * BR_BALL_PUSH_DISTANCE;
+		console.log(`[COLLISION] Paddle hit! Player: ${player.name}, Side: ${activeSideIndex}`);
+
+		const paddleAngle = player.paddle.angle;
+		ball.bouncePolygon(paddleCenter, paddleAngle, player.paddle.height, normal);
 
 		if (cloneBalls.length > 0)
 			CloneBallManager.clear(cloneBalls);

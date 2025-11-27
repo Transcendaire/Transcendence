@@ -116,7 +116,7 @@ export function startBattleRoyaleGame(
 	gameState.setIsBattleRoyale(true);
 	gameState.setPolygonData(polygonData);
 	gameState.setPlayerIndex(playerIndex);
-	gameState.setBall(new Ball(polygonData.center.x, polygonData.center.y));
+	gameState.setBall(new Ball(polygonData.center.x, polygonData.center.y, undefined, true));
 	gameState.setCloneBalls([]);
 	gameState.setFruits([]);
 

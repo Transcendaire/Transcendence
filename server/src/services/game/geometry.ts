@@ -31,6 +31,15 @@ export class GeometryManager
 	}
 
 	/**
+	 * @brief Get center point of the polygon
+	 * @returns Center point coordinates
+	 */
+	public getCenter(): Point2D
+	{
+		return { x: this.centerX, y: this.centerY };
+	}
+
+	/**
 	 * @brief Get vertices of a regular polygon
 	 * @param playerCount Number of sides (players)
 	 * @returns Array of vertex points
@@ -315,47 +324,6 @@ export class GeometryManager
 		return {
 			x: velocity.x - 2 * dot * normal.x,
 			y: velocity.y - 2 * dot * normal.y
-		};
-	}
-
-	/**
-	 * @brief Reflect velocity off paddle with angle variation based on hit position
-	 * @param velocity Current velocity
-	 * @param playerCount Number of sides (players)
-	 * @param sideIndex Index of the side
-	 * @param ballCenter Ball center position
-	 * @param paddleCenter Paddle center position
-	 * @param paddleLength Paddle length
-	 * @returns Reflected velocity with angle modification
-	 */
-	public reflectOffPaddle(
-		velocity: Point2D,
-		playerCount: number,
-		sideIndex: number,
-		ballCenter: Point2D,
-		paddleCenter: Point2D,
-		paddleLength: number
-	): Point2D
-	{
-		const normal = this.getSideNormal(playerCount, sideIndex);
-		const sideAngle = this.getSideAngle(playerCount, sideIndex);
-		const alongX = Math.cos(sideAngle);
-		const alongY = Math.sin(sideAngle);
-		const toBall = {
-			x: ballCenter.x - paddleCenter.x,
-			y: ballCenter.y - paddleCenter.y
-		};
-		const hitOffset = toBall.x * alongX + toBall.y * alongY;
-		const normalizedOffset = Math.max(-1, Math.min(1, 
-			(hitOffset / (paddleLength / 2)) * BR_PADDLE_CURVE_FACTOR
-		));
-		const baseReflected = this.reflectOffSide(velocity, playerCount, sideIndex);
-		const speed = Math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y);
-		const reflectedAngle = Math.atan2(baseReflected.y, baseReflected.x);
-		const newAngle = reflectedAngle + normalizedOffset * (Math.PI / 4);
-		return {
-			x: Math.cos(newAngle) * speed,
-			y: Math.sin(newAngle) * speed
 		};
 	}
 

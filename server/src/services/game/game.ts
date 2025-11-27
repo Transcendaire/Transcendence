@@ -156,10 +156,10 @@ export class GameService
 			const sideData = this.polygonData.sides[i]!;
 			const player = new Player(name, sideData.center.x, lifeCount);
 			player.paddle.setPolygonCenter(center);
-			player.paddle.configureSide(sideData.start, sideData.end, sideData.angle);
+			player.paddle.configureSide(sideData.start, sideData.end, sideData.angle, this.polygonData.cornerRadius, playerCount);
 			this.players.push(player);
 		}
-		this.ball = new Ball(center.x, center.y);
+		this.ball = new Ball(center.x, center.y, undefined, true);
 	}
 
 	/**
@@ -269,11 +269,15 @@ export class GameService
 				continue;
 
 			const sideData = this.polygonData.sides[sideIndex]!;
+			player.paddle.setPolygonCenter(this.polygonData.center);
 			player.paddle.configureSide(
 				sideData.start,
 				sideData.end,
-				sideData.angle
+				sideData.angle,
+				this.polygonData.cornerRadius,
+				activeCount
 			);
+			console.log(`[BR] Player ${player.name} paddle reconfigured: pos(${player.paddle.positionX.toFixed(1)}, ${player.paddle.positionY.toFixed(1)}), angle=${player.paddle.angle.toFixed(2)}, isPolygon=${player.paddle.isPolygonMode()}`);
 			sideIndex++;
 		}
 		if (this.polygonData)
@@ -309,9 +313,10 @@ export class GameService
 
 	/**
 	 * @brief Update polygon mode collisions
+	 * @param deltaTime Time step for swept collision
 	 * @returns True if game should end
 	 */
-	private updatePolygonCollisions(): boolean
+	private updatePolygonCollisions(deltaTime: number): boolean
 	{
 		if (!this.geometry || !this.polygonData)
 			return false;
@@ -331,7 +336,8 @@ export class GameService
 				this.activePlayerCount,
 				this.cloneBalls,
 				this.lastTouchedPlayerIndex,
-				i
+				i,
+				deltaTime
 			);
 
 			if (hit)
@@ -358,6 +364,8 @@ export class GameService
 					this.ball,
 					this.polygonData.center
 				);
+
+				this.lastTouchedPlayerIndex = -1;
 
 				if (eliminated)
 				{
@@ -434,7 +442,7 @@ export class GameService
 			);
 		}
 		if (this.isPolygonMode())
-			return this.updatePolygonCollisions();
+			return this.updatePolygonCollisions(deltaTime);
 
 		if (this.playerCount > 2)
 			return this.updateBattleRoyaleClassicCollisions();

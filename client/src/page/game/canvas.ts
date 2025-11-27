@@ -3,11 +3,8 @@ import { BR_PADDLE_LENGTH, BR_PADDLE_WIDTH } from "@shared/consts";
 import { COLORS, FONTS } from "../../components/consts";
 import * as gameState from './gameState';
 import {
-	getPolygonVertices,
-	getSideData,
 	drawPolygonArena,
 	drawCornerZones,
-	getPaddleCorners,
 	getPaddlePositionOnSide
 } from './polygon';
 
@@ -166,6 +163,8 @@ function renderPolygonMode(): void
 		const paddleX = player.paddle.x;
 		const paddleY = player.paddle.y;
 		const paddleAngle = player.paddle.angle;
+		const paddleLength = player.paddle.length ?? BR_PADDLE_LENGTH;
+		const paddleWidth = player.paddle.width ?? BR_PADDLE_WIDTH;
 
 		if (paddleX === undefined || paddleY === undefined || paddleAngle === undefined)
 			continue;
@@ -174,8 +173,8 @@ function renderPolygonMode(): void
 			paddleX,
 			paddleY,
 			paddleAngle,
-			BR_PADDLE_LENGTH,
-			BR_PADDLE_WIDTH,
+			paddleLength,
+			paddleWidth,
 			color
 		);
 	}

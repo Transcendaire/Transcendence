@@ -1,10 +1,10 @@
 import type { GameState } from "@shared/types";
 import { wsClient } from "../../components/WebSocketClient";
 import { navigate } from "../../router";
-import { renderPowerUps } from './canvas';
+import { renderPowerUps, renderHearts } from './canvas';
 import { showGameOver, returnToLobby } from './ui';
 import * as gameState from './gameState';
-import { startGame } from './start';
+import { startGame, startBattleRoyaleGame } from './start';
 
 let savedGameLoop: ((time: number) => void) | null = null;
 

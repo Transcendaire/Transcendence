@@ -3,7 +3,8 @@ import {
     BR_PADDLE_LENGTH,
     BR_PADDLE_WIDTH,
     BR_PADDLE_SPEED,
-    BR_PADDLE_INWARD_OFFSET
+    BR_PADDLE_INWARD_OFFSET,
+    BR_PADDLE_LENGTH_BY_PLAYERS
 } from '../consts.js';
 
 /**
@@ -19,12 +20,13 @@ export class Paddle
     public dir: boolean;
     public angle: number;
     public sidePosition: number;
-    public readonly width: number;
-    public readonly height: number;
+    public width: number;
+    public height: number;
     public readonly speed: number;
     private sideStart: Point2D | null;
     private sideEnd: Point2D | null;
     private sideLength: number;
+    private cornerMargin: number;
 
     /**
      * @brief Constructor
@@ -53,6 +55,7 @@ export class Paddle
         this.sideStart = null;
         this.sideEnd = null;
         this.sideLength = 0;
+        this.cornerMargin = 0;
     }
 
     /**
@@ -60,12 +63,16 @@ export class Paddle
      * @param start Start point of the side
      * @param end End point of the side
      * @param angle Rotation angle in radians
+     * @param cornerMargin Distance from corners where paddle cannot go
+     * @param playerCount Number of players for dynamic paddle sizing
      */
-    public configureSide(start: Point2D, end: Point2D, angle: number): void
+    public configureSide(start: Point2D, end: Point2D, angle: number, cornerMargin: number = 0, playerCount: number = 4): void
     {
         this.sideStart = start;
         this.sideEnd = end;
         this.angle = angle;
+        this.cornerMargin = cornerMargin;
+        this.height = BR_PADDLE_LENGTH_BY_PLAYERS[playerCount] ?? BR_PADDLE_LENGTH;
 
         const dx = end.x - start.x;
         const dy = end.y - start.y;
@@ -144,6 +151,9 @@ export class Paddle
         this.sideLength = 0;
         this.sidePosition = 0.5;
         this.angle = 0;
+        this.cornerMargin = 0;
+        this.height = 100;
+        this.width = 10;
     }
 
     /**
@@ -192,7 +202,8 @@ export class Paddle
 
         const movement = (this.speed * (deltaTime / 1000)) / this.sideLength;
         const paddleHalfHeight = this.height / 2;
-        const minT = paddleHalfHeight / this.sideLength;
+        const totalMargin = paddleHalfHeight + this.cornerMargin;
+        const minT = totalMargin / this.sideLength;
         const maxT = 1 - minT;
 
         this.sidePosition = Math.max(minT, Math.min(maxT, this.sidePosition + movement));
@@ -206,7 +217,38 @@ export class Paddle
     public getCenter(): Point2D
     {
         if (this.isPolygonMode())
-            return { x: this.positionX, y: this.positionY };
+        {
+            if (!this.sideStart || !this.sideEnd)
+                return { x: this.positionX, y: this.positionY };
+            const paddleHalfHeight = this.height / 2;
+            const totalMargin = paddleHalfHeight + this.cornerMargin;
+            const minT = totalMargin / this.sideLength;
+            const maxT = 1 - minT;
+            const clampedPosition = Math.max(minT, Math.min(maxT, this.sidePosition));
+            const baseX = this.sideStart.x + 
+                (this.sideEnd.x - this.sideStart.x) * clampedPosition;
+            const baseY = this.sideStart.y + 
+                (this.sideEnd.y - this.sideStart.y) * clampedPosition;
+            const normalAngle = this.angle + Math.PI / 2;
+            let normalX = Math.cos(normalAngle);
+            let normalY = Math.sin(normalAngle);
+            if (this.polygonCenter)
+            {
+                const toCenterX = this.polygonCenter.x - baseX;
+                const toCenterY = this.polygonCenter.y - baseY;
+                const dot = normalX * toCenterX + normalY * toCenterY;
+                if (dot < 0)
+                {
+                    normalX = -normalX;
+                    normalY = -normalY;
+                }
+            }
+            const inwardOffset = this.width * BR_PADDLE_INWARD_OFFSET;
+            return {
+                x: baseX + normalX * inwardOffset,
+                y: baseY + normalY * inwardOffset
+            };
+        }
         return {
             x: this.positionX + this.width / 2,
             y: this.positionY + this.height / 2

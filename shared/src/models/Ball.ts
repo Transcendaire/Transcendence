@@ -1,5 +1,11 @@
 import { Paddle } from "./Paddle.js";
-import { curveAcceleration } from "../consts.js";
+import { Point2D } from "../types.js";
+import {
+    curveAcceleration,
+    BR_BALL_INITIAL_SPEED,
+    CLASSIC_BALL_INITIAL_SPEED,
+    CLASSIC_BALL_RESET_SPEED
+} from "../consts.js";
 
 export const velYfactor = 500;
 
@@ -42,8 +48,9 @@ export class Ball
      * @param positionX Initial X position
      * @param positionY Initial Y position
      * @param velocityX Initial X velocity
+     * @param polygonMode If true, use slower speed and 360° direction
      */
-    constructor(positionX: number, positionY: number, velocityX: number = 200)
+    constructor(positionX: number, positionY: number, velocityX: number = CLASSIC_BALL_INITIAL_SPEED, polygonMode: boolean = false)
     {
         this.positionX = positionX;
         this.positionY = positionY;
@@ -57,7 +64,14 @@ export class Ball
         this.isBoosted = false;
         this.previousSpeed = 0;
         
-        this.ballStart(true);
+        if (polygonMode)
+        {
+            const angle = Math.random() * Math.PI * 2;
+            this.velocityX = Math.cos(angle) * BR_BALL_INITIAL_SPEED;
+            this.velocityY = Math.sin(angle) * BR_BALL_INITIAL_SPEED;
+        }
+        else
+            this.ballStart(true);
     }
 
     /**
@@ -176,7 +190,7 @@ export class Ball
     {
         this.positionX = canvasWidth / 2;
         this.positionY = canvasHeight / 2;
-        this.velocityX = this.velocityX > 0 ? -200 : 200;
+        this.velocityX = this.velocityX > 0 ? -CLASSIC_BALL_RESET_SPEED : CLASSIC_BALL_RESET_SPEED;
         this.isCurving = false;
         this.curveDirection = 0;
         this.isBoosted = false;
@@ -186,7 +200,7 @@ export class Ball
     }
 
     /**
-     * @brief Reset ball to specific center with random direction (for polygon mode)
+     * @brief Reset ball to specific center with random 360° direction (for polygon mode)
      * @param centerX X position of center
      * @param centerY Y position of center
      * @param randomDirection Use random direction instead of opposite
@@ -202,9 +216,8 @@ export class Ball
         if (randomDirection)
         {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 200;
-            this.velocityX = Math.cos(angle) * speed;
-            this.velocityY = Math.sin(angle) * speed;
+            this.velocityX = Math.cos(angle) * BR_BALL_INITIAL_SPEED;
+            this.velocityY = Math.sin(angle) * BR_BALL_INITIAL_SPEED;
         }
         else
             this.ballStart(false);
@@ -246,5 +259,64 @@ export class Ball
             this.positionX += (dx / dist) * distance;
             this.positionY += (dy / dist) * distance;
         }
+    }
+
+    /**
+     * @brief Bounce on polygon paddle with angle interpolation
+     * @param paddleCenter Center position of the paddle
+     * @param paddleAngle Angle of the paddle (radians)
+     * @param paddleLength Length of the paddle
+     * @param sideNormal Normal vector pointing inward from the side
+     */
+    public bouncePolygon(
+        paddleCenter: Point2D,
+        paddleAngle: number,
+        paddleLength: number,
+        sideNormal: Point2D
+    ): void
+    {
+        const currentSpeed = Math.sqrt(this.velocityX * this.velocityX + this.velocityY * this.velocityY);
+        const ballCenterX = this.positionX + this.size / 2;
+        const ballCenterY = this.positionY + this.size / 2;
+
+        const alongX = Math.cos(paddleAngle);
+        const alongY = Math.sin(paddleAngle);
+        const toBallX = ballCenterX - paddleCenter.x;
+        const toBallY = ballCenterY - paddleCenter.y;
+        const hitOffset = toBallX * alongX + toBallY * alongY;
+        const hitPosition = hitOffset / (paddleLength / 2);
+        const clampedHit = Math.max(-1, Math.min(1, hitPosition));
+
+        const baseAngle = Math.atan2(sideNormal.y, sideNormal.x);
+        const maxDeflection = Math.PI / 3;
+        const deflection = -clampedHit * maxDeflection;
+        const newAngle = baseAngle + deflection;
+
+        const newSpeed = currentSpeed * this.speedIncrement;
+        this.velocityX = Math.cos(newAngle) * newSpeed;
+        this.velocityY = Math.sin(newAngle) * newSpeed;
+        
+        console.log(`[BALL] bouncePolygon: hitPos=${clampedHit.toFixed(2)}, deflection=${(deflection * 180 / Math.PI).toFixed(1)}°, speed=${newSpeed.toFixed(0)}`);
+    }
+
+    /**
+     * @brief Get ball center position
+     * @returns Center point of the ball
+     */
+    public getCenter(): Point2D
+    {
+        return {
+            x: this.positionX + this.size / 2,
+            y: this.positionY + this.size / 2
+        };
+    }
+
+    /**
+     * @brief Get ball radius
+     * @returns Ball radius
+     */
+    public getRadius(): number
+    {
+        return this.size / 2;
     }
 }

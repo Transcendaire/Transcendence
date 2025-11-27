@@ -265,7 +265,9 @@ export class GameRoomManager
 					y: p.paddle.positionY,
 					x: p.paddle.positionX,
 					angle: p.paddle.angle,
-					sidePosition: p.paddle.sidePosition
+					sidePosition: p.paddle.sidePosition,
+					length: p.paddle.height,
+					width: p.paddle.width
 				},
 				lives: p.lives,
 				isEliminated: p.isEliminated(),

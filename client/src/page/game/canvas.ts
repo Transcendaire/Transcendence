@@ -1,6 +1,6 @@
-import { PowerUpFruit } from "/dist/shared/types.js";
-import { COLORS, FONTS } from "../../components/consts.js";
-import * as gameState from './gameState.js';
+import type { PowerUpFruit } from "@shared/types";
+import { COLORS, FONTS } from "../../components/consts";
+import * as gameState from './gameState';
 
 export function render(): void
 {

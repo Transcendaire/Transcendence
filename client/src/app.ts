@@ -1,9 +1,11 @@
-import { render, navigate, getCurrentRoute, Route } from './router.js';
+import './styles/main.css';
+import '../public/config/tools.css';
+import { render, getCurrentRoute, type Route } from './router';
 
-import './page/home.js';
-import './page/profile.js';
-import './page/game/index.js';
-import './page/lobby.js'
+import './page/home';
+import './page/profile';
+import './page/game/index';
+import './page/lobby'
 
 console.log('[APP] Application chargée');
 

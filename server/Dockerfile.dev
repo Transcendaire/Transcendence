@@ -3,15 +3,12 @@ FROM node:20-alpine
 RUN apk add --no-cache python3 py3-pip make g++ sqlite
 RUN pip3 install sqlite-web --break-system-package
 
-# Build shared
 WORKDIR /shared
 COPY shared/package*.json ./
 RUN npm install
 COPY shared/tsconfig.json ./
 COPY shared/src ./src
-RUN npm run build
 
-# Setup server
 WORKDIR /app
 
 COPY server/package*.json ./
@@ -22,8 +19,6 @@ RUN npm ci
 COPY server/tsconfig.json ./
 COPY server/tsconfig.build.json ./
 COPY server/src ./src
-
-RUN npm run build:server
 
 EXPOSE 8080
 EXPOSE 8081   

@@ -1,10 +1,10 @@
-import { GameState } from "/dist/shared/types.js";
-import { wsClient } from "../../components/WebSocketClient.js";
-import { navigate } from "../../router.js";
-import { renderPowerUps } from './canvas.js';
-import { showGameOver, returnToLobby } from './ui.js';
-import * as gameState from './gameState.js';
-import { startGame } from './start.js';
+import type { GameState } from "@shared/types";
+import { wsClient } from "../../components/WebSocketClient";
+import { navigate } from "../../router";
+import { renderPowerUps } from './canvas';
+import { showGameOver, returnToLobby } from './ui';
+import * as gameState from './gameState';
+import { startGame } from './start';
 
 export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
 {

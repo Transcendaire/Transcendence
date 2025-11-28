@@ -1,8 +1,8 @@
-import { Player } from "/dist/shared/models/Player.js";
-import { Ball } from "/dist/shared/models/Ball.js";
-import { paddleOffset } from "/dist/shared/consts.js";
-import { setupGameEventListeners } from './input.js';
-import * as gameState from './gameState.js';
+import { Player } from "@shared/models/Player";
+import { Ball } from "@shared/models/Ball";
+import { paddleOffset } from "@shared/consts";
+import { setupGameEventListeners } from './input';
+import * as gameState from './gameState';
 
 export function startGame(playerRole: 'player1' | 'player2', gameLoop: (time: number) => void): void
 {

@@ -1,6 +1,6 @@
-import { wsClient } from "../../components/WebSocketClient.js";
-import { GameInput } from "/dist/shared/types.js";
-import * as gameState from './gameState.js';
+import { wsClient } from "../../components/WebSocketClient";
+import type { GameInput } from "@shared/types";
+import * as gameState from './gameState';
 
 export const keys = {
     KeyA: false,

@@ -227,7 +227,7 @@ export class DatabaseService {
 			throw new DatabaseError(`Vous êtes déjà ami avec ${toUserAlias}`, undefined, 400);
 
 		const existingRequest = this.db.prepare(
-			'SELECT 1 FROM friend_request WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)'
+			'SELECT 1 FROM friend_requests WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)'
 		).get(fromUserId, userToAdd.id, userToAdd.id, fromUserId);
 
 		if (existingRequest)
@@ -237,7 +237,7 @@ export class DatabaseService {
 		this.db.prepare(
 			'INSERT INTO friend_requests (id, from_user_id, to_user_id, created_at) VALUES (?, ?, ?, ?)'
 		).run(requestId, fromUserId, userToAdd.id, Date.now());
-		return "";
+		return requestId;
 	}
 
 	/**
@@ -272,20 +272,26 @@ export class DatabaseService {
         `).all(userId);
     }
 
-
+    /**
+     * @brief Handles a friend request (accepting or rejecting)
+     * @param userId User receiving the request (recipient)
+     * @param fromAlias Alias of the user who sent the request
+	 * @param accept Boolean being true if recipient accepts the request and false otherwise
+     * @throws DatabaseError if sender not found or request doesn't exist
+     */
 	public handleFriendRequest(userId: string, fromAlias: string, accept: boolean): void
 	{
 		const sender = this.getUserByAlias(fromAlias);
 
         if (!sender)
-            throw new DatabaseError("L'utilisateur ayant envoyé la demande d\'ami est introuvable");
+            throw new DatabaseError("L'utilisateur ayant envoyé la demande d\'ami est introuvable", undefined, 404);
         
         const request = this.db.prepare(
             "SELECT id FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?"
         ).get(sender.id, userId);
         
         if (!request)
-            throw new DatabaseError("Demande d'ami introuvable");
+            throw new DatabaseError("Demande d'ami introuvable", undefined, 404);
 
 		if (accept)
 		{
@@ -306,18 +312,75 @@ export class DatabaseService {
 
 	}
 
+    /**
+     * @brief Cancel a sent friend request
+     * @param userId User canceling the request (sender)
+     * @param toAlias Alias of the intended recipient
+     * @throws DatabaseError if recipient not found
+     */
 	public cancelFriendRequest(userId: string, toAlias: string): void
 	{
 		const recipient = this.getUserByAlias(toAlias);
 
 		if (!recipient)
-			throw new DatabaseError("Utilisateur introuvable", undefined, 400);
+			throw new DatabaseError("Utilisateur introuvable", undefined, 404);
 
 		this.db.prepare(
 			'DELETE FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?'
 		).run(userId, recipient.id);
 	} 
 
+    /**
+     * @brief Get all friends with their online status
+     * @param userId User's ID
+     * @returns Array of friends with { id, alias, online, since }
+     */
+	public getFriends(userId: string): any[]
+	{
+		return this.db.prepare(`
+			SELECT u.id, u.alias, u.online, f.since
+			FROM friends f
+			JOIN users u ON u.id = f.friend_id
+			WHERE f.user_id = ?
+			ORDER BY u.alias ASC
+			`).all(userId);
+	}
+
+    /**
+     * @brief Remove a friend (bidirectional)
+     * @param userId Current user's ID
+     * @param friendAlias Alias of friend to remove
+     * @throws DatabaseError if friend not found
+     */
+	public removeFriend(userId: string, friendAlias: string): void
+	{
+		const friend = this.getUserByAlias(friendAlias);
+
+		if (!friend)
+			throw new DatabaseError('Utilisateur introuvable', undefined, 404);
+
+		this.db.prepare(
+			'DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)'
+		).run(userId, friend.id, friend.id, userId);
+	}
+
+    /**
+     * @brief Check if two users are friends
+     * @param userId First user's ID
+     * @param friendId Second user's ID
+     * @returns True if friends, false otherwise
+     */
+	public areFriends(userId: string, friendId: string): boolean
+	{
+		const result = this.db.prepare(
+			'SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?'
+		).get(userId, friendId);
+
+		return (result > 0);
+	}
+
+
+							//*******   PLAYERS     **********/
 	/**
 	 * @brief Creates a new player in the database
 	 * @param alias Unique player alias

@@ -28,122 +28,29 @@ export function setupGameEventListeners(): void
     });
 }
 
+/**
+ * @brief Send player input to server based on paddle angle
+ */
 export function sendInputToServer(): void
 {
-    if (!wsClient.isConnected() || !gameState.currentPlayerRole) return;
+    if (!wsClient.isConnected() || !gameState.currentPlayerRole)
+        return;
 
     const leftKeys = keys.KeyA || keys.KeyQ || keys.ArrowLeft;
     const rightKeys = keys.KeyD || keys.ArrowRight;
     const upKeys = keys.KeyW || keys.KeyZ || keys.ArrowUp;
     const downKeys = keys.KeyS || keys.ArrowDown;
-
     let up = false;
     let down = false;
+    const player = gameState.allPlayers[gameState.playerIndex];
+    const angle = player?.paddle?.angle;
 
-    const playerCount = gameState.allPlayers.length;
-    const idx = gameState.playerIndex;
-
-    if (gameState.isBattleRoyale && playerCount === 3)
+    if (gameState.isBattleRoyale && angle !== undefined)
     {
-        if (idx === 0)
-        {
-            up = leftKeys || upKeys;
-            down = rightKeys || downKeys;
-        }
-        else if (idx === 1)
-        {
-            up = upKeys || leftKeys;
-            down = downKeys || rightKeys;
-        }
-        else if (idx === 2)
-        {
-            up = downKeys || leftKeys;
-            down = upKeys || rightKeys;
-        }
-    }
-    else if (gameState.isBattleRoyale && playerCount === 4)
-    {
-        if (idx === 0)
-        {
-            up = leftKeys || upKeys;
-            down = rightKeys || downKeys;
-        }
-        else if (idx === 1)
-        {
-            up = upKeys || rightKeys;
-            down = downKeys || leftKeys;
-        }
-        else if (idx === 2)
-        {
-            up = rightKeys || downKeys;
-            down = leftKeys || upKeys;
-        }
-        else if (idx === 3)
-        {
-            up = downKeys || leftKeys;
-            down = upKeys || rightKeys;
-        }
-    }
-    else if (gameState.isBattleRoyale && playerCount === 5)
-    {
-        if (idx === 0)
-        {
-            up = leftKeys || upKeys;
-            down = rightKeys || downKeys;
-        }
-        else if (idx === 1)
-        {
-            up = upKeys || rightKeys;
-            down = downKeys || leftKeys;
-        }
-        else if (idx === 2)
-        {
-            up = rightKeys || downKeys;
-            down = leftKeys || upKeys;
-        }
-        else if (idx === 3)
-        {
-            up = downKeys || leftKeys;
-            down = upKeys || rightKeys;
-        }
-        else if (idx === 4)
-        {
-            up = leftKeys || downKeys;
-            down = rightKeys || upKeys;
-        }
-    }
-    else if (gameState.isBattleRoyale && playerCount === 6)
-    {
-        if (idx === 0)
-        {
-            up = leftKeys || upKeys;
-            down = rightKeys || downKeys;
-        }
-        else if (idx === 1)
-        {
-            up = upKeys || rightKeys;
-            down = downKeys || leftKeys;
-        }
-        else if (idx === 2)
-        {
-            up = rightKeys || downKeys;
-            down = leftKeys || upKeys;
-        }
-        else if (idx === 3)
-        {
-            up = rightKeys || downKeys;
-            down = leftKeys || upKeys;
-        }
-        else if (idx === 4)
-        {
-            up = downKeys || leftKeys;
-            down = upKeys || rightKeys;
-        }
-        else if (idx === 5)
-        {
-            up = leftKeys || upKeys;
-            down = rightKeys || downKeys;
-        }
+        const angleDeg = (angle * 180) / Math.PI;
+        console.log(`[INPUT] Player: ${player?.name}, Angle: ${angleDeg.toFixed(1)}°`);
+        up = leftKeys || upKeys;
+        down = rightKeys || downKeys;
     }
     else
     {
@@ -156,11 +63,11 @@ export function sendInputToServer(): void
         keys: { up, down }
     };
 
-    if (wsClient.isCustomGame()) {
+    if (wsClient.isCustomGame())
+    {
         input.keys.slot1 = keys.Digit1;
         input.keys.slot2 = keys.Digit2;
         input.keys.slot3 = keys.Digit3;
     }
-
     wsClient.sendInput(input);
 }

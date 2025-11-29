@@ -360,7 +360,8 @@ function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement 
 
     playerDiv.innerHTML = `
             <img src="./assets/Transcendaire.png" alt="avatar" class="w-16 h-16 rounded-full object-cover">
-            <span id="${player.id}" class="font-quency text-sonpi16-orange text-2lg">${player.name}${ownerStar}</span>`;
+            <span id="${player.id}" class="font-quency text-sonpi16-orange text-2lg">${player.name}${ownerStar}</span>
+            ${player.isBot === true ? '<button id="removeBot">' : '' }`;
     return playerDiv;
 }
 
@@ -398,6 +399,10 @@ function addBot(lobby: Lobby, playersList: HTMLDivElement) {
             isReady: true
         }
         console.log(`bot added => ${botName}`);
+        wsClient.sendMessage({
+            type: 'addBot',
+            lobbyId: lobby.id
+        })
     };
 
 }

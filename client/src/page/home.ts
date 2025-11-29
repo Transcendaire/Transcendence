@@ -9,8 +9,8 @@ export let playerName: string = "";
 const inputParser = new inputParserClass();
 
 const handleGoogleSignIn = () => {
-    // google.accounts.id.prompt();
-    
+    google.accounts.id.prompt();
+
 }
 
 async function initHomePage() {

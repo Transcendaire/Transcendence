@@ -44,7 +44,7 @@ export function setupDisconnectionHandlers(): void
     });
 }
 
-export function showGameOver(winner: 'player1' | 'player2', score1: number, score2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
+export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
 {
     gameState.setGameRunning(false);
     const isWinner = winner === gameState.currentPlayerRole;
@@ -52,7 +52,7 @@ export function showGameOver(winner: 'player1' | 'player2', score1: number, scor
     if (forfeit) {
         message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
     }
-    const scoreText = `Score final : ${score1} - ${score2}`;
+    const livesText = `Vies finales : ${lives1} - ${lives2}`;
     
     gameState.ctx.save();
     gameState.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -66,16 +66,21 @@ export function showGameOver(winner: 'player1' | 'player2', score1: number, scor
     
     gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
     gameState.ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
-    gameState.ctx.fillText(scoreText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
+    gameState.ctx.fillText(livesText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
     
     gameState.ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
     if (isTournament && !shouldDisconnect)
     {
         gameState.ctx.fillText('En attente du prochain match...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
+        gameState.setPlayer1(null);
+        gameState.setPlayer2(null);
+        gameState.setBall(null);
+        gameState.setCloneBalls([]);
+        gameState.setFruits([]);
     }
     else
     {
-        const destination = isTournament ? 'lobby' : 'home';
+        const destination = (isTournament || gameState.isBattleRoyale) ? 'lobby' : 'home';
         gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
         setTimeout(() => {
             returnToLobby(destination);
@@ -95,8 +100,15 @@ export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
     gameState.setIsReturningToLobby(true);
     gameState.setGameRunning(false);
     gameState.setCurrentPlayerRole(null);
+    gameState.setPlayer1(null);
+    gameState.setPlayer2(null);
+    gameState.setBall(null);
     gameState.setCloneBalls([]);
     gameState.setFruits([]);
+    gameState.setIsBattleRoyale(false);
+    gameState.setPolygonData(null);
+    gameState.setPlayerIndex(0);
+    gameState.setAllPlayers([]);
     
     if (gameState.animationFrameId !== null) {
         cancelAnimationFrame(gameState.animationFrameId);
@@ -112,12 +124,14 @@ export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
     }, 1000);
 }
 
+let lastPingSentTime = 0;
+
 export function updatePing(): void
 {
-    if (Math.random() < 0.1) {
+    const now = Date.now();
+    if (now - lastPingSentTime > 500)
+    {
         wsClient.sendPing();
+        lastPingSentTime = now;
     }
-    
-    const pingSpan = document.getElementById("ping")!;
-    pingSpan.textContent = wsClient.getPing().toString();
 }

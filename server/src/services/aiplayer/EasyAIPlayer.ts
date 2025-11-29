@@ -24,53 +24,55 @@ export class EasyAIPlayer extends AIPlayer
 		super(playerId, gameService, inputState)
 	}
 
-    public decide(oldBallX: number, oldBallY: number, newBallX: number, newBallY: number,
-        gameState: { player1: Player; player2: Player; ball: Ball })
-    {
-        if (this.isBallComing(oldBallX, newBallX))
-        {
-            this.targetY = this.calculateOptimalPosition(oldBallX, oldBallY, newBallX, newBallY)
-            console.log('[AI] Ball coming, target Y:', this.targetY)
-        }
-        else
-            this.goToMiddle()
-    }
+	public decide(oldBallX: number, oldBallY: number, newBallX: number, newBallY: number): void
+	{
+		if (this.isBallComing(oldBallX, newBallX))
+		{
+			this.targetY = this.calculateOptimalPosition(oldBallX, oldBallY, newBallX, newBallY)
+			console.log('[AI] Ball coming, target Y:', this.targetY)
+		}
+		else
+			this.goToMiddle()
+	}
 
-    public calculateOptimalPosition(oldBallX: number, oldBallY: number,
-        newBallX: number, newBallY: number) : number
-    {
-        const velX = newBallX - oldBallX
-        const velY = newBallY - oldBallY
-        const targetX = canvasWidth - paddleOffset - 10
-        let predictedBallY = oldBallY + (velY / velX) * (targetX - oldBallX)
+	public calculateOptimalPosition(
+		oldBallX: number,
+		oldBallY: number,
+		newBallX: number,
+		newBallY: number
+	): number
+	{
+		const velX = newBallX - oldBallX
+		const velY = newBallY - oldBallY
+		const targetX = canvasWidth - paddleOffset - 10
+		let predictedBallY = oldBallY + (velY / velX) * (targetX - oldBallX)
 
-        predictedBallY = Math.abs(predictedBallY) % (2 * canvasHeight)
-        console.log('[AI] Predicted ball Y:', predictedBallY, 'velX:', velX, 'velY:', velY)
-        return predictedBallY
-    }
-    
-    public isBallComing(oldBallX: number, newBallX: number): boolean
-    {
-        return oldBallX - newBallX < 0
-    }
+		predictedBallY = Math.abs(predictedBallY) % (2 * canvasHeight)
+		console.log('[AI] Predicted ball Y:', predictedBallY, 'velX:', velX, 'velY:', velY)
+		return predictedBallY
+	}
 
+	public isBallComing(oldBallX: number, newBallX: number): boolean
+	{
+		return oldBallX - newBallX < 0
+	}
 
-    protected refreshAndDecide(): void
-    {
-        const gameState = this.gameService.getGameState()
-        const currentBallX = gameState.ball.positionX
-        const currentBallY = gameState.ball.positionY
-        const deltaX = Math.abs(currentBallX - this.oldBallX)
-        const deltaY = Math.abs(currentBallY - this.oldBallY)
+	protected refreshAndDecide(): void
+	{
+		const gameState = this.gameService.getGameState()
+		const currentBallX = gameState.ball.positionX
+		const currentBallY = gameState.ball.positionY
+		const deltaX = Math.abs(currentBallX - this.oldBallX)
+		const deltaY = Math.abs(currentBallY - this.oldBallY)
 
-        if (deltaX > 300 || deltaY > 300)
-        {
-            console.log('[AIPlayer] Ball reset detected')
-            this.oldBallX = canvasWidth / 2
-            this.oldBallY = canvasHeight / 2
-        }
-        this.decide(this.oldBallX, this.oldBallY, currentBallX, currentBallY, gameState)
-        this.oldBallX = currentBallX
-        this.oldBallY = currentBallY
-    }
+		if (deltaX > 300 || deltaY > 300)
+		{
+			console.log('[AIPlayer] Ball reset detected')
+			this.oldBallX = canvasWidth / 2
+			this.oldBallY = canvasHeight / 2
+		}
+		this.decide(this.oldBallX, this.oldBallY, currentBallX, currentBallY)
+		this.oldBallX = currentBallX
+		this.oldBallY = currentBallY
+	}
 }

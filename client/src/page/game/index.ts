@@ -25,6 +25,13 @@ function initGame(): void
     console.log('[GAME] WebSocket connecté?', wsClient.isConnected());
     
     cleanupPreviousHandlers();
+    document.body.classList.remove('bg-sonpi16-orange');
+    document.body.classList.add('bg-sonpi16-black');
+    gameState.addCleanupHandler(() => {
+        document.body.classList.remove('bg-sonpi16-black');
+        document.body.classList.add('bg-sonpi16-orange');
+    });
+
     setupDisconnectionHandlers();
     
     requestAnimationFrame(() => {
@@ -41,10 +48,8 @@ function initGame(): void
         const storedRole = sessionStorage.getItem('playerRole') as 'player1' | 'player2' | null;
         if (storedRole) {
             gameState.setCurrentPlayerRole(storedRole);
-            console.log('[GAME] Démarrage avec rôle:', storedRole);
+            console.log('[GAME] Rôle stocké:', storedRole, '- En attente du premier gameState du serveur...');
             sessionStorage.removeItem('playerRole');
-            console.log('[GAME] Lancement local du jeu avec storedRole');
-            startGame(storedRole, gameLoop);
         }
         else
             navigate("home");

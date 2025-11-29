@@ -13,6 +13,44 @@ export interface Player
 }
 
 /**
+ * @brief Player input state for Battle Royale
+ */
+export interface PlayerInputState
+{
+	up: boolean
+	down: boolean
+	slot1?: boolean
+	slot2?: boolean
+	slot3?: boolean
+}
+
+/**
+ * @brief Battle Royale player with socket and input tracking
+ */
+export interface BattleRoyalePlayer
+{
+	socket: WebSocket | null
+	name: string
+	id: string
+	isBot: boolean
+	input: PlayerInputState
+	prevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
+	ping: number
+}
+
+/**
+ * @brief Battle Royale game room for 3-6 players
+ */
+export interface BattleRoyaleRoom
+{
+	id: string
+	players: BattleRoyalePlayer[]
+	gameService: GameService
+	gameLoop: NodeJS.Timeout | null
+	isCustom: boolean
+}
+
+/**
  * @brief Active game room with running game loop
  */
 export interface GameRoom
@@ -26,6 +64,8 @@ export interface GameRoom
 	player2Input: { up: boolean; down: boolean; slot1?: boolean; slot2?: boolean; slot3?: boolean }
 	player1PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
 	player2PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
+	player1Ping: number
+	player2Ping: number
 	ai?: AIPlayer
 	isCustom: boolean
 	tournamentMatch?: {

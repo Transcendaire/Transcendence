@@ -1,14 +1,19 @@
 import { registerPageInitializer, navigate } from "../router";
 import { inputParserClass } from "../components/inputParser";
 import { wsClient } from "../components/WebSocketClient";
-import { getEl , show, hide, setupGlobalModalEvents } from "../app";
+import { getEl, show, hide, setupGlobalModalEvents } from "../app";
+import { initGoogle,loadGoogleScript } from "../components/googleAuth";
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
 const inputParser = new inputParserClass();
 
-async function initHomePage()
-{
+const handleGoogleSignIn = () => {
+    google.accounts.id.prompt();
+
+}
+
+async function initHomePage() {
     const gameModeModal = getEl("gameModeModal")
     const fastGameModal = getEl("fastGameModal")
     const aiGameModal = getEl("aiGameModal")
@@ -19,16 +24,21 @@ async function initHomePage()
     const redirect = getEl("signinRedirect") as HTMLButtonElement
 
     console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
-	
-	const alias = await getUserWithCookies();
-	console.log(`alias is ${alias}`);
-	if (alias)
-	{
-		playerName = alias;
-		isLoggedIn = true;
-	}
 
-	updateUI();
+    const alias = await getUserWithCookies();
+    console.log(`alias is ${alias}`);
+    if (alias) {
+        playerName = alias;
+        isLoggedIn = true;
+    }
+
+    await loadGoogleScript();
+    await initGoogle();
+
+    getEl("googleLoginButton").addEventListener('click', handleGoogleSignIn);
+
+    updateUI();
+
     setupWebsocket(waitingModal);
 
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
@@ -41,7 +51,7 @@ async function initHomePage()
         else
             show(loginModal)
     })
-    
+
     redirect.addEventListener('click', () => {
         hide(loginModal)
         show(signinModal)
@@ -55,8 +65,7 @@ async function initHomePage()
     initAIGameModal(aiGameModal, gameModeModal)
 }
 
-function initLoginModal(loginModal: HTMLElement)
-{
+function initLoginModal(loginModal: HTMLElement) {
     const loginButton = getEl("loginButton") as HTMLButtonElement;
     const checkButton = getEl("checkInput") as HTMLButtonElement;
     const cancelLoginButton = getEl("cancelLoginButton") as HTMLButtonElement;
@@ -64,44 +73,41 @@ function initLoginModal(loginModal: HTMLElement)
     const passwordInput = getEl("passwordCheck") as HTMLInputElement;
 
     setupGlobalModalEvents(loginModal, loginButton, cancelLoginButton);
-    loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
+    // loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
 
 
-    const connect = async () => 
-    {
-		console.log('Connect button clicked\n')	
+    const connect = async () => {
+        console.log('Connect button clicked\n')
         const password = passwordInput.value;
         const username = playerInput.value;
 
         console.log(`username = ${username}`)
         console.log(`password = ${password}`)
 
-		try {
-			const response = await fetch('/api/auth/login', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					login: username,
-					password
-				})
-			});
-			const data = await response.json();
-			if (!response.ok)
-			{
-				alert(data.error || 'Erreur lors de la connexion');
-				return ;
-			}
-			playerName = data.alias;
-			isLoggedIn = true;
-			hide(loginModal)
-			updateUI();
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login: username,
+                    password
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data.error || 'Erreur lors de la connexion');
+                return;
+            }
+            playerName = data.alias;
+            isLoggedIn = true;
+            hide(loginModal)
+            updateUI();
 
-		} catch (error)
-		{
-			const message = String(error);
-			console.error('Erreur (connect): ', message);
-			alert(message);
-		}
+        } catch (error) {
+            const message = String(error);
+            console.error('Erreur (connect): ', message);
+            alert(message);
+        }
     }
 
     checkButton.addEventListener('click', connect);
@@ -110,8 +116,7 @@ function initLoginModal(loginModal: HTMLElement)
     });
 }
 
-async function initsigninModal(signinModal: HTMLElement)
-{
+async function initsigninModal(signinModal: HTMLElement) {
     const signinButton = getEl("signinButton") as HTMLButtonElement;
     const cancelSigninButton = getEl("cancelSigninButton") as HTMLButtonElement
     const usernameInput = getEl("newUser") as HTMLInputElement;
@@ -121,7 +126,7 @@ async function initsigninModal(signinModal: HTMLElement)
     const checkSignInInput = getEl("checkSignInInput") as HTMLButtonElement;
 
     setupGlobalModalEvents(signinModal, signinButton, cancelSigninButton);
-    signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
+    // signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
 
 
     const subscribe = async () => {
@@ -129,41 +134,40 @@ async function initsigninModal(signinModal: HTMLElement)
         const username = usernameInput.value.trim();
         const alias = aliasInput.value.trim();
         const password = passwordInput.value.trim();
-		const passwordValidation = confirmPasswordInput.value.trim();
+        const passwordValidation = confirmPasswordInput.value.trim();
 
 
-		 console.log('Form values:', { username, alias, password, passwordValidation });
-    	 console.log('confirmPasswordInput element:', confirmPasswordInput);
-    	 console.log('confirmPasswordInput value raw:', confirmPasswordInput.value);
-		try {
-			console.log('subscribe button clicked');
-			const response = await fetch('/api/auth/register', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					login: username, 
-					password,
-					passwordValidation,
-					alias
-				})
-			});
+        console.log('Form values:', { username, alias, password, passwordValidation });
+        console.log('confirmPasswordInput element:', confirmPasswordInput);
+        console.log('confirmPasswordInput value raw:', confirmPasswordInput.value);
+        try {
+            console.log('subscribe button clicked');
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login: username,
+                    password,
+                    passwordValidation,
+                    alias
+                })
+            });
 
-			const data = await response.json();
-			if (!response.ok)
-			{
-				alert(data.error || 'Erreur lors de l\'inscription');
-				return ;
-			}
-			alert(data.message || 'Inscription réussie !');
-			playerName = alias;
-			isLoggedIn = true;
-			hide(signinModal);
-			updateUI()
-		} catch (error) {
-			const message = String(error);
-			console.error('Erreur (subscribe): ', message);
-			alert(message);
-		}
+            const data = await response.json();
+            if (!response.ok) {
+                alert(data.error || 'Erreur lors de l\'inscription');
+                return;
+            }
+            alert(data.message || 'Inscription réussie !');
+            playerName = alias;
+            isLoggedIn = true;
+            hide(signinModal);
+            updateUI()
+        } catch (error) {
+            const message = String(error);
+            console.error('Erreur (subscribe): ', message);
+            alert(message);
+        }
     }
 
     checkSignInInput.onclick = subscribe;
@@ -173,8 +177,7 @@ function initGameModeModal(
     gameModeModal: HTMLElement,
     fastGameModal: HTMLElement,
     aiGameModal: HTMLElement
-): void
-{
+): void {
     gameModeModal.addEventListener('click', (event) => {
         if (event.target === gameModeModal)
             hide(gameModeModal)
@@ -196,8 +199,7 @@ function initGameModeModal(
     })
 }
 
-function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElement): void
-{
+function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElement): void {
     fastGameModal.addEventListener('click', (event) => {
         if (event.target === fastGameModal)
             hide(fastGameModal)
@@ -229,8 +231,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
     })
 }
 
-function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): void
-{
+function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): void {
     aiGameModal.addEventListener('click', (event) => {
         if (event.target === aiGameModal)
             hide(aiGameModal)
@@ -259,8 +260,7 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
     })
 }
 
-function initWaitingModal(modal: HTMLElement)
-{
+function initWaitingModal(modal: HTMLElement) {
     const cancelWaitButton = getEl("cancelWaitButton");
 
     cancelWaitButton.addEventListener('click', () => {
@@ -270,27 +270,25 @@ function initWaitingModal(modal: HTMLElement)
 }
 
 
-async function logout(): Promise<void>
-{
-	try {
-		const res = await fetch('/api/auth/logout', {
-			method: 'POST',
-			credentials: 'same-origin'
-		});
-	} catch (error) {
-		console.log('erreur logout(): ', error);
-	}
-	isLoggedIn = false;
-	playerName = "";
-	updateUI();
+async function logout(): Promise<void> {
+    try {
+        const res = await fetch('/api/auth/logout', {
+            method: 'POST',
+            credentials: 'same-origin'
+        });
+    } catch (error) {
+        console.log('erreur logout(): ', error);
+    }
+    isLoggedIn = false;
+    playerName = "";
+    updateUI();
 }
 
 
-function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () => string 
-{
+function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () => string {
     const activeClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300";
     const inactiveClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500";
-    
+
     const buttons = buttonIds.map(id => getEl(id) as HTMLButtonElement);
     let selectedIndex = initialIndex;
 
@@ -319,7 +317,7 @@ function updateUI(): void {
     const logoutButton = getEl("logoutButton");
     const profileButton = getEl("profileButton");
     const signinButton = getEl("signinButton");
-    
+
     if (isLoggedIn) {
         hide(loginButton);
         hide(signinButton);
@@ -335,10 +333,8 @@ function updateUI(): void {
     }
 }
 
-function setupWebsocket(waitingModal: HTMLElement)
-{
-    wsClient.onWaitingForPlayer = () => 
-    {
+function setupWebsocket(waitingModal: HTMLElement) {
+    wsClient.onWaitingForPlayer = () => {
         console.log('waiting for player')
         show(waitingModal);
     }
@@ -356,21 +352,19 @@ function setupWebsocket(waitingModal: HTMLElement)
     };
 }
 
-async function getUserWithCookies(): Promise<string | undefined>
-{
-	try {
+async function getUserWithCookies(): Promise<string | undefined> {
+    try {
 
-		const res = await fetch('/api/auth/me'); 
-		const data = await res.json();
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
 
-		if (res.ok)
-			return data.alias;
-		else
-			return undefined;
-	} catch(error) {
-		console.log('getUserWithCookies(): erreur : ', error);
-	}
-	return undefined;
+        if (res.ok)
+            return data.alias;
+        else
+            return undefined;
+    } catch (error) {
+        console.log('getUserWithCookies(): erreur : ', error);
+    }
+    return undefined;
 }
-
 registerPageInitializer('home', initHomePage);

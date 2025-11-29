@@ -1,6 +1,7 @@
 import { Player, PowerUp } from "@app/shared/models/Player.js";
 import { Ball } from "@app/shared/models/Ball.js";
-import type { GameService } from "./game.js";
+import { CloneBall } from "@app/shared/models/CloneBall.js";
+import { CloneBallManager } from "./cloneBalls.js";
 
 /**
  * @brief Power-up management utilities
@@ -15,20 +16,11 @@ export class PowerUpManager
     public static awardRandomPowerUp(player: Player): void
     {
         const powerUp = player.chargingPowerUp;
-
         if (!powerUp)
-        {
-            console.log(`[SERVER] ${player.name} has no power-up charging`);
             return;
-        }
-
         const slotIndex = powerUp === 'Son' ? 0 : powerUp === 'Pi' ? 1 : 2;
-
         if (player.itemSlots[slotIndex] !== null)
-        {
-            console.log(`[SERVER] ${player.name} already has ${powerUp}`);
             return;
-        }
 
         player.itemSlots[slotIndex] = powerUp;
         player.chargingPowerUp = null;
@@ -40,9 +32,9 @@ export class PowerUpManager
      * @param player Player using the power-up
      * @param powerUp Power-up to activate
      * @param ball Game ball (for effects that modify ball behavior)
-     * @param gameService Game service (for 16 effect clone creation)
+     * @param cloneBalls Array of clone balls (for 16 effect clone creation)
      */
-    public static activatePowerUp(player: Player, powerUp: PowerUp, ball: Ball, gameService: GameService): void
+    public static activatePowerUp(player: Player, powerUp: PowerUp, ball: Ball, cloneBalls: CloneBall[]): void
     {
         if (!powerUp)
             return;
@@ -54,18 +46,18 @@ export class PowerUpManager
             case 'Pi':
                 const curveDirection = Math.random() > 0.5 ? 1 : -1;
                 ball.applyCurve(curveDirection);
-                gameService.curveCloneBalls(curveDirection);
+                CloneBallManager.curve(cloneBalls, curveDirection);
                 console.log(`[PowerUpManager] Pi effect: curve direction ${curveDirection}`);
                 break;
 
             case 'Son':
                 ball.applySpeedBoost(1.5);
-                gameService.boostCloneBalls(1.5);
+                CloneBallManager.boost(cloneBalls, 1.5);
                 console.log(`[PowerUpManager] Son effect: speed boost x1.5`);
                 break;
 
             case '16':  
-                gameService.createCloneBalls(15);
+                CloneBallManager.create(cloneBalls, ball, 15);
                 console.log(`[PowerUpManager] 16 effect: 15 clone balls created`);
                 break;
         }
@@ -75,9 +67,9 @@ export class PowerUpManager
      * @brief Apply pending power-ups for a player
      * @param player Player whose pending power-ups should be applied
      * @param ball Game ball (for effects that modify ball behavior)
-     * @param gameService Game service (for 16 effect clone creation)
+     * @param cloneBalls Array of clone balls (for 16 effect clone creation)
      */
-    public static applyPendingPowerUps(player: Player, ball: Ball, gameService: GameService): void
+    public static applyPendingPowerUps(player: Player, ball: Ball, cloneBalls: CloneBall[]): void
     {
         const pendingPowerUps = player.consumePendingPowerUps();
         
@@ -85,7 +77,7 @@ export class PowerUpManager
         {
             console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
             pendingPowerUps.forEach((powerUp: PowerUp) => {
-                PowerUpManager.activatePowerUp(player, powerUp, ball, gameService);
+                PowerUpManager.activatePowerUp(player, powerUp, ball, cloneBalls);
             });
         }
     }
@@ -99,37 +91,18 @@ export class PowerUpManager
     {
         if (!player.chargingPowerUp)
         {
-            const newPowerUp = player.selectRandomChargingPowerUp();
-            if (newPowerUp)
-            {
+            if (player.selectRandomChargingPowerUp())
                 player.hitStreak = 1;
-                console.log(`[SERVER] ${player.name} fruit bonus: started ${newPowerUp} at 1/3 (was idle)`);
-            }
-            else
-            {
-                console.log(`[SERVER] ${player.name} collected fruit but all slots full`);
-            }
             return;
         }
 
         const currentProgress = player.hitStreak;
         const completedPowerUp = player.chargingPowerUp;
         const slotIndex = completedPowerUp === 'Son' ? 0 : completedPowerUp === 'Pi' ? 1 : 2;
-
         player.itemSlots[slotIndex] = completedPowerUp;
         player.chargingPowerUp = null;
         player.hitStreak = 0;
-        
-        const newPowerUp = player.selectRandomChargingPowerUp();
-        
-        if (newPowerUp)
-        {
+        if (player.selectRandomChargingPowerUp())
             player.hitStreak = currentProgress;
-            console.log(`[SERVER] ${player.name} fruit bonus: completed ${completedPowerUp}, started ${newPowerUp} at ${currentProgress}/3`);
-        }
-        else
-        {
-            console.log(`[SERVER] ${player.name} fruit bonus: completed ${completedPowerUp}, all slots full`);
-        }
     }
 }

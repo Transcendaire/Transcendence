@@ -94,9 +94,11 @@ export abstract class AIPlayer
 		this.processSlotHold(1)
 		this.processSlotHold(2)
 		const gameState = this.gameService.getGameState()
-		const paddle = this.playerId === 'player1'
-			? gameState.player1.paddle
-			: gameState.player2.paddle
+		const playerIndex = this.playerId === 'player1' ? 0 : 1
+		const player = gameState.players[playerIndex]
+		if (!player)
+			return this.stopMovement()
+		const paddle = player.paddle
 		const paddleCenter = paddle.positionY + paddleSize / 2
 		const tolerance = 5
 		if (this.targetY === null)

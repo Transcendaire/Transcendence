@@ -47,11 +47,11 @@ export class Tournament {
 		this.matchmakingService = matchmakingService;
 		this.bracketService = new SingleEliminationBracket(id, name);
 		this.settings = settings || {
-			maxScore: 5,
+			lifeCount: 5,
 			powerUpsEnabled: false,
 			fruitFrequency: 'normal'
 		};
-		console.log(`[TOURNAMENT] Created with settings: powerUps=${this.settings.powerUpsEnabled}, maxScore=${this.settings.maxScore}`);
+		console.log(`[TOURNAMENT] Created with settings: powerUps=${this.settings.powerUpsEnabled}, lifeCount=${this.settings.lifeCount}`);
 	}
 
 
@@ -246,7 +246,7 @@ export class Tournament {
 			{ socket: player2.socket, name: player2.alias, id: player2.id },
 			this.settings.powerUpsEnabled,
 			this.settings.fruitFrequency,
-			this.settings.maxScore,
+			this.settings.lifeCount,
 			{
 				tournamentId: this.id,
 				matchId: match.id,
@@ -300,7 +300,7 @@ export class Tournament {
 	 * @param scoreA Score of player 1
 	 * @param scoreB Score of player 2
 	 */
-	public completeMatch(match: Match, winnerId: string, scoreA: number, scoreB: number): void
+    public completeMatch(match: Match, winnerId: string, livesA: number, livesB: number): void
 	{
 		const winnerAlias = winnerId === match.player1Id ? match.player1Alias : match.player2Alias;
 		const loserAlias = winnerId === match.player1Id ? match.player2Alias : match.player1Alias;
@@ -308,9 +308,9 @@ export class Tournament {
 		const loser = this.players.get(loserAlias);
 		const currentRoundMatches = this.bracket[this.currRound];
 
-		console.log(`[TOURNAMENT] Match ${match.id} completed: ${match.player1Alias} ${scoreA}-${scoreB} ${match.player2Alias}`);
+		console.log(`[TOURNAMENT] Match ${match.id} completed: ${match.player1Alias} ${livesA}-${livesB} ${match.player2Alias}`);
 		this.bracketService.updateMatchResult(match, winnerId);
-		this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, scoreA, scoreB, 'completed');
+		this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, livesA, livesB, 'completed');
 		if (winner)
 			winner.status = 'waiting';
 		if (loser)

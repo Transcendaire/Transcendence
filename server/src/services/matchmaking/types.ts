@@ -41,7 +41,7 @@ export interface BattleRoyalePlayer
 }
 
 /**
- * @brief Battle Royale game room for 3-6 players
+ * @brief Battle Royale game room for 3-16 players
  */
 export interface BattleRoyaleRoom
 {

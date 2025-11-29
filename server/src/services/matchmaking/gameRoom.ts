@@ -130,7 +130,7 @@ export class GameRoomManager
 	}
 
 	/**
-	 * @brief Create Battle Royale game room for 3-6 players
+	 * @brief Create Battle Royale game room for 3-16 players
 	 * @param lobbyPlayers Array of lobby players
 	 * @param sockets Map of player IDs to WebSockets
 	 * @param isCustom Enable power-ups mode
@@ -192,6 +192,13 @@ export class GameRoomManager
 			}
 		}
 		console.log(`[GAME_ROOM] Battle Royale game ${gameId} created with ${playerCount} players`)
+		const gameState = gameService.getGameState()
+		for (let i = 0; i < gameState.players.length; i++)
+		{
+			const p = gameState.players[i]!
+			const angleDeg = (p.paddle.angle * 180 / Math.PI).toFixed(1)
+			console.log(`[BR_INIT] Player ${i}: "${p.name}" | angle: ${angleDeg}°`)
+		}
 		return gameId
 	}
 

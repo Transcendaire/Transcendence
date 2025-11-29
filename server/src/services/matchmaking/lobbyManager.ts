@@ -4,7 +4,7 @@ import { GameRoomManager } from './gameRoom.js'
 import { TournamentManagerService } from '../tournament/tournamentManager.js'
 
 /**
- * @brief Manages custom game lobbies for 2-6 players
+ * @brief Manages custom game lobbies for 2-16 players
  * @details Handles lobby creation, player management, bot addition,
  * ownership transfer, and game start with strict security checks
  */
@@ -240,8 +240,8 @@ export class LobbyManager
 			return "Need at least 2 players"
 		if (lobby.type === 'tournament' && lobby.players.length > 16)
 			return "Maximum 16 players for tournaments"
-		if (lobby.type === 'battleroyale' && lobby.players.length > 6)
-			return "Maximum 6 players allowed"
+		if (lobby.type === 'battleroyale' && lobby.players.length > 16)
+			return "Maximum 16 players allowed"
 		
 		lobby.status = 'starting'
 		console.log(`[LOBBY] Starting ${lobby.type} ${lobbyId} with ${lobby.players.length} players`)

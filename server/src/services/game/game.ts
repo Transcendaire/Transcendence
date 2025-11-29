@@ -21,7 +21,7 @@ export type PlayerInput = {
  * @brief Game logic service handling gameplay mechanics
  * 
  * Supports both classic 2-player mode (rectangle) and Battle Royale mode
- * (3-6 players with polygon arena).
+ * (3-16 players with polygon arena).
  */
 export class GameService
 {
@@ -125,20 +125,15 @@ export class GameService
 	 */
 	private initGame(playerCount: number, lifeCount: number, playerNames: string[]): void
 	{
-		const defaultNames = [
-			'Player 1', 'Player 2', 'Player 3',
-			'Player 4', 'Player 5', 'Player 6'
-		];
-
 		this.players = [];
 		if (playerCount === 2)
 		{
 			this.players.push(
-				new Player(playerNames[0] ?? defaultNames[0]!, paddleOffset, lifeCount)
+				new Player(playerNames[0] ?? 'Player 1', paddleOffset, lifeCount)
 			);
 			this.players.push(
 				new Player(
-					playerNames[1] ?? defaultNames[1]!,
+					playerNames[1] ?? 'Player 2',
 					this.canvasWidth - paddleOffset - 10,
 					lifeCount
 				)
@@ -152,7 +147,7 @@ export class GameService
 		const center = this.polygonData.center;
 		for (let i = 0; i < playerCount; i++)
 		{
-			const name = playerNames[i] ?? defaultNames[i]!;
+			const name = playerNames[i] ?? `Player ${i + 1}`;
 			const sideData = this.polygonData.sides[i]!;
 			const player = new Player(name, sideData.center.x, lifeCount);
 			player.paddle.setPolygonCenter(center);

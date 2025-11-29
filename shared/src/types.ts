@@ -112,7 +112,7 @@ export type WebSocketMessage =
 | { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean; player1Name: string; player2Name: string }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
+| { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; isBattleRoyale?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
 | { type: "ping"; pingValue?: number }
 | { type: "pong" }

@@ -109,6 +109,50 @@ export class Tournament {
 	}
 
 	/**
+	 * @brief Adds a bot to the tournament (in-memory only, no database)
+	 * @param botId Bot's unique ID
+	 * @param botName Bot's display name
+	 * @throws {TournamentError} If tournament is running, completed, or full
+	 */
+	public addBotToTournament(botId: string, botName: string): void
+	{
+		if (this.status === TournamentStatus.RUNNING)
+			throw new TournamentError(`Impossible d'ajouter ${botName} au tournoi: le tournoi a déjà débuté`, errTournament.ALREADY_STARTED);
+		if (this.status === TournamentStatus.COMPLETED)
+			throw new TournamentError(`Impossible d'ajouter ${botName} au tournoi: le tournoi est terminé`, errTournament.ALREADY_OVER);
+		if (this.players.size === this.maxPlayers)
+			throw new TournamentError(`Impossible d'ajouter ${botName} au tournoi: le tournoi est complet`, errTournament.TOURNAMENT_FULL);
+		if (this.players.has(botName))
+		{
+			console.log(`[TOURNAMENT] Bot ${botName} already in tournament, skipping`);
+			return;
+		}
+		this.players.set(botName, {
+			id: botId,
+			alias: botName,
+			status: 'waiting',
+			socket: undefined
+		});
+		console.log(`[TOURNAMENT] Bot ${botName} added to tournament`);
+		if (this.players.size === this.maxPlayers)
+		{
+			this.status = TournamentStatus.FULL;
+			this.db.setTournamentStatus(TournamentStatus.FULL, this.id);
+		}
+	}
+
+	/**
+	 * @brief Check if a player is a bot
+	 * @param alias Player's alias
+	 * @returns True if player is a bot (ID starts with 'bot-')
+	 */
+	public isBot(alias: string): boolean
+	{
+		const player = this.players.get(alias);
+		return player ? player.id.startsWith('bot-') : false;
+	}
+
+	/**
 	 * @brief Removes a player from the tournament
 	 * @param name Player's alias
 	 * @throws {TournamentError} If player is not in tournament
@@ -149,7 +193,11 @@ export class Tournament {
 		
 		console.log(`[TOURNAMENT] Generating bracket for ${this.players.size} players`);
 		try {
-			this.bracket = this.bracketService.generateBracket();
+			const playersArray = Array.from(this.players.values()).map(p => ({
+				id: p.id,
+				alias: p.alias
+			}))
+			this.bracket = this.bracketService.generateBracket(playersArray);
 			console.log(`[TOURNAMENT] Bracket generated: ${this.bracket.length} rounds`);
 		} catch (error) {
 			console.error(`Impossible de lancer le tournoi ${this.name}: `, error);
@@ -157,10 +205,6 @@ export class Tournament {
 		}
 		this.maxRound = this.bracket.length;
 		this.startRound()
-		//*then startMatch(). 
-		//*add an event monitoring for completeMatch
-		//*then run completeRound and start again
-		//*check if it is the last round before doing another turn, especially with completeRound()
 	}
 
 	public getPlayerCount(): number
@@ -229,6 +273,44 @@ export class Tournament {
 			console.error(`[TOURNAMENT] Available players:`, Array.from(this.players.keys()));
 			return;
 		}
+
+		const p1IsBot = this.isBot(player1.alias)
+		const p2IsBot = this.isBot(player2.alias)
+
+		if (p1IsBot && p2IsBot)
+		{
+			const randomWinner = Math.random() < 0.5 ? player1 : player2
+			const randomLoser = randomWinner === player1 ? player2 : player1
+			console.log(`[TOURNAMENT] Bot vs Bot match, auto-resolving: ${randomWinner.alias} wins`)
+			player1.status = 'playing'
+			player2.status = 'playing'
+			match.status = 'completed'
+			setTimeout(() => this.completeMatch(match, randomWinner.id, 5, 0), 100)
+			return
+		}
+
+		if (p1IsBot)
+		{
+			if (!player2.socket)
+			{
+				console.error(`[TOURNAMENT] Cannot start AI match: player2 socket not available`)
+				return
+			}
+			this.startAIMatch(match, player2, player1)
+			return
+		}
+
+		if (p2IsBot)
+		{
+			if (!player1.socket)
+			{
+				console.error(`[TOURNAMENT] Cannot start AI match: player1 socket not available`)
+				return
+			}
+			this.startAIMatch(match, player1, player2)
+			return
+		}
+
 		if (!player1.socket || !player2.socket)
 		{
 			console.error(`[TOURNAMENT] Cannot start match: player sockets not available (${match.player1Alias}: ${!!player1.socket}, ${match.player2Alias}: ${!!player2.socket})`);
@@ -294,6 +376,75 @@ export class Tournament {
 	}
 
 	/**
+	 * @brief Start a match with one human player vs one bot
+	 * @param match The match object
+	 * @param humanPlayer The human player
+	 * @param botPlayer The bot player
+	 */
+	private startAIMatch(match: Match, humanPlayer: TournamentPlayer, botPlayer: TournamentPlayer): void
+	{
+		const gameRoomManager = this.matchmakingService.getGameRoomManager()
+		const humanIsPlayer1 = match.player1Id === humanPlayer.id
+
+		humanPlayer.status = 'playing'
+		botPlayer.status = 'playing'
+		match.status = 'playing'
+
+		const isFinalMatch = this.currRound === this.maxRound - 1
+		console.log(`[TOURNAMENT] AI Match: ${humanPlayer.alias} vs ${botPlayer.alias} (bot)`)
+
+		const gameId = gameRoomManager.createAIGame(
+			{ socket: humanPlayer.socket!, name: humanPlayer.alias, id: humanPlayer.id },
+			this.settings.powerUpsEnabled,
+			1,
+			this.settings.fruitFrequency,
+			this.settings.lifeCount,
+			botPlayer.alias
+		)
+		const room = gameRoomManager.findGameByPlayer(humanPlayer.socket!)
+		if (room)
+		{
+			room.tournamentMatch = {
+				tournamentId: this.id,
+				matchId: match.id,
+				isFinalMatch,
+				onComplete: (winnerId: string, lives1: number, lives2: number) =>
+				{
+					const actualWinnerId = winnerId === humanPlayer.id ? humanPlayer.id : botPlayer.id
+					if (humanIsPlayer1)
+						this.completeMatch(match, actualWinnerId, lives1, lives2)
+					else
+						this.completeMatch(match, actualWinnerId, lives2, lives1)
+				}
+			}
+		}
+
+		console.log(`[TOURNAMENT] AI game ${gameId} started for match ${match.id}`)
+
+		if (humanPlayer.socket && humanPlayer.socket.readyState === 1)
+		{
+			humanPlayer.socket.send(JSON.stringify({
+				type: 'gameStart',
+				playerRole: humanIsPlayer1 ? 'player1' : 'player2',
+				isCustom: this.settings.powerUpsEnabled
+			}))
+			console.log(`[TOURNAMENT] Sent gameStart to ${humanPlayer.alias}`)
+		}
+
+		(match as any).gameId = gameId
+		for (const [alias, player] of this.players.entries())
+		{
+			if (player.status === 'waiting' && player.socket)
+			{
+				this.sendMessage(player.socket, {
+					type: 'waitingForMatch',
+					message: `Waiting for your match. Current round: ${this.currRound + 1}/${this.maxRound}`
+				})
+			}
+		}
+	}
+
+	/**
 	 * @brief Called when a game finishes
 	 * @param match The match that was completed
 	 * @param winnerId ID of the winning player
@@ -307,10 +458,13 @@ export class Tournament {
 		const winner = this.players.get(winnerAlias);
 		const loser = this.players.get(loserAlias);
 		const currentRoundMatches = this.bracket[this.currRound];
+		const p1IsBot = match.player1Id.startsWith('bot-')
+		const p2IsBot = match.player2Id.startsWith('bot-')
 
 		console.log(`[TOURNAMENT] Match ${match.id} completed: ${match.player1Alias} ${livesA}-${livesB} ${match.player2Alias}`);
 		this.bracketService.updateMatchResult(match, winnerId);
-		this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, livesA, livesB, 'completed');
+		if (!p1IsBot && !p2IsBot)
+			this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, livesA, livesB, 'completed');
 		if (winner)
 			winner.status = 'waiting';
 		if (loser)

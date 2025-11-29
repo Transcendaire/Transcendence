@@ -21,7 +21,7 @@ export class WebSocketClient
     public onPlayerJoined?: (playerCount: number) => void;
     public onDisconnected?: () => void;
     public onError?: (error: string) => void;
-    public onGameOver?: (winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => void;
+    public onGameOver?: (winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => void;
     
     public onLobbyCreated?: (lobbyId: string, lobby: Lobby) => void;
     public onLobbyUpdate?: (lobby: Lobby) => void;
@@ -139,8 +139,8 @@ export class WebSocketClient
                 
             case 'gameOver':
                 if (message.winner && message.lives1 !== undefined && message.lives2 !== undefined) {
-                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, Should disconnect: ${message.shouldDisconnect}, Forfeit: ${message.forfeit}`);
-                    this.onGameOver?.(message.winner, message.lives1, message.lives2, message.isTournament, message.shouldDisconnect, message.forfeit);
+                    console.log(`[WEBSOCKET] Game Over! Winner: ${message.winner}, Tournament: ${message.isTournament}, BattleRoyale: ${message.isBattleRoyale}, Should disconnect: ${message.shouldDisconnect}, Forfeit: ${message.forfeit}`);
+                    this.onGameOver?.(message.winner, message.lives1, message.lives2, message.isTournament, message.isBattleRoyale, message.shouldDisconnect, message.forfeit);
                 }
                 break;
                 

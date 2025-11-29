@@ -44,7 +44,7 @@ export function setupDisconnectionHandlers(): void
     });
 }
 
-export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
+export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
 {
     gameState.setGameRunning(false);
     const isWinner = winner === gameState.currentPlayerRole;
@@ -80,7 +80,7 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
     }
     else
     {
-        const destination = (isTournament || gameState.isBattleRoyale) ? 'lobby' : 'home';
+        const destination = (isTournament || isBattleRoyale) ? 'lobby' : 'home';
         gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
         setTimeout(() => {
             returnToLobby(destination);

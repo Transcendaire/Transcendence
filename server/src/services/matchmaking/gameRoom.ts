@@ -6,6 +6,7 @@ import { GameService, PlayerInput } from '../game/game.js'
 import { AIPlayer } from '../aiplayer/AIPlayer.js'
 import { EasyAIPlayer } from '../aiplayer/EasyAIPlayer.js'
 import { NormalAIPlayer } from '../aiplayer/NormalAIPlayer.js'
+import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 
 /**
@@ -151,15 +152,21 @@ export class GameRoomManager
 		const gameService = new GameService(
 			canvasWidth, canvasHeight, isCustom, fruitFrequency, lifeCount, playerCount, playerNames
 		)
-		const brPlayers: BattleRoyalePlayer[] = lobbyPlayers.map(lp => ({
-			socket: lp.isBot ? null : (sockets.get(lp.id) || null),
-			name: lp.name,
-			id: lp.id,
-			isBot: lp.isBot,
-			input: { up: false, down: false },
-			prevSlots: { slot1: false, slot2: false, slot3: false },
-			ping: 0
-		}))
+		const brPlayers: BattleRoyalePlayer[] = lobbyPlayers.map((lp, index) => {
+			const inputState = { up: false, down: false }
+			const brPlayer: BattleRoyalePlayer = {
+				socket: lp.isBot ? null : (sockets.get(lp.id) || null),
+				name: lp.name,
+				id: lp.id,
+				isBot: lp.isBot,
+				input: inputState,
+				prevSlots: { slot1: false, slot2: false, slot3: false },
+				ping: 0
+			}
+			if (lp.isBot)
+				brPlayer.ai = new BRNormalAIPlayer(index, gameService, inputState)
+			return brPlayer
+		})
 		const room: BattleRoyaleRoom = {
 			id: gameId,
 			players: brPlayers,
@@ -171,6 +178,8 @@ export class GameRoomManager
 		for (let i = 0; i < brPlayers.length; i++)
 		{
 			const player = brPlayers[i]!
+			if (player.isBot && player.ai)
+				player.ai.start()
 			if (player.socket)
 			{
 				this.sendMessage(player.socket, {
@@ -212,13 +221,33 @@ export class GameRoomManager
 		})
 
 		const gameOver = room.gameService.updateGame(16, inputs)
-		if (gameOver)
+		if (gameOver || this.onlyBotsRemaining(room))
 		{
 			this.handleBattleRoyaleGameOver(room)
 			this.endBattleRoyaleGame(gameId)
 			return
 		}
 		this.broadcastBattleRoyaleState(room)
+	}
+
+	/**
+	 * @brief Check if only bots remain in Battle Royale game
+	 * @param room Battle Royale room
+	 * @returns True if no human players are still playing
+	 */
+	private onlyBotsRemaining(room: BattleRoyaleRoom): boolean
+	{
+		const gameState = room.gameService.getGameState()
+		for (let i = 0; i < room.players.length; i++)
+		{
+			const brPlayer = room.players[i]
+			const gsPlayer = gameState.players[i]
+			if (!brPlayer || !gsPlayer)
+				continue
+			if (!brPlayer.isBot && !gsPlayer.isEliminated())
+				return false
+		}
+		return true
 	}
 
 	/**
@@ -244,6 +273,7 @@ export class GameRoomManager
 					lives1: gameState.players[0]?.lives || 0,
 					lives2: gameState.players[1]?.lives || 0,
 					isTournament: false,
+					isBattleRoyale: true,
 					shouldDisconnect: true
 				})
 			}
@@ -314,6 +344,11 @@ export class GameRoomManager
 		if (!room) return
 		if (room.gameLoop)
 			clearInterval(room.gameLoop)
+		for (const player of room.players)
+		{
+			if (player.ai)
+				player.ai.stop()
+		}
 		this.battleRoyaleGames.delete(gameId)
 		console.log(`[GAME_ROOM] Battle Royale ${gameId} cleaned up`)
 	}
@@ -445,6 +480,7 @@ export class GameRoomManager
 						lives1: gameState.players[0]?.lives || 0,
 						lives2: gameState.players[1]?.lives || 0,
 						isTournament: false,
+						isBattleRoyale: true,
 						shouldDisconnect: true
 					});
 				}

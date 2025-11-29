@@ -142,6 +142,24 @@ export class Paddle
     }
 
     /**
+     * @brief Get side start point for AI calculations
+     * @returns Start point of the side or null
+     */
+    public getSideStart(): Point2D | null
+    {
+        return this.sideStart;
+    }
+
+    /**
+     * @brief Get side end point for AI calculations
+     * @returns End point of the side or null
+     */
+    public getSideEnd(): Point2D | null
+    {
+        return this.sideEnd;
+    }
+
+    /**
      * @brief Reset paddle to classic rectangle mode
      */
     public resetToClassicMode(): void

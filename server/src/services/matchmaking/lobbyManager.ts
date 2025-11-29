@@ -138,9 +138,10 @@ export class LobbyManager
 
 		if (playerIndex > -1)
 			lobby.players.splice(playerIndex, 1)
-		if (lobby.players.length === 0)
+		const humanPlayers = lobby.players.filter(p => !p.isBot)
+		if (lobby.players.length === 0 || humanPlayers.length === 0)
 		{
-			console.log(`[LOBBY] Deleting empty lobby ${lobbyId}`)
+			console.log(`[LOBBY] Deleting lobby ${lobbyId} (no human players remaining)`)
 			this.lobbies.delete(lobbyId)
 			this.lobbyToSockets.delete(lobbyId)
 			this.broadcastLobbyListToAll()
@@ -260,7 +261,12 @@ export class LobbyManager
 				console.log(`[LOBBY] Adding ${lobby.players.length} players to tournament`)
 				for (const player of lobby.players)
 				{
-					if (!player.isBot)
+					if (player.isBot)
+					{
+						console.log(`[LOBBY] Adding bot ${player.name} with id: ${player.id}`)
+						tournament.addBotToTournament(player.id, player.name)
+					}
+					else
 					{
 						let playerSocket: WebSocket | undefined
 						if (sockets)

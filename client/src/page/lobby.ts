@@ -61,6 +61,54 @@ function setupWebSocketCallbacks(): void {
         sessionStorage.setItem('tournamentOpponent', opponentName);
         navigate('game');
     };
+
+    wsClient.onAlreadyConnected = (name: string) => {
+        const lobbyModal = document.getElementById('lobbyModal');
+        if (lobbyModal)
+            hide(lobbyModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà connecté ailleurs avec le nom "${name}".\n\n` +
+            `Voulez-vous déconnecter l'autre session ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInLobby = (name: string) => {
+        const lobbyModal = document.getElementById('lobbyModal');
+        if (lobbyModal)
+            hide(lobbyModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà dans un lobby avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter l'autre lobby et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInGame = (name: string) => {
+        const lobbyModal = document.getElementById('lobbyModal');
+        if (lobbyModal)
+            hide(lobbyModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà en jeu avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter la partie et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onDisconnectedByOtherSession = () => {
+        alert('Vous avez été déconnecté car une autre session a pris le relais.');
+        wsClient.disconnect();
+        navigate('home');
+    };
 }
 
 function requestLobbyList(): void {
@@ -127,11 +175,13 @@ function joinLobby(lobbyId: string): void {
         return;
     }
 
-    wsClient.sendMessage({
-        type: 'joinLobby',
+    const joinMessage = {
+        type: 'joinLobby' as const,
         playerName: playerName,
         lobbyId: lobbyId
-    });
+    };
+    wsClient.setPendingAction(() => wsClient.sendMessage(joinMessage));
+    wsClient.sendMessage(joinMessage);
 }
 
 function startLobby(lobbyId: string): void {
@@ -244,14 +294,16 @@ function initCreationModal(createLobbyModal: HTMLElement) {
             fruitFrequency: powerUpsEnabled ? fruitFrequency : 'normal' as 'low' | 'normal' | 'high'
         };
 
-        wsClient.sendMessage({
-            type: 'createCustomLobby',
+        const createMessage = {
+            type: 'createCustomLobby' as const,
             playerName: playerName,
             name: name,
             lobbyType: lobbyType,
             maxPlayers: maxPlayers,
             settings: settings
-        });
+        };
+        wsClient.setPendingAction(() => wsClient.sendMessage(createMessage));
+        wsClient.sendMessage(createMessage);
 
         hide(createLobbyModal);
         form.reset();

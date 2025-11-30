@@ -2,6 +2,7 @@ import { WebSocket } from 'ws'
 import { WebSocketMessage } from '../../types.js'
 import { Player } from './types.js'
 import { GameRoomManager } from './gameRoom.js'
+import { sendMessage } from '../../utils/websocket.js'
 
 /**
  * @brief Handles quick 1v1 matchmaking with separate normal/custom queues
@@ -37,15 +38,15 @@ export class QuickMatchService
 			const opponent = waitingQueue.pop()!
 			console.log(`[QUICK_MATCH] Creating ${modeStr} game: ${opponent.name} vs ${player.name}`)
 			const gameId = this.gameRoomManager.createGame(opponent, player, isCustom, 'normal', 5)
-			this.sendMessage(opponent.socket, { type: 'gameStart', playerRole: 'player1', player1Name: opponent.name, player2Name: player.name })
-			this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player2', player1Name: opponent.name, player2Name: player.name })
+			sendMessage(opponent.socket, { type: 'gameStart', playerRole: 'player1', player1Name: opponent.name, player2Name: player.name })
+			sendMessage(player.socket, { type: 'gameStart', playerRole: 'player2', player1Name: opponent.name, player2Name: player.name })
 		}
 		else
 		{
 			waitingQueue.push(player)
 			console.log(`[QUICK_MATCH] ${player.name} waiting for ${modeStr} game (${waitingQueue.length}/2)`)
-			this.sendMessage(socket, { type: 'waiting' })
-			this.sendMessage(socket, { type: 'playerJoined', playerCount: 1 })
+			sendMessage(socket, { type: 'waiting' })
+			sendMessage(socket, { type: 'playerJoined', playerCount: 1 })
 		}
 	}
 
@@ -75,7 +76,7 @@ export class QuickMatchService
 			player, isCustom, difficulty, 'normal', lifeCount, aiName
 		)
 		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom}, difficulty: ${difficulty}, lifeCount: ${lifeCount})`)
-		this.sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1', player1Name: player.name, player2Name: aiName })
+		sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1', player1Name: player.name, player2Name: aiName })
 	}
 
 	/**
@@ -100,9 +101,4 @@ export class QuickMatchService
 		return false
 	}
 
-	private sendMessage(socket: WebSocket, message: WebSocketMessage): void
-	{
-		if (socket && socket.readyState === socket.OPEN)
-			socket.send(JSON.stringify(message))
-	}
 }

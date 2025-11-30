@@ -46,6 +46,7 @@ export function startGame(
     gameState.setPlayer2(new Player(player2Name, gameState.canvas.width - paddleOffset - 10));
     gameState.setBall(new Ball(gameState.canvas.width / 2, gameState.canvas.height / 2));
     gameState.setCloneBalls([]);
+    gameState.setBalls([]);
     gameState.setFruits([]);
     
     player1NameDiv.textContent = gameState.player1.name;
@@ -118,6 +119,7 @@ export function startBattleRoyaleGame(
 	gameState.setPlayerIndex(playerIndex);
 	gameState.setBall(new Ball(polygonData.center.x, polygonData.center.y, undefined, true));
 	gameState.setCloneBalls([]);
+	gameState.setBalls([]);
 	gameState.setFruits([]);
 
 	setupGameEventListeners();

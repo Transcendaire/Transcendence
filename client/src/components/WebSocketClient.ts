@@ -14,6 +14,7 @@ export class WebSocketClient
     private pendingGameStart: { role: 'player1' | 'player2', player1Name?: string, player2Name?: string } | null = null;
     private _isCustomGame = false;
     private intentionalDisconnect = false;
+    private pendingAction: (() => void) | null = null;
     
     public onGameState?: (gameState: GameState) => void;
     public onWaitingForPlayer?: () => void;
@@ -30,6 +31,10 @@ export class WebSocketClient
     public onTournamentCountdown?: (opponentName: string, countdown: number) => void;
     public onTournamentMatchUpdate?: (siblingMatch: { player1Name: string; player2Name: string; lives1: number; lives2: number } | undefined, otherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }>) => void;
     public onTournamentPrepare?: (playerRole: 'player1' | 'player2', opponentName: string) => void;
+    public onAlreadyConnected?: (playerName: string) => void;
+    public onAlreadyInLobby?: (playerName: string) => void;
+    public onAlreadyInGame?: (playerName: string) => void;
+    public onDisconnectedByOtherSession?: () => void;
     
     public get onGameStart() {
         return this._onGameStart;
@@ -206,6 +211,34 @@ export class WebSocketClient
                     this.onTournamentPrepare?.(message.playerRole, message.opponentName);
                 }
                 break;
+            
+            case 'alreadyConnected':
+                if (message.playerName) {
+                    console.log(`[WEBSOCKET] Already connected: ${message.playerName}`);
+                    this.onAlreadyConnected?.(message.playerName);
+                }
+                break;
+            
+            case 'alreadyInLobby':
+                if (message.playerName)
+                {
+                    console.log(`[WEBSOCKET] Already in lobby: ${message.playerName}`);
+                    this.onAlreadyInLobby?.(message.playerName);
+                }
+                break;
+            
+            case 'alreadyInGame':
+                if (message.playerName)
+                {
+                    console.log(`[WEBSOCKET] Already in game: ${message.playerName}`);
+                    this.onAlreadyInGame?.(message.playerName);
+                }
+                break;
+            
+            case 'disconnectedByOtherSession':
+                console.log('[WEBSOCKET] Disconnected by other session');
+                this.onDisconnectedByOtherSession?.();
+                break;
                 
             default:
                 console.warn('[WEBSOCKET] Type de message inconnu:', message.type);
@@ -310,6 +343,41 @@ export class WebSocketClient
             const message: WebSocketMessage = { type: 'surrender' }
             this.ws.send(JSON.stringify(message))
         }
+    }
+
+    /**
+     * @brief Force disconnect another session with same player name
+     * @param playerName Player name to force disconnect
+     */
+    public forceDisconnectOther(playerName: string): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = { type: 'forceDisconnect', playerName }
+            this.ws.send(JSON.stringify(message))
+            if (this.pendingAction) {
+                setTimeout(() => {
+                    this.pendingAction?.()
+                    this.pendingAction = null
+                }, 100)
+            }
+        }
+    }
+
+    /**
+     * @brief Set pending action to replay after force disconnect
+     * @param action Action to replay
+     */
+    public setPendingAction(action: () => void): void
+    {
+        this.pendingAction = action
+    }
+
+    /**
+     * @brief Clear pending action
+     */
+    public clearPendingAction(): void
+    {
+        this.pendingAction = null
     }
 
     private calculateLatency(): void

@@ -5,6 +5,7 @@ import { match } from 'assert';
 import { getDatabase } from '../../db/databaseSingleton.js';
 import { DatabaseError, errTournament, TournamentError } from "@app/shared/errors.js";
 import { CustomGameSettings } from '@app/shared/types.js';
+import { WebSocket } from 'ws';
 
 export class TournamentManagerService 
 {
@@ -131,6 +132,36 @@ export class TournamentManagerService
 				return t;
 		}
 		return undefined;
+	}
+
+	/**
+	 * @brief Checks if a socket belongs to a player in an active (non-completed) tournament
+	 * @param socket WebSocket connection to check
+	 * @returns True if socket is in an active tournament
+	 */
+	public isPlayerInActiveTournament(socket: WebSocket): boolean
+	{
+		for (const tournament of this.tournamentsMap.values())
+		{
+			if (tournament.getStatus() !== 'completed' && tournament.hasPlayerSocket(socket))
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @brief Checks if a player name is in an active (non-completed) tournament
+	 * @param playerName Player's name to check
+	 * @returns True if player is in an active tournament
+	 */
+	public isPlayerNameInActiveTournament(playerName: string): boolean
+	{
+		for (const tournament of this.tournamentsMap.values())
+		{
+			if (tournament.getStatus() !== 'completed' && tournament.hasPlayer(playerName))
+				return true;
+		}
+		return false;
 	}
 
 	/**

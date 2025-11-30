@@ -92,6 +92,12 @@ export type GameState = {
 		vx: number;
 		vy: number;
 	};
+	balls?: Array<{
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
+	}>;
 	cloneBalls?: Array<{
 		x: number;
 		y: number;
@@ -133,6 +139,11 @@ export type WebSocketMessage =
 | { type: "tournamentCountdown"; opponentName: string; countdown: number }
 | { type: "tournamentMatchUpdate"; siblingMatch?: { player1Name: string; player2Name: string; lives1: number; lives2: number }; otherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }> }
 | { type: "tournamentPrepare"; playerRole: 'player1' | 'player2'; opponentName: string }
+| { type: "alreadyConnected"; playerName: string }
+| { type: "alreadyInLobby"; playerName: string }
+| { type: "alreadyInGame"; playerName: string }
+| { type: "forceDisconnect"; playerName: string }
+| { type: "disconnectedByOtherSession" }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

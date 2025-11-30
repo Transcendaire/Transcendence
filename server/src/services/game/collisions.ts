@@ -367,11 +367,11 @@ export class PolygonCollisionManager
 	 * @param activeSideIndex Player's side index
 	 * @param activePlayerCount Number of active players
 	 * @param cloneBalls Clone balls to clear
-	 * @param lastHitPlayerIndex Index of last player who hit the ball (-1 if none)
 	 * @param playerIndex Current player index being checked
 	 * @param deltaTime Time step for collision
 	 * @param isCustomMode Whether custom mode is enabled
 	 * @param allPlayers All players for clearing pending power-ups
+	 * @param isMultiBall Whether multiple balls are in play (BR mode)
 	 * @returns True if collision occurred
 	 */
 	public static handlePaddleCollision(
@@ -381,11 +381,11 @@ export class PolygonCollisionManager
 		activeSideIndex: number,
 		activePlayerCount: number,
 		cloneBalls: CloneBall[],
-		lastHitPlayerIndex: number = -1,
 		playerIndex: number = -1,
 		deltaTime: number = 16,
 		isCustomMode: boolean = false,
-		allPlayers?: Player[]
+		allPlayers?: Player[],
+		isMultiBall: boolean = false
 	): boolean
 	{
 		if (!CollisionDetector.isTouchingPolygonPaddle(player, ball, deltaTime))
@@ -399,8 +399,8 @@ export class PolygonCollisionManager
 		const paddleAngle = player.paddle.angle;
 		ball.bouncePolygon(paddleCenter, paddleAngle, player.paddle.height, normal);
 
-		const isDifferentPlayer = lastHitPlayerIndex !== playerIndex || lastHitPlayerIndex < 0;
-		if (isDifferentPlayer && cloneBalls.length > 0)
+		const isDifferentPlayer = ball.lastTouchedPlayerIndex !== playerIndex || ball.lastTouchedPlayerIndex < 0;
+		if (isDifferentPlayer && !isMultiBall && cloneBalls.length > 0)
 			CloneBallManager.clear(cloneBalls);
 		if (isDifferentPlayer && ball.isCurving)
 			ball.removeCurve();

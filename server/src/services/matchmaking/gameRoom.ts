@@ -8,6 +8,7 @@ import { EasyAIPlayer } from '../aiplayer/EasyAIPlayer.js'
 import { NormalAIPlayer } from '../aiplayer/NormalAIPlayer.js'
 import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
+import { sendMessage } from '../../utils/websocket.js'
 
 /**
  * @brief Manages active game rooms and their game loops
@@ -191,7 +192,7 @@ export class GameRoomManager
 				player.ai.start()
 			if (player.socket)
 			{
-				this.sendMessage(player.socket, {
+				sendMessage(player.socket, {
 					type: 'gameStart',
 					playerRole: `player${i + 1}` as 'player1' | 'player2',
 					isCustom,
@@ -319,7 +320,7 @@ export class GameRoomManager
 			if (player.socket)
 			{
 				const isWinner = i === winnerIndex
-				this.sendMessage(player.socket, {
+				sendMessage(player.socket, {
 					type: 'gameOver',
 					winner: winner as 'player1' | 'player2',
 					lives1: gameState.players[0]?.lives || 0,
@@ -367,6 +368,12 @@ export class GameRoomManager
 				vx: gameState.ball.velocityX,
 				vy: gameState.ball.velocityY
 			},
+			balls: gameState.balls?.map(b => ({
+				x: b.positionX,
+				y: b.positionY,
+				vx: b.velocityX,
+				vy: b.velocityY
+			})) || [],
 			cloneBalls: gameState.cloneBalls.map(clone => ({
 				x: clone.positionX,
 				y: clone.positionY,
@@ -382,7 +389,7 @@ export class GameRoomManager
 		for (const player of room.players)
 		{
 			if (player.socket)
-				this.sendMessage(player.socket, { type: 'gameState', data: stateMessage })
+				sendMessage(player.socket, { type: 'gameState', data: stateMessage })
 		}
 	}
 
@@ -481,6 +488,55 @@ export class GameRoomManager
 	}
 
 	/**
+	 * @brief Check if a player name is in any active 1v1 game
+	 * @param playerName Player's name to check
+	 * @returns True if player is in a game
+	 */
+	public isPlayerNameInGame(playerName: string): boolean
+	{
+		for (const room of this.activeGames.values())
+			if (room.player1.name === playerName || room.player2.name === playerName)
+				return true
+		return false
+	}
+
+	/**
+	 * @brief Check if a player name is in any Battle Royale game
+	 * @param playerName Player's name to check
+	 * @returns True if player is in a BR game
+	 */
+	public isPlayerNameInBattleRoyale(playerName: string): boolean
+	{
+		for (const room of this.battleRoyaleGames.values())
+			if (room.players.some(p => p.name === playerName))
+				return true
+		return false
+	}
+
+	/**
+	 * @brief Get the socket of a player by name in any active game
+	 * @param playerName Player's name to find
+	 * @returns WebSocket or undefined
+	 */
+	public getSocketByPlayerName(playerName: string): WebSocket | undefined
+	{
+		for (const room of this.activeGames.values())
+		{
+			if (room.player1.name === playerName)
+				return room.player1.socket
+			if (room.player2.name === playerName)
+				return room.player2.socket
+		}
+		for (const room of this.battleRoyaleGames.values())
+		{
+			const player = room.players.find(p => p.name === playerName)
+			if (player?.socket)
+				return player.socket
+		}
+		return undefined
+	}
+
+	/**
 	 * @brief Find Battle Royale game by player socket
 	 * @param socket Player's WebSocket
 	 * @returns BR room and player index or undefined
@@ -526,7 +582,7 @@ export class GameRoomManager
 				const p = room.players[i];
 				if (p?.socket)
 				{
-					this.sendMessage(p.socket, {
+					sendMessage(p.socket, {
 						type: 'gameOver',
 						winner: `player${winnerIndex + 1}` as 'player1' | 'player2',
 						lives1: gameState.players[0]?.lives || 0,
@@ -627,7 +683,7 @@ export class GameRoomManager
 			const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
 			
 			if (room.player1.socket)
-				this.sendMessage(room.player1.socket, { 
+				sendMessage(room.player1.socket, { 
 					type: 'gameOver', 
 					winner, 
 					lives1: p1.lives, 
@@ -636,7 +692,7 @@ export class GameRoomManager
 					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
 				})
 			if (room.player2.socket && room.player2.id !== 'AI')
-				this.sendMessage(room.player2.socket, { 
+				sendMessage(room.player2.socket, { 
 					type: 'gameOver', 
 					winner, 
 					lives1: p1.lives, 
@@ -682,16 +738,11 @@ export class GameRoomManager
 			fruits: gameState.fruits
 		}
 		if (room.player1.socket)
-			this.sendMessage(room.player1.socket, { type: 'gameState', data: stateMessage })
+			sendMessage(room.player1.socket, { type: 'gameState', data: stateMessage })
 		if (room.player2.socket)
-			this.sendMessage(room.player2.socket, { type: 'gameState', data: stateMessage })
+			sendMessage(room.player2.socket, { type: 'gameState', data: stateMessage })
 		if (room.tournamentMatch?.onUpdate)
 			room.tournamentMatch.onUpdate();
 	}
 
-	private sendMessage(socket: WebSocket, message: WebSocketMessage): void
-	{
-		if (socket && socket.readyState === socket.OPEN)
-			socket.send(JSON.stringify(message))
-	}
 }

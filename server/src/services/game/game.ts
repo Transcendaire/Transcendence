@@ -567,16 +567,13 @@ export class GameService
 					FruitManager.spawn(this.fruits, this.canvasWidth, this.canvasHeight, this.polygonData);
 				this.fruitSpawnTimer = 0;
 			}
-			for (const ball of this.balls.length > 0 ? this.balls : [this.ball])
+			if (this.balls.length > 0)
 			{
-				FruitManager.checkCollisions(
-					this.fruits,
-					ball,
-					this.players,
-					this.ballTouched,
-					ball.lastTouchedPlayerIndex
-				);
+				for (const ball of this.balls)
+					FruitManager.checkCollisions(this.fruits, ball, this.players, this.ballTouched, ball.lastTouchedPlayerIndex);
 			}
+			else
+				FruitManager.checkCollisions(this.fruits, this.ball, this.players, this.ballTouched, this.lastTouchedPlayerIndex);
 		}
 		if (this.isPolygonMode())
 			return this.updatePolygonCollisions(deltaTime);

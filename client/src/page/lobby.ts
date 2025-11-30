@@ -252,7 +252,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
         const maxScoreSelect = getEl("maxScoreSelect") as HTMLSelectElement;
         const maxScore = parseInt(maxScoreSelect?.value || '5');
 
-        if (!name || name === '') name = `${gameType.value} de ${playerName}`;
+        if (!name || name === '') name = `${gameType.value.charAt(0).toUpperCase() + gameType.value.slice(1)} de ${playerName}`;
 
         if (name.length < 3) {
             alert('Le nom du lobby doit comporter au moins 3 caractères');
@@ -368,9 +368,9 @@ function createLobbyElement(lobby: Lobby): HTMLDivElement {
                         hover:bg-opacity-20 transition-all duration-300 
                         border-2 border-transparent hover:border-sonpi16-orange`;
 
-    const type = lobby.type === 'tournament' ? 'Tournoi ' : 'Partie ';
-    const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
-    const modeIcon = lobby.settings.powerUpsEnabled ? '⚡' : '🎮';
+    const type = lobby.type === 'tournament' ? 'Tournoi ' : 'Battle Royale ';
+    const typeIcon = lobby.type === 'tournament' ? '🏆' : '👑';
+    const modeIcon = lobby.settings.powerUpsEnabled ? '⚡' : '🎯';
     const isFull = lobby.players.length >= lobby.maxPlayers;
 
     lobbyDiv.innerHTML = `
@@ -383,7 +383,7 @@ function createLobbyElement(lobby: Lobby): HTMLDivElement {
                     <div class="flex gap-4 text-sm text-sonpi16-orange opacity-80">
                         <span class="flex items-center gap-1">
                         <span class="text-lg"> ${modeIcon}</span>
-                            ${type}${lobby.settings.powerUpsEnabled ? 'Custom' : 'Normal'}</span>
+                            ${type}${lobby.settings.powerUpsEnabled ? 'avec PowerUps' : 'sans PowerUps'}</span>
                         <span class="flex items-center gap-1">
                         <span class="text-lg">👥</span>
                         <span id="player-count">

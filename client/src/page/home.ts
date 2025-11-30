@@ -35,8 +35,6 @@ async function initHomePage() {
     await loadGoogleScript();
     await initGoogle();
 
-    getEl("googleLoginButton").addEventListener('click', handleGoogleSignIn);
-
     updateUI();
 
     setupWebsocket(waitingModal);

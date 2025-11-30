@@ -406,7 +406,8 @@ function createLobbyElement(lobby: Lobby): HTMLDivElement {
     return lobbyDiv;
 }
 
-function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement {
+function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement 
+{
     const playerDiv = document.createElement('div');
 
     playerDiv.id = player.id;
@@ -416,11 +417,45 @@ function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement 
 
     const isOwner = player.id === lobby.creatorId;
     const ownerStar = isOwner ? ' ⭐' : '';
+    
+    const creator = lobby.players.find(p => p.id === lobby.creatorId);
+    const amICreator = creator?.name === playerName;
+    const showKickButton = amICreator && !isOwner;
+
 
     playerDiv.innerHTML = `
             <img src="./assets/Transcendaire.png" alt="avatar" class="w-16 h-16 rounded-full object-cover">
             <span id="${player.id}" class="font-quency text-sonpi16-orange text-2lg">${player.name}${ownerStar}</span>
-            ${player.isBot === true ? '<button id="removeBot">' : '' }`;
+            ${showKickButton ? 
+            `<button data-player-id="${player.id}" 
+                     class="kickButton w-10 h-10
+                            hover:scale-110 transition-all duration-200 
+                            flex items-center justify-center
+                            text-sonpi16-orange text-xl font-bold shadow-lg">
+                ✕
+             </button>` 
+            : ''
+            }`;
+
+    const kickBtn = playerDiv.querySelector('.kickButton') as HTMLButtonElement | null;
+    if (kickBtn) {
+        kickBtn.addEventListener('click', () => {
+            if (!wsClient.isConnected()) {
+                alert('Connexion perdue, reconnexion en cours...');
+                requestLobbyList();
+                return;
+            }
+            const targetPlayerId = kickBtn.getAttribute('data-player-id');
+            if (targetPlayerId) {
+                wsClient.sendMessage({
+                    type: 'removeBot',
+                    lobbyId: lobby.id,
+                    botId: targetPlayerId
+                });
+            }
+        });
+    }
+    
     return playerDiv;
 }
 

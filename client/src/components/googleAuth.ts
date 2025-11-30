@@ -90,13 +90,7 @@ export function loadGoogleScript(): Promise<void> {
     });
 }
 
-// Initialiser Google Sign-In
 export async function initGoogle() {
-    console.log('[GOOGLE] ========================================');
-    console.log('[GOOGLE] INITIALISATION GOOGLE SIGN-IN');
-    console.log('[GOOGLE] ========================================');
-    console.log('[GOOGLE] Origin:', window.location.origin);
-    console.log('[GOOGLE] Href:', window.location.href);
     
     const clientId = "782178545544-31i17kv4fli13eqj7o0l4dclqnbb3hql.apps.googleusercontent.com";
     console.log('[GOOGLE] Client ID:', clientId);
@@ -123,7 +117,6 @@ export async function initGoogle() {
             cancel_on_tap_outside: true,
         });
 
-        console.log('[GOOGLE] ✅ google.accounts.id.initialize() terminé');
 
         attachCustomButton();
 
@@ -141,11 +134,8 @@ function attachCustomButton() {
         return;
     }
 
-    console.log('[GOOGLE] Attachement du bouton custom...');
 
-    customButton.addEventListener('click', () => {
-        console.log('[GOOGLE] Clic sur bouton custom, création du conteneur invisible...');
-        
+    customButton.addEventListener('click', () => {        
         let hiddenContainer = document.getElementById('googleSignInDivHidden');
         if (!hiddenContainer) {
             hiddenContainer = document.createElement('div');
@@ -164,20 +154,15 @@ function attachCustomButton() {
                 { theme: "outline", size: "large" }
             );
 
-            setTimeout(() => {
-                const googleBtn = hiddenContainer!.querySelector('div[role="button"]') as HTMLElement;
-                if (googleBtn) {
+            const googleBtn = hiddenContainer!.querySelector('div[role="button"]') as HTMLElement;
+            if (googleBtn) {
                     console.log('[GOOGLE] Déclenchement automatique du clic sur le bouton Google...');
                     googleBtn.click();
                 } else {
                     console.error('[GOOGLE] Bouton Google non trouvé dans le conteneur caché');
-                }
-            }, 100);
-
+            }
         } catch (error) {
             console.error('[GOOGLE] Erreur lors du rendu du bouton caché:', error);
         }
     });
-
-    console.log('[GOOGLE] ✅ Bouton custom attaché avec succès');
 }

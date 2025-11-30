@@ -2,6 +2,7 @@ import { WebSocket } from 'ws'
 import { Lobby, LobbyPlayer, CustomGameSettings } from '@app/shared/types.js'
 import { GameRoomManager } from './gameRoom.js'
 import { TournamentManagerService } from '../tournament/tournamentManager.js'
+import { sendMessage } from '../../utils/websocket.js'
 
 /**
  * @brief Manages custom game lobbies for 2-16 players
@@ -541,7 +542,7 @@ export class LobbyManager
 		if (!sockets)
 			return
 		for (const socket of sockets)
-			this.sendMessage(socket, { type: 'lobbyUpdate', lobby: lobby })
+			sendMessage(socket, { type: 'lobbyUpdate', lobby: lobby })
 	}
 
 	/**
@@ -554,17 +555,7 @@ export class LobbyManager
 
 		console.log(`[LOBBY] Broadcasting lobby list to ${this.allSockets.size} clients`)
 		for (const socket of this.allSockets.keys())
-			this.sendMessage(socket, { type: 'lobbyList', lobbies: lobbies })
+			sendMessage(socket, { type: 'lobbyList', lobbies: lobbies })
 	}
 
-	/**
-	 * @brief Send message to specific socket
-	 * @param socket Target WebSocket
-	 * @param message Message object
-	 */
-	private sendMessage(socket: WebSocket, message: any): void
-	{
-		if (socket.readyState === WebSocket.OPEN)
-			socket.send(JSON.stringify(message))
-	}
 }

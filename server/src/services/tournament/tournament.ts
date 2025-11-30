@@ -7,6 +7,7 @@ import { Player } from '../../types.js';
 import { WebsocketHandler } from '@fastify/websocket';
 import { sign } from 'crypto';
 import { CustomGameSettings } from '@app/shared/types.js';
+import { sendMessage } from '../../utils/websocket.js';
 
 export enum TournamentStatus {
 	CREATED = 'created',
@@ -358,9 +359,9 @@ export class Tournament {
 	): void
 	{
 		if (socket1 && socket1.readyState === 1)
-			this.sendMessage(socket1, { type: 'tournamentPrepare', playerRole: 'player1', opponentName: opponent1Name });
+			sendMessage(socket1, { type: 'tournamentPrepare', playerRole: 'player1', opponentName: opponent1Name });
 		if (socket2 && socket2.readyState === 1)
-			this.sendMessage(socket2, { type: 'tournamentPrepare', playerRole: 'player2', opponentName: opponent2Name });
+			sendMessage(socket2, { type: 'tournamentPrepare', playerRole: 'player2', opponentName: opponent2Name });
 		
 		setTimeout(() => this.startCountdownSequence(socket1, opponent1Name, socket2, opponent2Name, onComplete), 500);
 	}
@@ -380,9 +381,9 @@ export class Tournament {
 		
 		const sendCount = () => {
 			if (socket1 && socket1.readyState === 1)
-				this.sendMessage(socket1, { type: 'tournamentCountdown', opponentName: opponent1Name, countdown });
+				sendMessage(socket1, { type: 'tournamentCountdown', opponentName: opponent1Name, countdown });
 			if (socket2 && socket2.readyState === 1)
-				this.sendMessage(socket2, { type: 'tournamentCountdown', opponentName: opponent2Name, countdown });
+				sendMessage(socket2, { type: 'tournamentCountdown', opponentName: opponent2Name, countdown });
 			
 			if (countdown > 0)
 			{
@@ -459,7 +460,7 @@ export class Tournament {
 	{
 		for (const [alias, player] of this.players.entries())
 			if (player.status === 'waiting' && player.socket)
-				this.sendMessage(player.socket, { 
+				sendMessage(player.socket, { 
 					type: 'waitingForMatch',
 					message: `Waiting for your match. Current round: ${this.currRound + 1}/${this.maxRound}`
 				});
@@ -579,11 +580,10 @@ export class Tournament {
 				(u.player1Name !== siblingMatchUpdate.player1Name || u.player2Name !== siblingMatchUpdate.player2Name)
 			);
 			
-			this.sendMessage(player.socket, { 
-				type: 'tournamentMatchUpdate', 
-				siblingMatch: siblingMatchUpdate,
-				otherMatches 
-			});
+			if (siblingMatchUpdate)
+				sendMessage(player.socket, { type: 'tournamentMatchUpdate', siblingMatch: siblingMatchUpdate, otherMatches })
+			else
+				sendMessage(player.socket, { type: 'tournamentMatchUpdate', otherMatches })
 		}
 	}
 
@@ -740,7 +740,7 @@ export class Tournament {
 		{
 			if (player.socket)
 			{
-				this.sendMessage(player.socket, {
+				sendMessage(player.socket, {
 					type: 'tournamentComplete',
 					champion: championAlias,
 					tournamentName: this.name
@@ -749,9 +749,4 @@ export class Tournament {
 		}
 	}
 
-	private sendMessage(socket: WebSocket, message: any): void
-	{
-		if (socket && socket.readyState === socket.OPEN)
-			socket.send(JSON.stringify(message));
-	}
 }

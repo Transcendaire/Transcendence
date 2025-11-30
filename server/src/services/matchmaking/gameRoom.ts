@@ -8,6 +8,7 @@ import { EasyAIPlayer } from '../aiplayer/EasyAIPlayer.js'
 import { NormalAIPlayer } from '../aiplayer/NormalAIPlayer.js'
 import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
+import { sendMessage } from '../../utils/websocket.js'
 
 /**
  * @brief Manages active game rooms and their game loops
@@ -191,7 +192,7 @@ export class GameRoomManager
 				player.ai.start()
 			if (player.socket)
 			{
-				this.sendMessage(player.socket, {
+				sendMessage(player.socket, {
 					type: 'gameStart',
 					playerRole: `player${i + 1}` as 'player1' | 'player2',
 					isCustom,
@@ -319,7 +320,7 @@ export class GameRoomManager
 			if (player.socket)
 			{
 				const isWinner = i === winnerIndex
-				this.sendMessage(player.socket, {
+				sendMessage(player.socket, {
 					type: 'gameOver',
 					winner: winner as 'player1' | 'player2',
 					lives1: gameState.players[0]?.lives || 0,
@@ -388,7 +389,7 @@ export class GameRoomManager
 		for (const player of room.players)
 		{
 			if (player.socket)
-				this.sendMessage(player.socket, { type: 'gameState', data: stateMessage })
+				sendMessage(player.socket, { type: 'gameState', data: stateMessage })
 		}
 	}
 
@@ -581,7 +582,7 @@ export class GameRoomManager
 				const p = room.players[i];
 				if (p?.socket)
 				{
-					this.sendMessage(p.socket, {
+					sendMessage(p.socket, {
 						type: 'gameOver',
 						winner: `player${winnerIndex + 1}` as 'player1' | 'player2',
 						lives1: gameState.players[0]?.lives || 0,
@@ -682,7 +683,7 @@ export class GameRoomManager
 			const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
 			
 			if (room.player1.socket)
-				this.sendMessage(room.player1.socket, { 
+				sendMessage(room.player1.socket, { 
 					type: 'gameOver', 
 					winner, 
 					lives1: p1.lives, 
@@ -691,7 +692,7 @@ export class GameRoomManager
 					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
 				})
 			if (room.player2.socket && room.player2.id !== 'AI')
-				this.sendMessage(room.player2.socket, { 
+				sendMessage(room.player2.socket, { 
 					type: 'gameOver', 
 					winner, 
 					lives1: p1.lives, 
@@ -737,16 +738,11 @@ export class GameRoomManager
 			fruits: gameState.fruits
 		}
 		if (room.player1.socket)
-			this.sendMessage(room.player1.socket, { type: 'gameState', data: stateMessage })
+			sendMessage(room.player1.socket, { type: 'gameState', data: stateMessage })
 		if (room.player2.socket)
-			this.sendMessage(room.player2.socket, { type: 'gameState', data: stateMessage })
+			sendMessage(room.player2.socket, { type: 'gameState', data: stateMessage })
 		if (room.tournamentMatch?.onUpdate)
 			room.tournamentMatch.onUpdate();
 	}
 
-	private sendMessage(socket: WebSocket, message: WebSocketMessage): void
-	{
-		if (socket && socket.readyState === socket.OPEN)
-			socket.send(JSON.stringify(message))
-	}
 }

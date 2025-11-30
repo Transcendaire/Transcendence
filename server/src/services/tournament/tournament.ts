@@ -34,6 +34,7 @@ export class Tournament {
 	private status: TournamentStatus = TournamentStatus.CREATED;
 	private players: Map<string, TournamentPlayer> = new Map();
 	private settings: CustomGameSettings;
+	private lastBroadcastTime: number = 0;
 
 	public readonly id: string =  "";
 	public readonly name: string = "";
@@ -320,12 +321,81 @@ export class Tournament {
 		player2.status = 'playing';
 		match.status = 'playing';
 		
+		this.sendCountdown(player1.socket, player2.alias, player2.socket, player1.alias, () => {
+			this.startMatchAfterCountdown(match, player1, player2);
+		});
+	}
+
+	/**
+	 * @brief Send countdown to both players before match starts
+	 * @param socket1 First player socket
+	 * @param opponent1Name Name of first player's opponent
+	 * @param socket2 Second player socket  
+	 * @param opponent2Name Name of second player's opponent
+	 * @param onComplete Callback when countdown finishes
+	 */
+	private sendCountdown(
+		socket1: WebSocket,
+		opponent1Name: string,
+		socket2: WebSocket | null,
+		opponent2Name: string,
+		onComplete: () => void
+	): void
+	{
+		if (socket1 && socket1.readyState === 1)
+			this.sendMessage(socket1, { type: 'tournamentPrepare', playerRole: 'player1', opponentName: opponent1Name });
+		if (socket2 && socket2.readyState === 1)
+			this.sendMessage(socket2, { type: 'tournamentPrepare', playerRole: 'player2', opponentName: opponent2Name });
+		
+		setTimeout(() => this.startCountdownSequence(socket1, opponent1Name, socket2, opponent2Name, onComplete), 500);
+	}
+
+	/**
+	 * @brief Start the 3-2-1 countdown sequence
+	 */
+	private startCountdownSequence(
+		socket1: WebSocket,
+		opponent1Name: string,
+		socket2: WebSocket | null,
+		opponent2Name: string,
+		onComplete: () => void
+	): void
+	{
+		let countdown = 3;
+		
+		const sendCount = () => {
+			if (socket1 && socket1.readyState === 1)
+				this.sendMessage(socket1, { type: 'tournamentCountdown', opponentName: opponent1Name, countdown });
+			if (socket2 && socket2.readyState === 1)
+				this.sendMessage(socket2, { type: 'tournamentCountdown', opponentName: opponent2Name, countdown });
+			
+			if (countdown > 0)
+			{
+				countdown--;
+				setTimeout(sendCount, 1000);
+			}
+			else
+				onComplete();
+		};
+		
+		sendCount();
+	}
+
+	/**
+	 * @brief Actually start the match after countdown completes
+	 * @param match Match to start
+	 * @param player1 First player
+	 * @param player2 Second player
+	 */
+	private startMatchAfterCountdown(match: Match, player1: TournamentPlayer, player2: TournamentPlayer): void
+	{
+		const gameRoomManager = this.matchmakingService.getGameRoomManager();
 		const isFinalMatch = this.currRound === this.maxRound - 1;
 		console.log(`[TOURNAMENT] Match is final: ${isFinalMatch} (round ${this.currRound + 1}/${this.maxRound})`);
 		
 		const gameId = gameRoomManager.createGame(
-			{ socket: player1.socket, name: player1.alias, id: player1.id },
-			{ socket: player2.socket, name: player2.alias, id: player2.id },
+			{ socket: player1.socket!, name: player1.alias, id: player1.id },
+			{ socket: player2.socket!, name: player2.alias, id: player2.id },
 			this.settings.powerUpsEnabled,
 			this.settings.fruitFrequency,
 			this.settings.lifeCount,
@@ -336,14 +406,15 @@ export class Tournament {
 				onComplete: (winnerId: string, score1: number, score2: number) =>
 				{
 					this.completeMatch(match, winnerId, score1, score2);
-				}
+				},
+				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers()
 			}
 		);
 		console.log(`[TOURNAMENT] Game ${gameId} started with powerUps: ${this.settings.powerUpsEnabled}`);
 
 		console.log(`[TOURNAMENT] Started game ${gameId} for match ${match.id}`);
 		
-		if (player1.socket.readyState === 1)
+		if (player1.socket && player1.socket.readyState === 1)
 		{
 			player1.socket.send(JSON.stringify({
 				type: 'gameStart',
@@ -352,7 +423,7 @@ export class Tournament {
 			}));
 			console.log(`[TOURNAMENT] Sent gameStart to ${player1.alias} as player1 (custom: ${this.settings.powerUpsEnabled})`);
 		}
-		if (player2.socket.readyState === 1)
+		if (player2.socket && player2.socket.readyState === 1)
 		{
 			player2.socket.send(JSON.stringify({
 				type: 'gameStart',
@@ -363,15 +434,141 @@ export class Tournament {
 		}
 		
 		(match as any).gameId = gameId;
+		this.notifyWaitingPlayers();
+	}
+
+	/**
+	 * @brief Notify waiting players about ongoing matches
+	 */
+	private notifyWaitingPlayers(): void
+	{
 		for (const [alias, player] of this.players.entries())
-		{
 			if (player.status === 'waiting' && player.socket)
-			{
 				this.sendMessage(player.socket, { 
 					type: 'waitingForMatch',
 					message: `Waiting for your match. Current round: ${this.currRound + 1}/${this.maxRound}`
 				});
+	}
+
+	/**
+	 * @brief Find the sibling match for a waiting player
+	 * @param playerAlias Alias of the waiting player
+	 * @returns The match whose winner will face this player, or undefined
+	 * @details In single elimination: matches 2*X and 2*X+1 of round N feed into match X of round N+1
+	 */
+	private getSiblingMatchForPlayer(playerAlias: string): Match | undefined
+	{
+		const currentRound = this.bracket[this.currRound];
+		if (!currentRound)
+			return undefined;
+		
+		let playerMatchIndex = -1;
+		for (let i = 0; i < currentRound.length; i++)
+		{
+			const match = currentRound[i]!;
+			if (match.winnerAlias === playerAlias)
+			{
+				playerMatchIndex = i;
+				break;
 			}
+		}
+		
+		if (playerMatchIndex === -1)
+			return undefined;
+		
+		const siblingIndex = (playerMatchIndex % 2 === 0) ? playerMatchIndex + 1 : playerMatchIndex - 1;
+		const siblingMatch = currentRound[siblingIndex];
+		
+		if (siblingMatch && siblingMatch.status === 'playing')
+			return siblingMatch;
+		
+		return undefined;
+	}
+
+	/**
+	 * @brief Get current match updates for spectators
+	 * @returns Array of ongoing match states
+	 */
+	public getOngoingMatchUpdates(): Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }>
+	{
+		const gameRoomManager = this.matchmakingService.getGameRoomManager();
+		const updates: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }> = [];
+		const currentRound = this.bracket[this.currRound];
+		
+		if (!currentRound)
+			return updates;
+			
+		for (const match of currentRound)
+		{
+			if (match.status !== 'playing')
+				continue;
+			const gameId = (match as any).gameId;
+			if (!gameId)
+				continue;
+			const gameState = gameRoomManager.getGameState(gameId);
+			if (!gameState)
+				continue;
+			updates.push({
+				player1Name: match.player1Alias,
+				player2Name: match.player2Alias,
+				lives1: gameState.players[0]?.lives ?? 0,
+				lives2: gameState.players[1]?.lives ?? 0
+			});
+		}
+		return updates;
+	}
+
+	/**
+	 * @brief Broadcast match updates to waiting players (throttled to 500ms)
+	 */
+	public broadcastMatchUpdatesToWaitingPlayers(): void
+	{
+		const now = Date.now();
+		if (now - this.lastBroadcastTime < 500)
+			return;
+		this.lastBroadcastTime = now;
+		
+		const gameRoomManager = this.matchmakingService.getGameRoomManager();
+		const allUpdates = this.getOngoingMatchUpdates();
+		if (allUpdates.length === 0)
+			return;
+			
+		for (const [alias, player] of this.players.entries())
+		{
+			if (player.status !== 'waiting' || !player.socket)
+				continue;
+				
+			const siblingMatch = this.getSiblingMatchForPlayer(alias);
+			let siblingMatchUpdate: { player1Name: string; player2Name: string; lives1: number; lives2: number } | undefined;
+			
+			if (siblingMatch && siblingMatch.status === 'playing')
+			{
+				const gameId = (siblingMatch as any).gameId;
+				if (gameId)
+				{
+					const gameState = gameRoomManager.getGameState(gameId);
+					if (gameState)
+					{
+						siblingMatchUpdate = {
+							player1Name: siblingMatch.player1Alias,
+							player2Name: siblingMatch.player2Alias,
+							lives1: gameState.players[0]?.lives ?? 0,
+							lives2: gameState.players[1]?.lives ?? 0
+						};
+					}
+				}
+			}
+			
+			const otherMatches = allUpdates.filter(u => 
+				!siblingMatchUpdate || 
+				(u.player1Name !== siblingMatchUpdate.player1Name || u.player2Name !== siblingMatchUpdate.player2Name)
+			);
+			
+			this.sendMessage(player.socket, { 
+				type: 'tournamentMatchUpdate', 
+				siblingMatch: siblingMatchUpdate,
+				otherMatches 
+			});
 		}
 	}
 
@@ -383,13 +580,25 @@ export class Tournament {
 	 */
 	private startAIMatch(match: Match, humanPlayer: TournamentPlayer, botPlayer: TournamentPlayer): void
 	{
-		const gameRoomManager = this.matchmakingService.getGameRoomManager()
-		const humanIsPlayer1 = match.player1Id === humanPlayer.id
-
 		humanPlayer.status = 'playing'
 		botPlayer.status = 'playing'
 		match.status = 'playing'
 
+		this.sendCountdown(humanPlayer.socket!, botPlayer.alias, null, '', () => {
+			this.startAIMatchAfterCountdown(match, humanPlayer, botPlayer);
+		});
+	}
+
+	/**
+	 * @brief Actually start the AI match after countdown completes
+	 * @param match Match to start
+	 * @param humanPlayer Human player
+	 * @param botPlayer Bot player
+	 */
+	private startAIMatchAfterCountdown(match: Match, humanPlayer: TournamentPlayer, botPlayer: TournamentPlayer): void
+	{
+		const gameRoomManager = this.matchmakingService.getGameRoomManager()
+		const humanIsPlayer1 = match.player1Id === humanPlayer.id
 		const isFinalMatch = this.currRound === this.maxRound - 1
 		console.log(`[TOURNAMENT] AI Match: ${humanPlayer.alias} vs ${botPlayer.alias} (bot)`)
 
@@ -415,7 +624,8 @@ export class Tournament {
 						this.completeMatch(match, actualWinnerId, lives1, lives2)
 					else
 						this.completeMatch(match, actualWinnerId, lives2, lives1)
-				}
+				},
+				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers()
 			}
 		}
 
@@ -432,16 +642,7 @@ export class Tournament {
 		}
 
 		(match as any).gameId = gameId
-		for (const [alias, player] of this.players.entries())
-		{
-			if (player.status === 'waiting' && player.socket)
-			{
-				this.sendMessage(player.socket, {
-					type: 'waitingForMatch',
-					message: `Waiting for your match. Current round: ${this.currRound + 1}/${this.maxRound}`
-				})
-			}
-		}
+		this.notifyWaitingPlayers();
 	}
 
 	/**
@@ -536,8 +737,6 @@ export class Tournament {
 	private sendMessage(socket: WebSocket, message: any): void
 	{
 		if (socket && socket.readyState === socket.OPEN)
-		{
 			socket.send(JSON.stringify(message));
-		}
 	}
 }

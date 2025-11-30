@@ -28,6 +28,49 @@ export class PowerUpManager
     }
 
     /**
+     * @brief Handle power-up logic when a player hits the ball
+     * @param player Player who hit the ball
+     * @param ball Game ball
+     * @param cloneBalls Array of clone balls
+     * @param allPlayers All players to clear pending power-ups from others
+     */
+    public static handlePaddleHit(
+        player: Player,
+        ball: Ball,
+        cloneBalls: CloneBall[],
+        allPlayers?: Player[]
+    ): void
+    {
+
+
+        const pendingPowerUps = player.consumePendingPowerUps();
+        if (pendingPowerUps.length > 0)
+        {
+            console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
+            for (const powerUp of pendingPowerUps)
+                PowerUpManager.activatePowerUp(player, powerUp, ball, cloneBalls);
+        }
+
+        if (player.canGainCharge())
+        {
+            if (player.hitStreak === 0 && !player.chargingPowerUp)
+            {
+                const selected = player.selectRandomChargingPowerUp();
+                if (selected)
+                    player.incrementHitStreak();
+            }
+            else if (player.chargingPowerUp)
+                player.incrementHitStreak();
+            console.log(`[SERVER] ${player.name} hit streak: ${player.hitStreak}`);
+            if (player.hitStreak >= 3 && player.chargingPowerUp)
+            {
+                PowerUpManager.awardRandomPowerUp(player);
+                player.resetHitStreak();
+            }
+        }
+    }
+
+    /**
      * @brief Activate power-up effect
      * @param player Player using the power-up
      * @param powerUp Power-up to activate

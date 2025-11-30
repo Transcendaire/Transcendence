@@ -21,7 +21,7 @@ export type PlayerInput = {
  * @brief Game logic service handling gameplay mechanics
  * 
  * Supports both classic 2-player mode (rectangle) and Battle Royale mode
- * (3-6 players with polygon arena).
+ * (3-16 players with polygon arena).
  */
 export class GameService
 {
@@ -42,6 +42,7 @@ export class GameService
 	private geometry: GeometryManager | null;
 	private polygonData: PolygonData | null;
 	private activePlayerCount: number;
+	private _switchedToClassic: boolean;
 
 	/**
 	 * @brief Constructor
@@ -79,6 +80,7 @@ export class GameService
 		this.lifeCount = lifeCount;
 		this.geometry = null;
 		this.polygonData = null;
+		this._switchedToClassic = false;
 		if (playerCount > 2)
 		{
 			const centerX = canvasWidth / 2;
@@ -97,6 +99,20 @@ export class GameService
 	public isPolygonMode(): boolean
 	{
 		return this.geometry !== null && this.polygonData !== null;
+	}
+
+	/**
+	 * @brief Check if game switched from polygon to classic mode
+	 * @returns True if switched to classic, resets flag after read
+	 */
+	public hasSwitchedToClassic(): boolean
+	{
+		if (this._switchedToClassic)
+		{
+			this._switchedToClassic = false;
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -125,20 +141,15 @@ export class GameService
 	 */
 	private initGame(playerCount: number, lifeCount: number, playerNames: string[]): void
 	{
-		const defaultNames = [
-			'Player 1', 'Player 2', 'Player 3',
-			'Player 4', 'Player 5', 'Player 6'
-		];
-
 		this.players = [];
 		if (playerCount === 2)
 		{
 			this.players.push(
-				new Player(playerNames[0] ?? defaultNames[0]!, paddleOffset, lifeCount)
+				new Player(playerNames[0] ?? 'Player 1', paddleOffset, lifeCount)
 			);
 			this.players.push(
 				new Player(
-					playerNames[1] ?? defaultNames[1]!,
+					playerNames[1] ?? 'Player 2',
 					this.canvasWidth - paddleOffset - 10,
 					lifeCount
 				)
@@ -152,7 +163,7 @@ export class GameService
 		const center = this.polygonData.center;
 		for (let i = 0; i < playerCount; i++)
 		{
-			const name = playerNames[i] ?? defaultNames[i]!;
+			const name = playerNames[i] ?? `Player ${i + 1}`;
 			const sideData = this.polygonData.sides[i]!;
 			const player = new Player(name, sideData.center.x, lifeCount);
 			player.paddle.setPolygonCenter(center);
@@ -311,6 +322,7 @@ export class GameService
 		console.log('[BR] Switching to classic 2-player mode');
 		this.geometry = null;
 		this.polygonData = null;
+		this._switchedToClassic = true;
 
 		const activePlayers = this.players.filter(p => !p.isEliminated());
 		if (activePlayers.length !== 2)
@@ -357,7 +369,8 @@ export class GameService
 				this.lastTouchedPlayerIndex,
 				i,
 				deltaTime,
-				this.isCustomMode
+				this.isCustomMode,
+				this.players
 			);
 
 			if (hit)
@@ -379,10 +392,17 @@ export class GameService
 			const player = this.getActivePlayerAtSide(sideHit);
 			if (player)
 			{
+				const scorer = this.lastTouchedPlayerIndex >= 0
+					? this.players[this.lastTouchedPlayerIndex]
+					: null;
+
 				const eliminated = ScoringManager.handlePolygonScore(
 					player,
 					this.ball,
-					this.polygonData.center
+					this.polygonData.center,
+					scorer,
+					this.isCustomMode,
+					this.players
 				);
 
 				this.lastTouchedPlayerIndex = -1;

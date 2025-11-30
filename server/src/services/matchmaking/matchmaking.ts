@@ -10,7 +10,7 @@ import { TournamentManagerService } from '../tournament/tournamentManager.js'
  * @brief Main matchmaking orchestrator
  * @details Delegates to specialized services:
  * - QuickMatchService: 1v1 quick matches (normal/custom)
- * - LobbyManager: Multiplayer lobbies and tournaments (2-6 players)
+ * - LobbyManager: Multiplayer lobbies and tournaments (2-16 players)
  * - GameRoomManager: Active game rooms and loops
  * - TournamentManagerService: Tournament bracket management
  */

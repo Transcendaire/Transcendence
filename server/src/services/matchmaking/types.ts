@@ -41,7 +41,7 @@ export interface BattleRoyalePlayer
 }
 
 /**
- * @brief Battle Royale game room for 3-6 players
+ * @brief Battle Royale game room for 3-16 players
  */
 export interface BattleRoyaleRoom
 {
@@ -75,5 +75,6 @@ export interface GameRoom
 		matchId: string
 		isFinalMatch: boolean
 		onComplete: (winnerId: string, score1: number, score2: number) => void
+		onUpdate?: () => void
 	}
 }

@@ -4,7 +4,7 @@ import { GameRoomManager } from './gameRoom.js'
 import { TournamentManagerService } from '../tournament/tournamentManager.js'
 
 /**
- * @brief Manages custom game lobbies for 2-6 players
+ * @brief Manages custom game lobbies for 2-16 players
  * @details Handles lobby creation, player management, bot addition,
  * ownership transfer, and game start with strict security checks
  */
@@ -172,17 +172,7 @@ export class LobbyManager
 			return "Only lobby owner can add bots"
 		if (lobby.players.length >= lobby.maxPlayers)
 			return "Lobby is full"
-		const botCount = lobby.players.filter(p => p.isBot).length
-		const botId = `bot-${Date.now()}-${Math.random().toString(36)
-			.substr(2, 5)}`
-		const bot: LobbyPlayer = {
-			id: botId,
-			name: `Bot #${botCount + 1}`,
-			isBot: true,
-			isReady: true
-		}
-
-		lobby.players.push(bot)
+		this.addBotToLobby(lobby)
 		this.broadcastLobbyUpdate(lobby)
 		this.broadcastLobbyListToAll()
 		console.log(`[LOBBY] Bot added to ${lobbyId} (${lobby.players.length}/${lobby.maxPlayers})`)
@@ -222,6 +212,24 @@ export class LobbyManager
 	}
 
 	/**
+	 * @brief Add bot directly to lobby
+	 * @param lobby Target lobby
+	 */
+	private addBotToLobby(lobby: Lobby): void
+	{
+		const botCount = lobby.players.filter(p => p.isBot).length
+		const botId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+		const bot: LobbyPlayer = {
+			id: botId,
+			name: `Bot #${botCount + 1}`,
+			isBot: true,
+			isReady: true
+		}
+
+		lobby.players.push(bot)
+	}
+
+	/**
 	 * @brief Start lobby game
 	 * @param socket Requester's WebSocket
 	 * @param lobbyId Target lobby ID
@@ -240,8 +248,10 @@ export class LobbyManager
 			return "Need at least 2 players"
 		if (lobby.type === 'tournament' && lobby.players.length > 16)
 			return "Maximum 16 players for tournaments"
-		if (lobby.type === 'battleroyale' && lobby.players.length > 6)
-			return "Maximum 6 players allowed"
+		if (lobby.type === 'battleroyale' && lobby.players.length > 16)
+			return "Maximum 16 players allowed"
+		if (lobby.type === 'tournament' && lobby.players.length % 2 !== 0)
+			this.addBotToLobby(lobby)
 		
 		lobby.status = 'starting'
 		console.log(`[LOBBY] Starting ${lobby.type} ${lobbyId} with ${lobby.players.length} players`)
@@ -461,16 +471,11 @@ export class LobbyManager
 	private broadcastLobbyUpdate(lobby: Lobby): void
 	{
 		const sockets = this.lobbyToSockets.get(lobby.id)
-		const message = JSON.stringify({
-			type: 'lobbyUpdate',
-			lobby: lobby
-		})
 
 		if (!sockets)
 			return
 		for (const socket of sockets)
-			if (socket.readyState === WebSocket.OPEN)
-				socket.send(message)
+			this.sendMessage(socket, { type: 'lobbyUpdate', lobby: lobby })
 	}
 
 	/**
@@ -480,17 +485,10 @@ export class LobbyManager
 	private broadcastLobbyListToAll(): void
 	{
 		const lobbies = this.getOpenLobbies()
-		const message = JSON.stringify({
-			type: 'lobbyList',
-			lobbies: lobbies
-		})
 
 		console.log(`[LOBBY] Broadcasting lobby list to ${this.allSockets.size} clients`)
 		for (const socket of this.allSockets.keys())
-		{
-			if (socket.readyState === WebSocket.OPEN)
-				socket.send(message)
-		}
+			this.sendMessage(socket, { type: 'lobbyList', lobbies: lobbies })
 	}
 
 	/**

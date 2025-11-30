@@ -22,16 +22,20 @@ export const BR_PADDLE_LENGTH_BY_PLAYERS: Record<number, number> = {
 	3: 180,
 	4: 120,
 	5: 100,
-	6: 90
+	6: 90,
+	7: 80,
+	8: 70,
+	9: 65,
+	10: 60,
+	11: 55,
+	12: 50,
+	13: 48,
+	14: 45,
+	15: 43,
+	16: 40
 };
 
-export const GEOMETRY_CONFIG = {
-	2: { shape: 'rectangle', radius: 400 },
-	3: { shape: 'triangle', radius: 380 },
-	4: { shape: 'square', radius: 400 },
-	5: { shape: 'pentagon', radius: 380 },
-	6: { shape: 'hexagon', radius: 400 }
-} as const;
+export const BR_MAX_PLAYERS = 16;
 
 export const FRUIT_FREQUENCY = {
 	low: 15000,

@@ -77,6 +77,8 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
         gameState.setBall(null);
         gameState.setCloneBalls([]);
         gameState.setFruits([]);
+        gameState.setIsWaitingForTournamentMatch(true);
+        gameState.setGameRunning(true);
     }
     else
     {
@@ -109,6 +111,10 @@ export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
     gameState.setPolygonData(null);
     gameState.setPlayerIndex(0);
     gameState.setAllPlayers([]);
+    gameState.setTournamentCountdown(null);
+    gameState.setTournamentSiblingMatch(null);
+    gameState.setTournamentOtherMatches([]);
+    gameState.setIsWaitingForTournamentMatch(false);
     
     if (gameState.animationFrameId !== null) {
         cancelAnimationFrame(gameState.animationFrameId);

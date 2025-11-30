@@ -309,23 +309,6 @@ export class GeometryManager
 		return normal;
 	}
 
-	/**
-	 * @brief Reflect velocity vector off a side
-	 * @param velocity Current velocity
-	 * @param playerCount Number of sides (players)
-	 * @param sideIndex Index of the side to bounce off
-	 * @returns Reflected velocity
-	 */
-	public reflectOffSide(velocity: Point2D, playerCount: number, sideIndex: number): Point2D
-	{
-		const normal = this.getSideNormal(playerCount, sideIndex);
-		const dot = velocity.x * normal.x + velocity.y * normal.y;
-
-		return {
-			x: velocity.x - 2 * dot * normal.x,
-			y: velocity.y - 2 * dot * normal.y
-		};
-	}
 
 	/**
 	 * @brief Reflect velocity off a corner circle (like bouncing off a pillar)
@@ -402,24 +385,3 @@ export class GeometryManager
 	}
 }
 
-/**
- * @brief Check if point is inside quadrilateral using cross product
- * @param point Point to check
- * @param quad Four corners of quadrilateral
- * @returns True if inside
- */
-export function isPointInQuad(point: Point2D, quad: Point2D[]): boolean
-{
-	let inside = true;
-
-	for (let i = 0; i < 4; i++)
-	{
-		const p1 = quad[i]!;
-		const p2 = quad[(i + 1) % 4]!;
-		const cross = (p2.x - p1.x) * (point.y - p1.y) -
-			(p2.y - p1.y) * (point.x - p1.x);
-		if (cross < 0)
-			inside = false;
-	}
-	return inside;
-}

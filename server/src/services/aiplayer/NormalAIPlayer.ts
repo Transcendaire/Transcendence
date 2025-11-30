@@ -3,11 +3,7 @@ import { Player } from '@app/shared/models/Player.js'
 import { Ball } from '@app/shared/models/Ball.js'
 import { CloneBall } from '@app/shared/models/CloneBall.js'
 import { PowerUpFruit } from '@app/shared/types.js'
-import {
-	canvasWidth,
-	canvasHeight,
-	paddleOffset
-} from '@app/shared/consts.js'
+import { canvasHeight } from '@app/shared/consts.js'
 
 /**
  * @brief Normal AI using direct ball velocities from game state
@@ -36,16 +32,21 @@ export class NormalAIPlayer extends AIPlayer
 		if (!ball)
 			return
 		this.usePowerUps(gameState)
-		this.decideUsingVelocity(ball)
+		this.decideUsingVelocity(ball, gameState.players)
 	}
 
-	private decideUsingVelocity(b: Ball): void
+	private decideUsingVelocity(b: Ball, players: Player[]): void
 	{
 		if (!this.isBallComing(b.velocityX))
 			return this.goToMiddle()
-		const targetX = this.playerId === 'player1'
-			? paddleOffset + 10
-			: canvasWidth - paddleOffset - 10
+
+		const playerIndex = this.playerId === 'player1' ? 0 : 1
+		const activePlayers = players.filter(p => !p.isEliminated())
+		const myPlayer = activePlayers[playerIndex]
+		if (!myPlayer)
+			return this.goToMiddle()
+
+		const targetX = myPlayer.paddle.positionX + myPlayer.paddle.width / 2
 		const timeToTarget = (targetX - b.positionX) / b.velocityX
 		if (!isFinite(timeToTarget) || timeToTarget <= 0)
 			return this.goToMiddle()

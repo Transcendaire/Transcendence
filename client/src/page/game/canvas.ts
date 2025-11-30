@@ -2,6 +2,7 @@ import { PowerUpFruit, Point2D, PlayerState } from "@shared/types";
 import { BR_PADDLE_LENGTH, BR_PADDLE_WIDTH } from "@shared/consts";
 import { COLORS, FONTS } from "../../components/consts";
 import * as gameState from './gameState';
+import { wsClient } from "../../components/WebSocketClient";
 import {
 	drawPolygonArena,
 	drawCornerZones,
@@ -37,6 +38,18 @@ export function render(): void
 
 	gameState.ctx.fillStyle = COLORS.SONPI16_BLACK;
 	gameState.ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
+
+	if (gameState.tournamentCountdown)
+	{
+		renderTournamentCountdown();
+		return;
+	}
+
+	if (gameState.isWaitingForTournamentMatch)
+	{
+		renderWaitingForMatch();
+		return;
+	}
 
 	if (gameState.isBattleRoyale)
 	{
@@ -131,10 +144,13 @@ function renderBattleRoyaleClassicMode(): void
 	renderHearts('player1', player1.lives);
 	renderHearts('player2', player2.lives);
 
-	if (player1.itemSlots)
-		renderPowerUps(p1Role, player1.itemSlots, player1.selectedSlots, undefined, player1.hitStreak, player1.chargingPowerUp);
-	if (player2.itemSlots)
-		renderPowerUps(p2Role, player2.itemSlots, player2.selectedSlots, undefined, player2.hitStreak, player2.chargingPowerUp);
+	if (wsClient.isCustomGame())
+	{
+		if (player1.itemSlots)
+			renderPowerUps(p1Role, player1.itemSlots, player1.selectedSlots, undefined, player1.hitStreak, player1.chargingPowerUp);
+		if (player2.itemSlots)
+			renderPowerUps(p2Role, player2.itemSlots, player2.selectedSlots, undefined, player2.hitStreak, player2.chargingPowerUp);
+	}
 }
 
 /**
@@ -485,7 +501,7 @@ function renderPolygonUI(
 		for (let h = 0; h < lives; h++)
 			ctx.fillText('♥', startX + h * heartSpacing, -8);
 
-		if (player.itemSlots)
+		if (wsClient.isCustomGame() && player.itemSlots)
 		{
 			renderPolygonPowerUpSlots(
 				ctx,
@@ -594,4 +610,118 @@ function renderPolygonPowerUpSlots(
 
 	ctx.globalAlpha = 1;
 	ctx.globalCompositeOperation = 'source-over';
+}
+
+/**
+ * @brief Render tournament countdown before match starts
+ */
+function renderTournamentCountdown(): void
+{
+	const ctx = gameState.ctx;
+	const canvas = gameState.canvas;
+	const countdown = gameState.tournamentCountdown;
+	
+	if (!ctx || !canvas || !countdown) return;
+	
+	ctx.fillStyle = COLORS.SONPI16_BLACK;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	
+	ctx.fillStyle = COLORS.SONPI16_ORANGE;
+	ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
+	ctx.fillText('Vous allez jouer contre', canvas.width / 2, canvas.height / 2 - 80);
+	
+	ctx.fillStyle = COLORS.SONPI16_BLUE;
+	ctx.font = '48px ' + FONTS.QUENCY_PIXEL;
+	ctx.fillText(countdown.opponentName, canvas.width / 2, canvas.height / 2 - 20);
+	
+	ctx.fillStyle = COLORS.SONPI16_ORANGE;
+	ctx.font = '96px ' + FONTS.QUENCY_PIXEL;
+	const countText = countdown.countdown > 0 ? countdown.countdown.toString() : 'GO!';
+	ctx.fillText(countText, canvas.width / 2, canvas.height / 2 + 80);
+}
+
+/**
+ * @brief Render waiting screen with ongoing match updates
+ */
+function renderWaitingForMatch(): void
+{
+	const ctx = gameState.ctx;
+	const canvas = gameState.canvas;
+	const siblingMatch = gameState.tournamentSiblingMatch;
+	const otherMatches = gameState.tournamentOtherMatches;
+	
+	if (!ctx || !canvas) return;
+	
+	ctx.fillStyle = COLORS.SONPI16_BLACK;
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
+	
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	
+	ctx.fillStyle = COLORS.SONPI16_ORANGE;
+	ctx.font = '36px ' + FONTS.QUENCY_PIXEL;
+	ctx.fillText('En attente du prochain match...', canvas.width / 2, 60);
+	
+	let currentY = 120;
+	
+	if (siblingMatch)
+	{
+		ctx.fillStyle = COLORS.SONPI16_ORANGE;
+		ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
+		ctx.fillText('Vous jouerez contre le gagnant de:', canvas.width / 2, currentY);
+		currentY += 50;
+		
+		renderMatchCard(ctx, canvas, siblingMatch, currentY, true);
+		currentY += 120;
+	}
+	
+	if (otherMatches.length > 0)
+	{
+		ctx.fillStyle = COLORS.SONPI16_BLUE;
+		ctx.font = '22px ' + FONTS.QUENCY_PIXEL;
+		ctx.fillText('Autres matchs en cours:', canvas.width / 2, currentY);
+		currentY += 40;
+		
+		for (const match of otherMatches)
+		{
+			renderMatchCard(ctx, canvas, match, currentY, false);
+			currentY += 100;
+		}
+	}
+	else if (!siblingMatch)
+	{
+		ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
+		ctx.fillText('Aucun match en cours', canvas.width / 2, canvas.height / 2);
+	}
+	
+	ctx.textAlign = 'left';
+}
+
+/**
+ * @brief Render a match card with player names and scores
+ */
+function renderMatchCard(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, match: { player1Name: string; player2Name: string; lives1: number; lives2: number }, y: number, isHighlighted: boolean): void
+{
+	const nameColor = isHighlighted ? '#FFD700' : COLORS.SONPI16_BLUE;
+	
+	ctx.fillStyle = nameColor;
+	ctx.font = '28px ' + FONTS.QUENCY_PIXEL;
+	ctx.textAlign = 'right';
+	ctx.fillText(match.player1Name, canvas.width / 2 - 60, y);
+	
+	ctx.fillStyle = COLORS.SONPI16_ORANGE;
+	ctx.textAlign = 'center';
+	ctx.fillText('VS', canvas.width / 2, y);
+	
+	ctx.fillStyle = nameColor;
+	ctx.textAlign = 'left';
+	ctx.fillText(match.player2Name, canvas.width / 2 + 60, y);
+	
+	ctx.fillStyle = COLORS.SONPI16_ORANGE;
+	ctx.font = '40px ' + FONTS.QUENCY_PIXEL;
+	ctx.textAlign = 'center';
+	ctx.fillText(`${match.lives1} - ${match.lives2}`, canvas.width / 2, y + 40);
 }

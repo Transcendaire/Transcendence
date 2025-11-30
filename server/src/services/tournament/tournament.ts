@@ -67,6 +67,21 @@ export class Tournament {
 	}
 
 	/**
+	 * @brief Checks if a socket belongs to a player in the tournament
+	 * @param socket WebSocket connection to check
+	 * @returns True if socket belongs to a tournament player
+	 */
+	public hasPlayerSocket(socket: WebSocket): boolean
+	{
+		for (const player of this.players.values())
+		{
+			if (player.socket === socket)
+				return true;
+		}
+		return false;
+	}
+
+	/**
 	 * @brief Adds a player to the tournament (in-memory and in database)
 	 * @param alias Player's alias
 	 * @param socket Optional WebSocket connection

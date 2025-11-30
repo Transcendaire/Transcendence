@@ -487,6 +487,55 @@ export class GameRoomManager
 	}
 
 	/**
+	 * @brief Check if a player name is in any active 1v1 game
+	 * @param playerName Player's name to check
+	 * @returns True if player is in a game
+	 */
+	public isPlayerNameInGame(playerName: string): boolean
+	{
+		for (const room of this.activeGames.values())
+			if (room.player1.name === playerName || room.player2.name === playerName)
+				return true
+		return false
+	}
+
+	/**
+	 * @brief Check if a player name is in any Battle Royale game
+	 * @param playerName Player's name to check
+	 * @returns True if player is in a BR game
+	 */
+	public isPlayerNameInBattleRoyale(playerName: string): boolean
+	{
+		for (const room of this.battleRoyaleGames.values())
+			if (room.players.some(p => p.name === playerName))
+				return true
+		return false
+	}
+
+	/**
+	 * @brief Get the socket of a player by name in any active game
+	 * @param playerName Player's name to find
+	 * @returns WebSocket or undefined
+	 */
+	public getSocketByPlayerName(playerName: string): WebSocket | undefined
+	{
+		for (const room of this.activeGames.values())
+		{
+			if (room.player1.name === playerName)
+				return room.player1.socket
+			if (room.player2.name === playerName)
+				return room.player2.socket
+		}
+		for (const room of this.battleRoyaleGames.values())
+		{
+			const player = room.players.find(p => p.name === playerName)
+			if (player?.socket)
+				return player.socket
+		}
+		return undefined
+	}
+
+	/**
 	 * @brief Find Battle Royale game by player socket
 	 * @param socket Player's WebSocket
 	 * @returns BR room and player index or undefined

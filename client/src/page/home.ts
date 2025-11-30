@@ -208,6 +208,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
     const join1v1 = async () => {
         try {
             await wsClient.connect(`ws://${window.location.host}/ws`)
+            wsClient.setPendingAction(() => wsClient.joinGame(playerName))
             wsClient.joinGame(playerName)
         } catch (error) {
             alert("Impossible de se connecter au serveur")
@@ -217,6 +218,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
     const joinCustom = async () => {
         try {
             await wsClient.connect(`ws://${window.location.host}/ws`)
+            wsClient.setPendingAction(() => wsClient.joinCustomGame(playerName))
             wsClient.joinCustomGame(playerName)
         } catch (error) {
             alert("Impossible de se connecter au serveur")
@@ -248,6 +250,7 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
             const selectedMaxScore = parseInt(maxScore());
             console.log(`game ${selectedDifficulty === 0 ? 'easy' : 'normal'} ${selectedPowerUps === true ? 'avec' : 'sans'} pouvoir de ${selectedMaxScore} points max `);
             await wsClient.connect(`ws://${window.location.host}/ws`)
+            wsClient.setPendingAction(() => wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore))
             wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore)
         } catch (error) {
             alert("Impossible de se connecter au serveur")
@@ -349,6 +352,48 @@ function setupWebsocket(waitingModal: HTMLElement) {
     wsClient.onPlayerJoined = (playerCount: number) => {
         const playerCountSpan = getEl("playerCount");
         playerCountSpan.textContent = playerCount.toString();
+    };
+
+    wsClient.onAlreadyConnected = (name: string) => {
+        hide(waitingModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà connecté ailleurs avec le nom "${name}".\n\n` +
+            `Voulez-vous déconnecter l'autre session ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInLobby = (name: string) => {
+        hide(waitingModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà dans un lobby avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter l'autre lobby et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInGame = (name: string) => {
+        hide(waitingModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà en jeu avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter la partie et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onDisconnectedByOtherSession = () => {
+        alert('Vous avez été déconnecté car une autre session a pris le relais.');
+        wsClient.disconnect();
+        hide(waitingModal);
     };
 }
 

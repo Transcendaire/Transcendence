@@ -17,6 +17,7 @@ import { TournamentManagerService } from '../tournament/tournamentManager.js'
 export class MatchmakingService
 {
 	private playerSockets: Map<WebSocket, Player> = new Map()
+	private playerNameToSocket: Map<string, WebSocket> = new Map()
 	private gameRoomManager: GameRoomManager
 	private quickMatch: QuickMatchService
 	private lobbyManager: LobbyManager
@@ -36,6 +37,87 @@ export class MatchmakingService
 	}
 
 	/**
+	 * @brief Check if player name is already connected
+	 * @param socket New socket trying to connect
+	 * @param playerName Player name to check
+	 * @returns True if duplicate found (message sent), false if OK to proceed
+	 */
+	private checkDuplicateConnection(socket: WebSocket, playerName: string): boolean
+	{
+		const existingSocket = this.playerNameToSocket.get(playerName)
+		if (existingSocket && existingSocket !== socket && existingSocket.readyState === existingSocket.OPEN)
+		{
+			console.log(`[MATCHMAKING] Duplicate connection attempt for ${playerName}`)
+			this.sendMessage(socket, { type: 'alreadyConnected', playerName })
+			return true
+		}
+		return false
+	}
+
+	/**
+	 * @brief Force disconnect existing session and connect new one
+	 * @param newSocket New socket requesting connection
+	 * @param playerName Player name
+	 */
+	private handleForceDisconnect(newSocket: WebSocket, playerName: string): void
+	{
+		const lobbySocket = this.lobbyManager.getSocketByPlayerName(playerName)
+		if (lobbySocket && lobbySocket !== newSocket)
+		{
+			console.log(`[MATCHMAKING] Force disconnecting lobby session for ${playerName}`)
+			this.sendMessage(lobbySocket, { type: 'disconnectedByOtherSession' })
+			this.lobbyManager.removePlayerByName(playerName)
+			lobbySocket.close()
+		}
+
+		const gameSocket = this.gameRoomManager.getSocketByPlayerName(playerName)
+		if (gameSocket && gameSocket !== newSocket && gameSocket !== lobbySocket)
+		{
+			console.log(`[MATCHMAKING] Force disconnecting game session for ${playerName}`)
+			this.sendMessage(gameSocket, { type: 'disconnectedByOtherSession' })
+			this.removePlayer(gameSocket)
+			gameSocket.close()
+		}
+
+		const existingSocket = this.playerNameToSocket.get(playerName)
+		if (existingSocket && existingSocket !== newSocket && 
+			existingSocket !== lobbySocket && existingSocket !== gameSocket)
+		{
+			console.log(`[MATCHMAKING] Force disconnecting existing session for ${playerName}`)
+			this.sendMessage(existingSocket, { type: 'disconnectedByOtherSession' })
+			this.removePlayer(existingSocket)
+			existingSocket.close()
+		}
+		this.playerNameToSocket.set(playerName, newSocket)
+	}
+
+	/**
+	 * @brief Check if player is currently in an active game or tournament
+	 * @param socket Player's WebSocket connection
+	 * @returns True if player is in a game (1v1, Battle Royale, or active tournament)
+	 */
+	private isPlayerInActiveGame(socket: WebSocket): boolean
+	{
+		const inGame = this.gameRoomManager.findGameByPlayer(socket)
+		const inBR = this.gameRoomManager.findBattleRoyaleByPlayer(socket)
+		const inTournament = this.tournamentManager.isPlayerInActiveTournament(socket)
+		return !!(inGame || inBR || inTournament)
+	}
+
+	/**
+	 * @brief Check if player name is in an active game, BR, or tournament
+	 * @param playerName Player's name to check
+	 * @returns True if player name is in any active game
+	 */
+	private isPlayerNameInActiveGame(playerName: string): boolean
+	{
+		const inGame = this.gameRoomManager.isPlayerNameInGame(playerName)
+		const inBR = this.gameRoomManager.isPlayerNameInBattleRoyale(playerName)
+		const inTournament = this.tournamentManager.isPlayerNameInActiveTournament(playerName)
+		return inGame || inBR || inTournament
+	}
+
+	/**
 	 * @brief Handle incoming WebSocket messages
 	 * @param socket WebSocket connection that sent the message
 	 * @param message Parsed WebSocket message
@@ -44,13 +126,27 @@ export class MatchmakingService
 	{
 		if (!this.playerSockets.has(socket))
 		{
+			const name = message.playerName || 'Anonymous'
 			const tempPlayer = {
 				socket: socket,
-				name: 'Anonymous',
+				name: name,
 				id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 			}
 			this.playerSockets.set(socket, tempPlayer)
-			console.log(`[MATCHMAKING] New socket registered: ${tempPlayer.id}`)
+			console.log(`[MATCHMAKING] New socket registered: ${tempPlayer.id} (${name})`)
+		}
+
+		const actionTypes = ['join', 'joinCustom', 'joinAI', 'createCustomLobby', 'joinLobby']
+		if (message.playerName && actionTypes.includes(message.type))
+		{
+			if (this.checkDuplicateConnection(socket, message.playerName))
+				return
+			const inLobby = this.lobbyManager.isPlayerNameInAnyLobby(message.playerName)
+			const inGame = this.isPlayerNameInActiveGame(message.playerName)
+			if (inLobby)
+				return this.sendMessage(socket, { type: 'alreadyInLobby', playerName: message.playerName })
+			if (inGame)
+				return this.sendMessage(socket, { type: 'alreadyInGame', playerName: message.playerName })
 		}
 
 		switch (message.type)
@@ -105,6 +201,10 @@ export class MatchmakingService
 			case 'requestLobbyList':
 				this.handleRequestLobbyList(socket)
 				break
+			case 'forceDisconnect':
+				if (message.playerName)
+					this.handleForceDisconnect(socket, message.playerName)
+				break
 		}
 	}
 
@@ -133,6 +233,7 @@ export class MatchmakingService
 			id: Math.random().toString(36).substr(2, 9)
 		}
 		this.playerSockets.set(socket, player)
+		this.playerNameToSocket.set(playerName, socket)
 		this.quickMatch.createAIMatch(socket, playerName, isCustom, difficulty, lifeCount)
 	}
 
@@ -153,6 +254,7 @@ export class MatchmakingService
 			id: Math.random().toString(36).substr(2, 9)
 		}
 		this.playerSockets.set(socket, player)
+		this.playerNameToSocket.set(playerName, socket)
 		this.quickMatch.addToQueue(socket, playerName, isCustom)
 	}
 
@@ -165,6 +267,8 @@ export class MatchmakingService
 		const player = this.playerSockets.get(socket)
 		if (!player)
 			return
+		if (player.name)
+			this.playerNameToSocket.delete(player.name)
 		this.quickMatch.removeFromQueue(socket)
 		this.lobbyManager.handleDisconnect(socket)
 		if (this.gameRoomManager.handleBattleRoyaleDisconnect(socket))
@@ -341,6 +445,12 @@ export class MatchmakingService
 	 */
 	private handleStartLobby(socket: WebSocket, lobbyId: string): void
 	{
+		const playerNames = this.lobbyManager.getPlayerNamesInLobby(lobbyId)
+		for (const name of playerNames)
+		{
+			if (this.isPlayerNameInActiveGame(name))
+				return this.sendMessage(socket, { type: 'lobbyError', message: `${name} est déjà en jeu` })
+		}
 		const error = this.lobbyManager.startLobby(socket, lobbyId)
 		if (error)
 			this.sendMessage(socket, { type: 'lobbyError', message: error })

@@ -135,6 +135,7 @@ function updateBattleRoyaleState(serverGameState: GameState): void
 		gameState.ball.velocityY = serverGameState.ball.vy;
 	}
 	gameState.setCloneBalls(serverGameState.cloneBalls || []);
+	gameState.setBalls(serverGameState.balls || []);
 	gameState.setFruits(serverGameState.fruits || []);
 }
 
@@ -184,6 +185,7 @@ function updateClassicGameState(serverGameState: GameState): void
     gameState.ball.velocityY = serverGameState.ball.vy;
 
     gameState.setCloneBalls(serverGameState.cloneBalls || []);
+    gameState.setBalls(serverGameState.balls || []);
     gameState.setFruits(serverGameState.fruits || []);
 
     renderHearts('player1', gameState.player1.lives);

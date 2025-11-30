@@ -76,6 +76,7 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
         gameState.setPlayer2(null);
         gameState.setBall(null);
         gameState.setCloneBalls([]);
+        gameState.setBalls([]);
         gameState.setFruits([]);
         gameState.setIsWaitingForTournamentMatch(true);
         gameState.setGameRunning(true);
@@ -106,6 +107,7 @@ export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
     gameState.setPlayer2(null);
     gameState.setBall(null);
     gameState.setCloneBalls([]);
+    gameState.setBalls([]);
     gameState.setFruits([]);
     gameState.setIsBattleRoyale(false);
     gameState.setPolygonData(null);

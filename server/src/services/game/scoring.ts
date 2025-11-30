@@ -103,10 +103,8 @@ export class ScoringManager
             if (allPlayers)
             {
                 for (const p of allPlayers)
-                {
                     if (!p.isEliminated())
                         p.clearPendingPowerUps();
-                }
             }
 
             if (scorer && scorer !== loser)

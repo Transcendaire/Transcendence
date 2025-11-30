@@ -27,6 +27,7 @@ export class GameService
 {
 	public players: Player[];
 	public ball!: Ball;
+	public balls: Ball[];
 	public cloneBalls: CloneBall[];
 	public fruits: PowerUpFruit[];
 	public fruitSpawnTimer: number;
@@ -70,6 +71,7 @@ export class GameService
 		this.playerCount = playerCount;
 		this.activePlayerCount = playerCount;
 		this.players = [];
+		this.balls = [];
 		this.cloneBalls = [];
 		this.fruits = [];
 		this.fruitSpawnTimer = 0;
@@ -142,6 +144,7 @@ export class GameService
 	private initGame(playerCount: number, lifeCount: number, playerNames: string[]): void
 	{
 		this.players = [];
+		this.balls = [];
 		if (playerCount === 2)
 		{
 			this.players.push(
@@ -171,15 +174,53 @@ export class GameService
 			this.players.push(player);
 		}
 		this.ball = new Ball(center.x, center.y, undefined, true);
+		this.balls.push(this.ball);
+		this.updateBallCount();
+	}
+
+	/**
+	 * @brief Calculate required ball count based on active players
+	 * @returns Number of balls needed (ceil(playerCount / 3))
+	 */
+	private getRequiredBallCount(): number
+	{
+		return Math.ceil(this.activePlayerCount / 3);
+	}
+
+	/**
+	 * @brief Update ball count to match current player count
+	 */
+	private updateBallCount(): void
+	{
+		if (!this.polygonData)
+			return;
+
+		const required = this.getRequiredBallCount();
+		const center = this.polygonData.center;
+
+		while (this.balls.length < required)
+		{
+			const newBall = new Ball(center.x, center.y, undefined, true);
+			this.balls.push(newBall);
+			console.log(`[BR] Added ball, total: ${this.balls.length}`);
+		}
+		while (this.balls.length > required)
+		{
+			this.balls.pop();
+			console.log(`[BR] Removed ball, total: ${this.balls.length}`);
+		}
+		if (this.balls.length > 0)
+			this.ball = this.balls[0]!;
 	}
 
 	/**
 	 * @brief Get current game state
-	 * @returns Object containing players, ball, clones, fruits, and polygon data
+	 * @returns Object containing players, ball, balls, clones, fruits, and polygon data
 	 */
 	public getGameState(): {
 		players: Player[];
 		ball: Ball;
+		balls: Ball[];
 		cloneBalls: CloneBall[];
 		fruits: PowerUpFruit[];
 		polygonData: PolygonData | null;
@@ -188,6 +229,7 @@ export class GameService
 		return {
 			players: this.players,
 			ball: this.ball,
+			balls: this.balls,
 			cloneBalls: this.cloneBalls,
 			fruits: this.fruits,
 			polygonData: this.polygonData
@@ -309,9 +351,9 @@ export class GameService
 		}
 
 		FruitManager.relocateFruits(this.fruits, this.polygonData);
-
-		if (this.polygonData)
-			this.ball.resetToPoint(this.polygonData.center.x, this.polygonData.center.y, true);
+		this.updateBallCount();
+		for (const ball of this.balls)
+			ball.resetToPoint(this.polygonData.center.x, this.polygonData.center.y, true);
 	}
 
 	/**
@@ -323,6 +365,8 @@ export class GameService
 		this.geometry = null;
 		this.polygonData = null;
 		this._switchedToClassic = true;
+		this.balls = [];
+		this.activePlayerCount = 2;
 
 		const activePlayers = this.players.filter(p => !p.isEliminated());
 		if (activePlayers.length !== 2)
@@ -352,78 +396,122 @@ export class GameService
 		if (!this.geometry || !this.polygonData)
 			return false;
 
-		for (let i = 0; i < this.players.length; i++)
+		this.checkBallCollisions();
+
+		const isMultiBall = this.balls.length > 1;
+
+		for (const ball of this.balls)
 		{
-			const player = this.players[i];
-			if (!player || player.isEliminated())
-				continue;
-
-			const activeSideIndex = this.getActiveSideIndex(i);
-			const hit = PolygonCollisionManager.handlePaddleCollision(
-				player,
-				this.ball,
-				this.geometry,
-				activeSideIndex,
-				this.activePlayerCount,
-				this.cloneBalls,
-				this.lastTouchedPlayerIndex,
-				i,
-				deltaTime,
-				this.isCustomMode,
-				this.players
-			);
-
-			if (hit)
+			for (let i = 0; i < this.players.length; i++)
 			{
-				this.ballTouched = true;
-				this.lastTouchedPlayerIndex = i;
-			}
-		}
+				const player = this.players[i];
+				if (!player || player.isEliminated())
+					continue;
 
-		const sideHit = PolygonCollisionManager.checkBoundary(
-			this.ball,
-			this.geometry,
-			this.activePlayerCount,
-			this.polygonData.center
-		);
-
-		if (sideHit >= 0)
-		{
-			const player = this.getActivePlayerAtSide(sideHit);
-			if (player)
-			{
-				const scorer = this.lastTouchedPlayerIndex >= 0
-					? this.players[this.lastTouchedPlayerIndex]
-					: null;
-
-				const eliminated = ScoringManager.handlePolygonScore(
+				const activeSideIndex = this.getActiveSideIndex(i);
+				const hit = PolygonCollisionManager.handlePaddleCollision(
 					player,
-					this.ball,
-					this.polygonData.center,
-					scorer,
+					ball,
+					this.geometry,
+					activeSideIndex,
+					this.activePlayerCount,
+					this.cloneBalls,
+					i,
+					deltaTime,
 					this.isCustomMode,
-					this.players
+					this.players,
+					isMultiBall
 				);
-
-				this.lastTouchedPlayerIndex = -1;
-
-				if (eliminated)
+				if (hit)
 				{
-					console.log(`[BR] ${player.name} eliminated!`);
-					this.handleElimination(this.players.indexOf(player));
+					this.ballTouched = true;
+					ball.lastTouchedPlayerIndex = i;
 				}
+			}
 
-				const activeCount = this.getActivePlayerCount();
-
-				if (activeCount <= 1)
+			const sideHit = PolygonCollisionManager.checkBoundary(
+				ball,
+				this.geometry,
+				this.activePlayerCount,
+				this.polygonData.center
+			);
+			if (sideHit >= 0)
+			{
+				const player = this.getActivePlayerAtSide(sideHit);
+				if (player)
 				{
-					const winner = this.players.find(p => !p.isEliminated());
-					console.log(`[BR] Game Over! Winner: ${winner?.name ?? 'None'}`);
-					return true;
+					const scorer = ball.lastTouchedPlayerIndex >= 0
+						? this.players[ball.lastTouchedPlayerIndex]
+						: null;
+
+					const eliminated = ScoringManager.handlePolygonScore(
+						player,
+						ball,
+						this.polygonData.center,
+						scorer,
+						this.isCustomMode,
+						this.players
+					);
+					ball.lastTouchedPlayerIndex = -1;
+					if (eliminated)
+					{
+						console.log(`[BR] ${player.name} eliminated!`);
+						this.handleElimination(this.players.indexOf(player));
+					}
+
+					const activeCount = this.getActivePlayerCount();
+					if (activeCount <= 1)
+					{
+						const winner = this.players.find(p => !p.isEliminated());
+						console.log(`[BR] Game Over! Winner: ${winner?.name ?? 'None'}`);
+						return true;
+					}
 				}
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * @brief Check and handle collisions between balls
+	 */
+	private checkBallCollisions(): void
+	{
+		for (let i = 0; i < this.balls.length; i++)
+		{
+			for (let j = i + 1; j < this.balls.length; j++)
+			{
+				const ball1 = this.balls[i]!;
+				const ball2 = this.balls[j]!;
+				const dx = ball2.positionX - ball1.positionX;
+				const dy = ball2.positionY - ball1.positionY;
+				const dist = Math.sqrt(dx * dx + dy * dy);
+				const minDist = ball1.size;
+
+				if (dist < minDist && dist > 0)
+				{
+					const nx = dx / dist;
+					const ny = dy / dist;
+					const dvx = ball1.velocityX - ball2.velocityX;
+					const dvy = ball1.velocityY - ball2.velocityY;
+					const dvn = dvx * nx + dvy * ny;
+
+					if (dvn > 0)
+					{
+						ball1.velocityX -= dvn * nx;
+						ball1.velocityY -= dvn * ny;
+						ball2.velocityX += dvn * nx;
+						ball2.velocityY += dvn * ny;
+					}
+
+					const overlap = minDist - dist;
+					ball1.positionX -= (overlap / 2) * nx;
+					ball1.positionY -= (overlap / 2) * ny;
+					ball2.positionX += (overlap / 2) * nx;
+					ball2.positionY += (overlap / 2) * ny;
+				}
+			}
+		}
 	}
 
 	/**
@@ -462,7 +550,13 @@ export class GameService
 				}
 			}
 		}
-		this.ball.update(deltaTime);
+		if (this.balls.length > 0)
+		{
+			for (const ball of this.balls)
+				ball.update(deltaTime);
+		}
+		else
+			this.ball.update(deltaTime);
 		CloneBallManager.update(this.cloneBalls, deltaTime, this.canvasHeight);
 		if (this.isCustomMode)
 		{
@@ -473,13 +567,16 @@ export class GameService
 					FruitManager.spawn(this.fruits, this.canvasWidth, this.canvasHeight, this.polygonData);
 				this.fruitSpawnTimer = 0;
 			}
-			FruitManager.checkCollisions(
-				this.fruits,
-				this.ball,
-				this.players,
-				this.ballTouched,
-				this.lastTouchedPlayerIndex
-			);
+			for (const ball of this.balls.length > 0 ? this.balls : [this.ball])
+			{
+				FruitManager.checkCollisions(
+					this.fruits,
+					ball,
+					this.players,
+					this.ballTouched,
+					ball.lastTouchedPlayerIndex
+				);
+			}
 		}
 		if (this.isPolygonMode())
 			return this.updatePolygonCollisions(deltaTime);

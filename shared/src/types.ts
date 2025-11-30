@@ -92,6 +92,12 @@ export type GameState = {
 		vx: number;
 		vy: number;
 	};
+	balls?: Array<{
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
+	}>;
 	cloneBalls?: Array<{
 		x: number;
 		y: number;

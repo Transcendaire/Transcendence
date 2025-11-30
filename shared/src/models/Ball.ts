@@ -25,6 +25,7 @@ export class Ball
     public isCurving: boolean;
     public isBoosted: boolean;
     public previousSpeed: number;
+    public lastTouchedPlayerIndex: number;
 
     /**
      * @brief Initialize ball direction and velocity
@@ -63,7 +64,7 @@ export class Ball
         this.isCurving = false;
         this.isBoosted = false;
         this.previousSpeed = 0;
-        
+        this.lastTouchedPlayerIndex = -1;
         if (polygonMode)
         {
             const angle = Math.random() * Math.PI * 2;
@@ -195,7 +196,7 @@ export class Ball
         this.curveDirection = 0;
         this.isBoosted = false;
         this.previousSpeed = 0;
-        
+        this.lastTouchedPlayerIndex = -1;
         this.ballStart(false);
     }
 
@@ -213,6 +214,7 @@ export class Ball
         this.curveDirection = 0;
         this.isBoosted = false;
         this.previousSpeed = 0;
+        this.lastTouchedPlayerIndex = -1;
         if (randomDirection)
         {
             const angle = Math.random() * Math.PI * 2;

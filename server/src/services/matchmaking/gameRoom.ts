@@ -367,6 +367,12 @@ export class GameRoomManager
 				vx: gameState.ball.velocityX,
 				vy: gameState.ball.velocityY
 			},
+			balls: gameState.balls?.map(b => ({
+				x: b.positionX,
+				y: b.positionY,
+				vx: b.velocityX,
+				vy: b.velocityY
+			})) || [],
 			cloneBalls: gameState.cloneBalls.map(clone => ({
 				x: clone.positionX,
 				y: clone.positionY,

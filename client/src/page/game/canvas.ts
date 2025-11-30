@@ -229,7 +229,9 @@ function renderPolygonMode(): void
 	gameState.fruits.forEach(fruit => renderFruit(fruit));
 	gameState.cloneBalls.forEach(clone => renderCloneBall(clone));
 
-	if (gameState.ball)
+	if (gameState.balls && gameState.balls.length > 0)
+		gameState.balls.forEach(ball => renderBRBall(ball));
+	else if (gameState.ball)
 		renderBall(gameState.ball, COLORS.SONPI16_ORANGE);
 
 	renderPolygonUI(players, polygon);
@@ -287,6 +289,26 @@ export function renderCloneBall(clone: { x: number; y: number; vx: number; vy: n
 
     gameState.ctx.save();
     gameState.ctx.globalAlpha = 0.8;
+    gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
+    gameState.ctx.translate(centerX, centerY);
+    gameState.ctx.translate(-size / 2, -size / 2);
+    gameState.ctx.fillRect(3, 0, 6, 3);
+    gameState.ctx.fillRect(0, 3, 12, 3);
+    gameState.ctx.fillRect(0, 6, 12, 3);
+    gameState.ctx.fillRect(3, 9, 6, 3);
+    gameState.ctx.restore();
+}
+
+/**
+ * @brief Render a Battle Royale ball
+ */
+export function renderBRBall(ball: { x: number; y: number; vx: number; vy: number }): void
+{
+    const size = 12;
+    const centerX = ball.x + size / 2;
+    const centerY = ball.y + size / 2;
+
+    gameState.ctx.save();
     gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
     gameState.ctx.translate(centerX, centerY);
     gameState.ctx.translate(-size / 2, -size / 2);

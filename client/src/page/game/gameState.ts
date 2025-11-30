@@ -9,6 +9,7 @@ export let lastTime = 0;
 export let player1: Player;
 export let player2: Player;
 export let ball: Ball;
+export let balls: Array<{ x: number; y: number; vx: number; vy: number }> = [];
 export let cloneBalls: Array<{ x: number; y: number; vx: number; vy: number }> = [];
 export let fruits: PowerUpFruit[] = [];
 export let currentPlayerRole: 'player1' | 'player2' | null = null;
@@ -49,6 +50,10 @@ export function setPlayer2(p: Player | null): void {
 
 export function setBall(b: Ball | null): void {
     ball = b as Ball;
+}
+
+export function setBalls(b: Array<{ x: number; y: number; vx: number; vy: number }>): void {
+    balls = b;
 }
 
 export function setCloneBalls(cb: Array<{ x: number; y: number; vx: number; vy: number }>): void {

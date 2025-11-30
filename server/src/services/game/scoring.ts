@@ -78,15 +78,49 @@ export class ScoringManager
      * @param loser Player who lost a life
      * @param ball Ball object
      * @param center Polygon center for ball reset
+     * @param scorer Player who scored (last to touch the ball), or null
+     * @param isCustomMode Whether custom mode with power-ups is enabled
+     * @param allPlayers All players to clear pending power-ups
      * @returns True if player is eliminated
      */
-    public static handlePolygonScore(loser: Player, ball: Ball, center: Point2D): boolean
+    public static handlePolygonScore(
+        loser: Player,
+        ball: Ball,
+        center: Point2D,
+        scorer: Player | null = null,
+        isCustomMode: boolean = false,
+        allPlayers?: Player[]
+    ): boolean
     {
         loser.loseLife();
         const ballPos = { x: ball.positionX + ball.size/2, y: ball.positionY + ball.size/2 };
         const paddlePos = loser.paddle.getCenter();
         const dist = Math.sqrt((ballPos.x - paddlePos.x)**2 + (ballPos.y - paddlePos.y)**2);
         console.log(`[BR] ${loser.name} lost a life! ${loser.lives} remaining | ball(${ballPos.x.toFixed(0)},${ballPos.y.toFixed(0)}) paddle(${paddlePos.x.toFixed(0)},${paddlePos.y.toFixed(0)}) dist=${dist.toFixed(0)}`);
+
+        if (isCustomMode)
+        {
+            if (allPlayers)
+            {
+                for (const p of allPlayers)
+                {
+                    if (!p.isEliminated())
+                        p.clearPendingPowerUps();
+                }
+            }
+
+            if (scorer && scorer !== loser)
+            {
+                scorer.awardFullCharge();
+                console.log(`[BR] ${scorer.name} gained full charge for scoring!`);
+            }
+
+            loser.resetHitStreak();
+            const removedPowerUp = loser.removeRandomPowerUp();
+            if (removedPowerUp)
+                console.log(`[BR] ${loser.name} lost ${removedPowerUp} (conceded a goal)`);
+        }
+
         ball.resetToPoint(center.x, center.y, true);
         return loser.isEliminated();
     }

@@ -54,6 +54,13 @@ function setupWebSocketCallbacks(): void {
         sessionStorage.setItem('playerRole', playerRole);
         navigate('game');
     };
+    
+    wsClient.onTournamentPrepare = (playerRole: 'player1' | 'player2', opponentName: string) => {
+        console.log(`[LOBBY] Préparation tournoi: ${playerRole} vs ${opponentName}`);
+        sessionStorage.setItem('playerRole', playerRole);
+        sessionStorage.setItem('tournamentOpponent', opponentName);
+        navigate('game');
+    };
 }
 
 function requestLobbyList(): void {

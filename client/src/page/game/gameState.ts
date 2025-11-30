@@ -22,6 +22,11 @@ export let polygonData: PolygonData | null = null;
 export let playerIndex = 0;
 export let allPlayers: PlayerState[] = [];
 
+export let tournamentCountdown: { opponentName: string; countdown: number } | null = null;
+export let tournamentSiblingMatch: { player1Name: string; player2Name: string; lives1: number; lives2: number } | null = null;
+export let tournamentOtherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }> = [];
+export let isWaitingForTournamentMatch = false;
+
 export function setCanvas(c: HTMLCanvasElement): void {
     canvas = c;
 }
@@ -94,4 +99,20 @@ export function setPlayerIndex(i: number): void {
 
 export function setAllPlayers(p: PlayerState[]): void {
     allPlayers = p;
+}
+
+export function setTournamentCountdown(data: { opponentName: string; countdown: number } | null): void {
+    tournamentCountdown = data;
+}
+
+export function setTournamentSiblingMatch(match: { player1Name: string; player2Name: string; lives1: number; lives2: number } | null): void {
+    tournamentSiblingMatch = match;
+}
+
+export function setTournamentOtherMatches(matches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }>): void {
+    tournamentOtherMatches = matches;
+}
+
+export function setIsWaitingForTournamentMatch(waiting: boolean): void {
+    isWaitingForTournamentMatch = waiting;
 }

@@ -16,6 +16,7 @@ export class Player
     public pendingPowerUps: PowerUp[];
     public selectedSlots: boolean[];
     public chargingPowerUp: PowerUp;
+    public lastChargeTime: number;
 
     /**
      * @brief Constructor
@@ -32,6 +33,7 @@ export class Player
         this.pendingPowerUps = [];
         this.selectedSlots = [false, false, false];
         this.chargingPowerUp = null;
+        this.lastChargeTime = 0;
         this.paddle = new Paddle(paddleX, canvasHeight / 2 - paddleSize / 2);
     }
 
@@ -59,6 +61,7 @@ export class Player
     public incrementHitStreak(): void
     {
         this.hitStreak++;
+        this.lastChargeTime = Date.now();
     }
 
     /**
@@ -68,6 +71,32 @@ export class Player
     {
         this.hitStreak = 0;
         this.chargingPowerUp = null;
+        this.lastChargeTime = 0;
+    }
+
+    /**
+     * @brief Check if player can gain a charge (cooldown elapsed)
+     * @param cooldownMs Cooldown in milliseconds
+     * @returns True if cooldown has elapsed
+     */
+    public canGainCharge(cooldownMs: number = 333): boolean
+    {
+        return Date.now() - this.lastChargeTime >= cooldownMs;
+    }
+
+    /**
+     * @brief Award full charge (3 hits) for a power-up slot
+     */
+    public awardFullCharge(): void
+    {
+        if (!this.chargingPowerUp)
+        {
+            const selected = this.selectRandomChargingPowerUp();
+            if (!selected)
+                return;
+        }
+        this.hitStreak = 3;
+        this.lastChargeTime = Date.now();
     }
 
     /**

@@ -130,6 +130,9 @@ export type WebSocketMessage =
 | { type: "lobbyError"; message: string }
 | { type: "waitingForMatch"; message: string }
 | { type: "tournamentComplete"; champion: string; tournamentName: string }
+| { type: "tournamentCountdown"; opponentName: string; countdown: number }
+| { type: "tournamentMatchUpdate"; siblingMatch?: { player1Name: string; player2Name: string; lives1: number; lives2: number }; otherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }> }
+| { type: "tournamentPrepare"; playerRole: 'player1' | 'player2'; opponentName: string }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

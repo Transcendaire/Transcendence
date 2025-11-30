@@ -36,6 +36,7 @@ export class GameRoomManager
 			matchId: string
 			isFinalMatch: boolean
 			onComplete: (winnerId: string, lives1: number, lives2: number) => void
+			onUpdate?: () => void
 		}
 	): string
 	{
@@ -164,7 +165,15 @@ export class GameRoomManager
 				ping: 0
 			}
 			if (lp.isBot)
-				brPlayer.ai = new BRNormalAIPlayer(index, gameService, inputState)
+			{
+				if (playerCount === 2)
+				{
+					const role = index === 0 ? 'player1' : 'player2'
+					brPlayer.ai = new NormalAIPlayer(role, gameService, inputState) as any
+				}
+				else
+					brPlayer.ai = new BRNormalAIPlayer(index, gameService, inputState)
+			}
 			return brPlayer
 		})
 		const room: BattleRoyaleRoom = {
@@ -234,7 +243,43 @@ export class GameRoomManager
 			this.endBattleRoyaleGame(gameId)
 			return
 		}
+		if (room.gameService.hasSwitchedToClassic())
+			this.switchBotsToClassicMode(room)
 		this.broadcastBattleRoyaleState(room)
+	}
+
+	/**
+	 * @brief Switch bot AI from BRNormalAIPlayer to NormalAIPlayer when 2 players remain
+	 * @param room Battle Royale room
+	 */
+	private switchBotsToClassicMode(room: BattleRoyaleRoom): void
+	{
+		const gameState = room.gameService.getGameState()
+		const activeIndices: number[] = []
+		for (let i = 0; i < gameState.players.length; i++)
+		{
+			if (!gameState.players[i]!.isEliminated())
+				activeIndices.push(i)
+		}
+		if (activeIndices.length !== 2)
+			return
+
+		for (let i = 0; i < 2; i++)
+		{
+			const playerIndex = activeIndices[i]!
+			const brPlayer = room.players[playerIndex]
+			if (!brPlayer?.isBot)
+				continue
+
+			if (brPlayer.ai)
+				brPlayer.ai.stop()
+			const role = i === 0 ? 'player1' : 'player2'
+			const newAI = new NormalAIPlayer(role, room.gameService, brPlayer.input)
+			brPlayer.ai = newAI as any
+			newAI.start()
+			console.log(`[BR] Switched ${brPlayer.name} AI to NormalAIPlayer (role: ${role})`)
+			return
+		}
 	}
 
 	/**
@@ -495,9 +540,7 @@ export class GameRoomManager
 			this.endBattleRoyaleGame(room.id);
 		}
 		else
-		{
 			this.broadcastBattleRoyaleState(room);
-		}
 		return true;
 	}
 
@@ -515,6 +558,22 @@ export class GameRoomManager
 		if (room.ai)
 			room.ai.stop()
 		this.activeGames.delete(gameId)
+	}
+
+	/**
+	 * @brief Get game state for spectating
+	 * @param gameId Game room ID
+	 * @returns Game state or undefined if not found
+	 */
+	public getGameState(gameId: string): { players: Array<{ lives: number }> } | undefined
+	{
+		const room = this.activeGames.get(gameId);
+		if (!room)
+			return undefined;
+		const state = room.gameService.getGameState();
+		return {
+			players: state.players.map(p => ({ lives: p.lives }))
+		};
 	}
 
 	/**
@@ -562,35 +621,36 @@ export class GameRoomManager
 			const gameState = room.gameService.getGameState()
 			const p1 = gameState.players[0]!
 			const p2 = gameState.players[1]!
-		const winner = p1.lives > p2.lives ? 'player1' : 'player2'
-		const winnerId = winner === 'player1' ? room.player1.id : room.player2.id
-		const isTournament = !!room.tournamentMatch
-		const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
-		
-		if (room.player1.socket)
-			this.sendMessage(room.player1.socket, { 
-				type: 'gameOver', 
-				winner, 
-				lives1: p1.lives, 
-				lives2: p2.lives,
-				isTournament,
-				shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
-			})
-		if (room.player2.socket && room.player2.id !== 'AI')
-			this.sendMessage(room.player2.socket, { 
-				type: 'gameOver', 
-				winner, 
-				lives1: p1.lives, 
-				lives2: p2.lives,
-				isTournament,
-				shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
-			})
-		
-		if (room.tournamentMatch)
-		{
-			console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
-			room.tournamentMatch.onComplete(winnerId, p1.lives, p2.lives)
-		}			this.endGame(gameId)
+			const winner = p1.lives > p2.lives ? 'player1' : 'player2'
+			const winnerId = winner === 'player1' ? room.player1.id : room.player2.id
+			const isTournament = !!room.tournamentMatch
+			const isFinalMatch = room.tournamentMatch?.isFinalMatch ?? false
+			
+			if (room.player1.socket)
+				this.sendMessage(room.player1.socket, { 
+					type: 'gameOver', 
+					winner, 
+					lives1: p1.lives, 
+					lives2: p2.lives,
+					isTournament,
+					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
+				})
+			if (room.player2.socket && room.player2.id !== 'AI')
+				this.sendMessage(room.player2.socket, { 
+					type: 'gameOver', 
+					winner, 
+					lives1: p1.lives, 
+					lives2: p2.lives,
+					isTournament,
+					shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
+				})
+			
+			if (room.tournamentMatch)
+			{
+				console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
+				room.tournamentMatch.onComplete(winnerId, p1.lives, p2.lives)
+			}
+			this.endGame(gameId)
 			return
 		}
 		const gameState = room.gameService.getGameState()
@@ -625,6 +685,8 @@ export class GameRoomManager
 			this.sendMessage(room.player1.socket, { type: 'gameState', data: stateMessage })
 		if (room.player2.socket)
 			this.sendMessage(room.player2.socket, { type: 'gameState', data: stateMessage })
+		if (room.tournamentMatch?.onUpdate)
+			room.tournamentMatch.onUpdate();
 	}
 
 	private sendMessage(socket: WebSocket, message: WebSocketMessage): void

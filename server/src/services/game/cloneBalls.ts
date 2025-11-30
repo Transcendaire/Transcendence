@@ -28,7 +28,9 @@ export class CloneBallManager
 			const angle = angleStart + angleStep * i;
 			const vx = Math.cos(angle) * speed * ballDirection;
 			const vy = Math.sin(angle) * speed;
-			const clone = new CloneBall(ball.positionX, ball.positionY, vx, vy, speedBoostMultiplier);
+			const clone = new CloneBall(ball.positionX, ball.positionY, vx, vy);
+			if (ball.isBoosted)
+				clone.applySpeedBoost(speedBoostMultiplier);
 			if (ball.isCurving)
 				clone.applyCurve(ball.curveDirection);
 			cloneBalls.push(clone);

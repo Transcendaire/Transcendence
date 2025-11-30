@@ -27,6 +27,9 @@ export class WebSocketClient
     public onLobbyUpdate?: (lobby: Lobby) => void;
     public onLobbyList?: (lobbies: Lobby[]) => void;
     public onLobbyError?: (message: string) => void;
+    public onTournamentCountdown?: (opponentName: string, countdown: number) => void;
+    public onTournamentMatchUpdate?: (siblingMatch: { player1Name: string; player2Name: string; lives1: number; lives2: number } | undefined, otherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }>) => void;
+    public onTournamentPrepare?: (playerRole: 'player1' | 'player2', opponentName: string) => void;
     
     public get onGameStart() {
         return this._onGameStart;
@@ -183,6 +186,24 @@ export class WebSocketClient
                 if (message.champion && message.tournamentName) {
                     console.log(`[WEBSOCKET] Tournament ${message.tournamentName} terminé! Champion: ${message.champion}`);
                     alert(`🏆 Tournoi "${message.tournamentName}" terminé!\nChampion: ${message.champion}`);
+                }
+                break;
+                
+            case 'tournamentCountdown':
+                if (message.opponentName !== undefined && message.countdown !== undefined) {
+                    console.log(`[WEBSOCKET] Tournament countdown: ${message.countdown} vs ${message.opponentName}`);
+                    this.onTournamentCountdown?.(message.opponentName, message.countdown);
+                }
+                break;
+                
+            case 'tournamentMatchUpdate':
+                this.onTournamentMatchUpdate?.(message.siblingMatch, message.otherMatches || []);
+                break;
+                
+            case 'tournamentPrepare':
+                if (message.playerRole && message.opponentName) {
+                    console.log(`[WEBSOCKET] Tournament prepare: ${message.playerRole} vs ${message.opponentName}`);
+                    this.onTournamentPrepare?.(message.playerRole, message.opponentName);
                 }
                 break;
                 

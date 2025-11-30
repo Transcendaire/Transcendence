@@ -75,5 +75,6 @@ export interface GameRoom
 		matchId: string
 		isFinalMatch: boolean
 		onComplete: (winnerId: string, score1: number, score2: number) => void
+		onUpdate?: () => void
 	}
 }

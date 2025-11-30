@@ -212,62 +212,10 @@ export class CollisionManager
 			if (cloneBalls.length > 0)
 				CloneBallManager.clear(cloneBalls);
 			if (isCustomMode)
-				CollisionManager.handlePowerUpOnHit(player, ball, cloneBalls);
+				PowerUpManager.handlePaddleHit(player, ball, cloneBalls, players);
 			return playerIndex;
 		}
 		return -1;
-	}
-
-	/**
-	 * @brief Handle power-up logic when ball hits paddle
-	 * @param player Player who hit the ball
-	 * @param ball Game ball
-	 * @param cloneBalls Array of clone balls (for 16 effect)
-	 */
-	private static handlePowerUpOnHit(player: Player, ball: Ball, cloneBalls: CloneBall[]): void
-	{
-		const pendingPowerUps = player.consumePendingPowerUps();
-		if (pendingPowerUps.length > 0)
-		{
-			console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
-			pendingPowerUps.forEach((powerUp) => {
-				if (powerUp === 'Pi')
-				{
-					const curveDirection = Math.random() > 0.5 ? 1 : -1;
-					ball.applyCurve(curveDirection);
-					CloneBallManager.curve(cloneBalls, curveDirection);
-					console.log(`[PowerUpManager] Pi effect: curve direction ${curveDirection}`);
-				}
-				else if (powerUp === 'Son')
-				{
-					ball.applySpeedBoost(1.5);
-					CloneBallManager.boost(cloneBalls, 1.5);
-					console.log(`[PowerUpManager] Son effect: speed boost x1.5`);
-				}
-				else if (powerUp === '16')
-				{
-					CloneBallManager.create(cloneBalls, ball, 15);
-					console.log(`[PowerUpManager] 16 effect: 15 clone balls created`);
-				}
-			});
-		}
-		if (player.hitStreak === 0 && !player.chargingPowerUp)
-		{
-			const selected = player.selectRandomChargingPowerUp();
-			if (selected)
-			{
-				player.incrementHitStreak();
-				console.log(`[SERVER] ${player.name} started charging ${selected}`);
-			}
-		}
-		else if (player.chargingPowerUp)
-			player.incrementHitStreak();
-		console.log(`[SERVER] ${player.name} hit streak: ${player.hitStreak}`);
-		if (player.hitStreak >= 3 && player.chargingPowerUp)
-		{
-			PowerUpManager.awardRandomPowerUp(player);
-			player.resetHitStreak();
-		}
 	}
 
 	/**
@@ -421,7 +369,9 @@ export class PolygonCollisionManager
 	 * @param cloneBalls Clone balls to clear
 	 * @param lastHitPlayerIndex Index of last player who hit the ball (-1 if none)
 	 * @param playerIndex Current player index being checked
+	 * @param deltaTime Time step for collision
 	 * @param isCustomMode Whether custom mode is enabled
+	 * @param allPlayers All players for clearing pending power-ups
 	 * @returns True if collision occurred
 	 */
 	public static handlePaddleCollision(
@@ -434,12 +384,11 @@ export class PolygonCollisionManager
 		lastHitPlayerIndex: number = -1,
 		playerIndex: number = -1,
 		deltaTime: number = 16,
-		isCustomMode: boolean = false
+		isCustomMode: boolean = false,
+		allPlayers?: Player[]
 	): boolean
 	{
 		if (!CollisionDetector.isTouchingPolygonPaddle(player, ball, deltaTime))
-			return false;
-		if (lastHitPlayerIndex === playerIndex && playerIndex >= 0)
 			return false;
 
 		const paddleCenter = player.paddle.getCenter();
@@ -450,47 +399,15 @@ export class PolygonCollisionManager
 		const paddleAngle = player.paddle.angle;
 		ball.bouncePolygon(paddleCenter, paddleAngle, player.paddle.height, normal);
 
-		if (cloneBalls.length > 0)
+		const isDifferentPlayer = lastHitPlayerIndex !== playerIndex || lastHitPlayerIndex < 0;
+		if (isDifferentPlayer && cloneBalls.length > 0)
 			CloneBallManager.clear(cloneBalls);
+		if (isDifferentPlayer && ball.isCurving)
+			ball.removeCurve();
+		if (isDifferentPlayer && ball.isBoosted)
+			ball.removeSpeedBoost();
 		if (isCustomMode)
-			PolygonCollisionManager.handlePowerUpOnHit(player, ball, cloneBalls);
+			PowerUpManager.handlePaddleHit(player, ball, cloneBalls, allPlayers);
 		return true;
-	}
-
-	private static handlePowerUpOnHit(player: Player, ball: Ball, cloneBalls: CloneBall[]): void
-	{
-		const pendingPowerUps = player.consumePendingPowerUps();
-		if (pendingPowerUps.length > 0)
-		{
-			console.log(`[SERVER] ${player.name} applying pending power-ups: ${pendingPowerUps.join(', ')}`);
-			pendingPowerUps.forEach((powerUp) => {
-				if (powerUp === 'Pi')
-				{
-					const curveDirection = Math.random() > 0.5 ? 1 : -1;
-					ball.applyCurve(curveDirection);
-					CloneBallManager.curve(cloneBalls, curveDirection);
-				}
-				else if (powerUp === 'Son')
-				{
-					ball.applySpeedBoost(1.5);
-					CloneBallManager.boost(cloneBalls, 1.5);
-				}
-				else if (powerUp === '16')
-					CloneBallManager.create(cloneBalls, ball, 15);
-			});
-		}
-		if (player.hitStreak === 0 && !player.chargingPowerUp)
-		{
-			const selected = player.selectRandomChargingPowerUp();
-			if (selected)
-				player.incrementHitStreak();
-		}
-		else if (player.chargingPowerUp)
-			player.incrementHitStreak();
-		if (player.hitStreak >= 3 && player.chargingPowerUp)
-		{
-			PowerUpManager.awardRandomPowerUp(player);
-			player.resetHitStreak();
-		}
 	}
 }

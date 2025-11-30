@@ -22,19 +22,10 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
         console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole);
         console.log('[GAME] Canvas disponible?', !!gameState.canvas, 'ctx disponible?', !!gameState.ctx);
         gameState.setCurrentPlayerRole(playerRole);
+        gameState.setTournamentCountdown(null);
+        gameState.setIsWaitingForTournamentMatch(false);
     };
     console.log('[GAME] Callback onGameStart configuré');
-    
-    wsClient.onWaitingForPlayer = () => {
-        const waitingDiv = document.getElementById('waiting')
-        if (gameState.gameRunning)
-        {
-            alert('Adversaire déconnecté')
-            returnToLobby()
-        }
-        if (waitingDiv)
-            waitingDiv.classList.remove('hidden')
-    }
     
     wsClient.onGameState = (serverGameState: GameState) => {
         updateGameState(serverGameState);
@@ -52,6 +43,25 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
     wsClient.onGameOver = (winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => {
         showGameOver(winner, lives1, lives2, isTournament, isBattleRoyale, shouldDisconnect, forfeit);
     };
+    
+    wsClient.onTournamentCountdown = (opponentName: string, countdown: number) => {
+        gameState.setTournamentCountdown({ opponentName, countdown });
+    };
+    
+    wsClient.onTournamentMatchUpdate = (siblingMatch, otherMatches) => {
+        gameState.setTournamentSiblingMatch(siblingMatch || null);
+        gameState.setTournamentOtherMatches(otherMatches);
+    };
+    
+    wsClient.onWaitingForPlayer = () => {
+        const waitingDiv = document.getElementById('waiting')
+        if (gameState.gameRunning)
+        {
+            gameState.setIsWaitingForTournamentMatch(true);
+        }
+        if (waitingDiv)
+            waitingDiv.classList.remove('hidden')
+    }
     
     console.log('[GAME] Tous les callbacks configurés');
 }

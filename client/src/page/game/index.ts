@@ -46,6 +46,8 @@ function initGame(): void
         gameState.setCtx(ctx);
         
         const storedRole = sessionStorage.getItem('playerRole') as 'player1' | 'player2' | null;
+        const storedOpponent = sessionStorage.getItem('tournamentOpponent');
+        
         if (storedRole) {
             gameState.setCurrentPlayerRole(storedRole);
             console.log('[GAME] Rôle stocké:', storedRole, '- En attente du premier gameState du serveur...');
@@ -53,6 +55,14 @@ function initGame(): void
         }
         else
             navigate("home");
+
+        if (storedOpponent) {
+            console.log('[GAME] Opponent stocké:', storedOpponent, '- Affichage du countdown');
+            gameState.setTournamentCountdown({ opponentName: storedOpponent, countdown: 3 });
+            gameState.setGameRunning(true);
+            sessionStorage.removeItem('tournamentOpponent');
+            gameState.setAnimationFrameId(requestAnimationFrame(gameLoop));
+        }
 
         console.log('[GAME] Initialisation terminée - Canvas et DOM prêts');
         setupWebSocketCallbacks(gameLoop);

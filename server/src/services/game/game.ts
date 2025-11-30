@@ -42,6 +42,7 @@ export class GameService
 	private geometry: GeometryManager | null;
 	private polygonData: PolygonData | null;
 	private activePlayerCount: number;
+	private _switchedToClassic: boolean;
 
 	/**
 	 * @brief Constructor
@@ -79,6 +80,7 @@ export class GameService
 		this.lifeCount = lifeCount;
 		this.geometry = null;
 		this.polygonData = null;
+		this._switchedToClassic = false;
 		if (playerCount > 2)
 		{
 			const centerX = canvasWidth / 2;
@@ -97,6 +99,20 @@ export class GameService
 	public isPolygonMode(): boolean
 	{
 		return this.geometry !== null && this.polygonData !== null;
+	}
+
+	/**
+	 * @brief Check if game switched from polygon to classic mode
+	 * @returns True if switched to classic, resets flag after read
+	 */
+	public hasSwitchedToClassic(): boolean
+	{
+		if (this._switchedToClassic)
+		{
+			this._switchedToClassic = false;
+			return true;
+		}
+		return false;
 	}
 
 	/**
@@ -306,6 +322,7 @@ export class GameService
 		console.log('[BR] Switching to classic 2-player mode');
 		this.geometry = null;
 		this.polygonData = null;
+		this._switchedToClassic = true;
 
 		const activePlayers = this.players.filter(p => !p.isEliminated());
 		if (activePlayers.length !== 2)
@@ -352,7 +369,8 @@ export class GameService
 				this.lastTouchedPlayerIndex,
 				i,
 				deltaTime,
-				this.isCustomMode
+				this.isCustomMode,
+				this.players
 			);
 
 			if (hit)
@@ -374,10 +392,17 @@ export class GameService
 			const player = this.getActivePlayerAtSide(sideHit);
 			if (player)
 			{
+				const scorer = this.lastTouchedPlayerIndex >= 0
+					? this.players[this.lastTouchedPlayerIndex]
+					: null;
+
 				const eliminated = ScoringManager.handlePolygonScore(
 					player,
 					this.ball,
-					this.polygonData.center
+					this.polygonData.center,
+					scorer,
+					this.isCustomMode,
+					this.players
 				);
 
 				this.lastTouchedPlayerIndex = -1;

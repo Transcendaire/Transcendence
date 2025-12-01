@@ -1,8 +1,8 @@
-import {navigate , registerPageInitializer} from "../router.js"
-import { wsClient } from "../components/WebSocketClient.js";
-import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
-import { playerName } from "./home.js";
-import { Lobby, LobbyPlayer } from "@shared/types";
+import { navigate, registerPageInitializer } from "../router"
+import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
+import { getEl, show, hide, setupGlobalModalEvents } from "../app";
+import { playerName } from "./home";
+import type { Lobby, LobbyPlayer } from "@shared/types";
 import { checkAuthentication } from "./auth.js";
 
 let currentLobbies: Lobby[] = [];
@@ -116,7 +116,7 @@ function requestLobbyList(): void {
     console.log('[LOBBY] Demande de la liste des lobbies');
     if (!wsClient.isConnected()) {
         console.log('[LOBBY] WebSocket non connecté, connexion en cours...');
-        wsClient.connect(`ws://${window.location.host}/ws`).then(() => {
+        wsClient.connect(getWebSocketUrl()).then(() => {
             wsClient.sendMessage({ type: 'requestLobbyList' });
         }).catch((error) => {
             console.error('[LOBBY] Erreur de connexion WebSocket:', error);

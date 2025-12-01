@@ -78,6 +78,12 @@ dev:
 	@docker compose -f docker-compose.dev.yml up --build
 	@echo "$(GREEN)Application ready at https://localhost:5173$(NC)"
 
+dev-database: 
+	@echo "$(GREEN)Setting database web app...$(NC)"
+	docker exec -it transcendence-server-dev sqlite_web /app/data/transcendaire.db --host 0.0.0.0 --port 8081
+	@echo "$(GREEN)Application ready at http://localhost:8081${NC}"
+
+
 
 dev-down:
 	@docker compose -f docker-compose.dev.yml down -v

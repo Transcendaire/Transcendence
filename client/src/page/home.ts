@@ -6,7 +6,7 @@ import { checkAuthentication, getUserWithCookies, broadcastAuthEvent, initAuth }
 
 import { registerPageInitializer, navigate } from "../router";
 import { inputParserClass } from "../components/inputParser";
-import { wsClient } from "../components/WebSocketClient";
+import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { initGoogle,loadGoogleScript } from "../components/googleAuth";
 
@@ -226,7 +226,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 				navigate('home');
 				return ;
 			}
-            await wsClient.connect(`ws://${window.location.host}/ws`)
+            await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinGame(playerName))
             wsClient.joinGame(playerName)
         } catch (error) {
@@ -242,7 +242,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 				navigate('home');
 				return ;
 			}
-            await wsClient.connect(`ws://${window.location.host}/ws`)
+            await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinCustomGame(playerName))
             wsClient.joinCustomGame(playerName)
         } catch (error) {
@@ -280,7 +280,7 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
             const selectedPowerUps = powerUps() === 'true';
             const selectedMaxScore = parseInt(maxScore());
             console.log(`game ${selectedDifficulty === 0 ? 'easy' : 'normal'} ${selectedPowerUps === true ? 'avec' : 'sans'} pouvoir de ${selectedMaxScore} points max `);
-            await wsClient.connect(`ws://${window.location.host}/ws`)
+            await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore))
             wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore)
         } catch (error) {

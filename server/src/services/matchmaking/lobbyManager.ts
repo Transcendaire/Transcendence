@@ -2,9 +2,10 @@ import { WebSocket } from 'ws'
 import { Lobby, LobbyPlayer, CustomGameSettings } from '@app/shared/types.js'
 import { GameRoomManager } from './gameRoom.js'
 import { TournamentManagerService } from '../tournament/tournamentManager.js'
+import { sendMessage } from '../../utils/websocket.js'
 
 /**
- * @brief Manages custom game lobbies for 2-6 players
+ * @brief Manages custom game lobbies for 2-16 players
  * @details Handles lobby creation, player management, bot addition,
  * ownership transfer, and game start with strict security checks
  */
@@ -26,11 +27,60 @@ export class LobbyManager
 	}
 
 	/**
+	 * @brief Check if a player name is already in any lobby
+	 * @param playerName Player's name to check
+	 * @returns True if player is in a lobby
+	 */
+	public isPlayerNameInAnyLobby(playerName: string): boolean
+	{
+		for (const lobby of this.lobbies.values())
+		{
+			if (lobby.players.some(p => p.name === playerName && !p.isBot))
+				return true
+		}
+		return false
+	}
+
+	/**
+	 * @brief Get the socket of a player by their name
+	 * @param playerName Player's name to find
+	 * @returns WebSocket or undefined if not found
+	 */
+	public getSocketByPlayerName(playerName: string): WebSocket | undefined
+	{
+		for (const [socket, lobbyId] of this.socketToLobby.entries())
+		{
+			const lobby = this.lobbies.get(lobbyId)
+			if (lobby)
+			{
+				const playerId = this.socketToPlayerId.get(socket)
+				const player = lobby.players.find(p => p.id === playerId && p.name === playerName && !p.isBot)
+				if (player)
+					return socket
+			}
+		}
+		return undefined
+	}
+
+	/**
+	 * @brief Remove a player from any lobby by their name
+	 * @param playerName Player's name to remove
+	 * @returns True if player was removed
+	 */
+	public removePlayerByName(playerName: string): boolean
+	{
+		const socket = this.getSocketByPlayerName(playerName)
+		if (socket)
+			return this.leaveLobby(socket)
+		return false
+	}
+
+	/**
 	 * @brief Create new custom lobby
 	 * @param socket Creator's WebSocket connection
 	 * @param playerName Creator's name
 	 * @param lobbyName Lobby display name
-	 * @param lobbyType Type of lobby (tournament or multiplayergame)
+	 * @param lobbyType Type of lobby (tournament or battleroyale)
 	 * @param settings Game settings
 	 * @returns Created lobby ID or null if player already in lobby
 	 */
@@ -38,7 +88,7 @@ export class LobbyManager
 		socket: WebSocket,
 		playerName: string,
 		lobbyName: string,
-		lobbyType: 'tournament' | 'multiplayergame',
+		lobbyType: 'tournament' | 'battleroyale',
 		maxPlayers: number,
 		settings: CustomGameSettings
 	): string | null
@@ -47,6 +97,8 @@ export class LobbyManager
 			`player-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
 		if (this.socketToLobby.has(socket))
+			return null;
+		if (this.isPlayerNameInAnyLobby(playerName))
 			return null;
 		const lobbyId = `lobby-${Date.now()}-${Math.random().toString(36)
 			.substr(2, 9)}`
@@ -93,6 +145,8 @@ export class LobbyManager
 
 		if (this.socketToLobby.has(socket))
 			return "You are already in a lobby"
+		if (this.isPlayerNameInAnyLobby(playerName))
+			return "You are already in a lobby"
 		const lobby = this.lobbies.get(lobbyId)
 
 		if (!lobby)
@@ -138,9 +192,10 @@ export class LobbyManager
 
 		if (playerIndex > -1)
 			lobby.players.splice(playerIndex, 1)
-		if (lobby.players.length === 0)
+		const humanPlayers = lobby.players.filter(p => !p.isBot)
+		if (lobby.players.length === 0 || humanPlayers.length === 0)
 		{
-			console.log(`[LOBBY] Deleting empty lobby ${lobbyId}`)
+			console.log(`[LOBBY] Deleting lobby ${lobbyId} (no human players remaining)`)
 			this.lobbies.delete(lobbyId)
 			this.lobbyToSockets.delete(lobbyId)
 			this.broadcastLobbyListToAll()
@@ -171,17 +226,7 @@ export class LobbyManager
 			return "Only lobby owner can add bots"
 		if (lobby.players.length >= lobby.maxPlayers)
 			return "Lobby is full"
-		const botCount = lobby.players.filter(p => p.isBot).length
-		const botId = `bot-${Date.now()}-${Math.random().toString(36)
-			.substr(2, 5)}`
-		const bot: LobbyPlayer = {
-			id: botId,
-			name: `Bot #${botCount + 1}`,
-			isBot: true,
-			isReady: true
-		}
-
-		lobby.players.push(bot)
+		this.addBotToLobby(lobby)
 		this.broadcastLobbyUpdate(lobby)
 		this.broadcastLobbyListToAll()
 		console.log(`[LOBBY] Bot added to ${lobbyId} (${lobby.players.length}/${lobby.maxPlayers})`)
@@ -221,6 +266,37 @@ export class LobbyManager
 	}
 
 	/**
+	 * @brief Add bot directly to lobby
+	 * @param lobby Target lobby
+	 */
+	private addBotToLobby(lobby: Lobby): void
+	{
+		const botCount = lobby.players.filter(p => p.isBot).length
+		const botId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
+		const bot: LobbyPlayer = {
+			id: botId,
+			name: `Bot #${botCount + 1}`,
+			isBot: true,
+			isReady: true
+		}
+
+		lobby.players.push(bot)
+	}
+
+	/**
+	 * @brief Get non-bot player names from a lobby
+	 * @param lobbyId Lobby ID
+	 * @returns Array of player names (excluding bots)
+	 */
+	public getPlayerNamesInLobby(lobbyId: string): string[]
+	{
+		const lobby = this.lobbies.get(lobbyId)
+		if (!lobby)
+			return []
+		return lobby.players.filter(p => !p.isBot).map(p => p.name)
+	}
+
+	/**
 	 * @brief Start lobby game
 	 * @param socket Requester's WebSocket
 	 * @param lobbyId Target lobby ID
@@ -239,8 +315,10 @@ export class LobbyManager
 			return "Need at least 2 players"
 		if (lobby.type === 'tournament' && lobby.players.length > 16)
 			return "Maximum 16 players for tournaments"
-		if (lobby.type === 'multiplayergame' && lobby.players.length > 6)
-			return "Maximum 6 players allowed"
+		if (lobby.type === 'battleroyale' && lobby.players.length > 16)
+			return "Maximum 16 players allowed"
+		if (lobby.type === 'tournament' && lobby.players.length % 2 !== 0)
+			this.addBotToLobby(lobby)
 		
 		lobby.status = 'starting'
 		console.log(`[LOBBY] Starting ${lobby.type} ${lobbyId} with ${lobby.players.length} players`)
@@ -260,7 +338,12 @@ export class LobbyManager
 				console.log(`[LOBBY] Adding ${lobby.players.length} players to tournament`)
 				for (const player of lobby.players)
 				{
-					if (!player.isBot)
+					if (player.isBot)
+					{
+						console.log(`[LOBBY] Adding bot ${player.name} with id: ${player.id}`)
+						tournament.addBotToTournament(player.id, player.name)
+					}
+					else
 					{
 						let playerSocket: WebSocket | undefined
 						if (sockets)
@@ -288,7 +371,27 @@ export class LobbyManager
 			}
 		}
 		else
-			console.log(`[LOBBY] Multiplayer game start not yet implemented`)
+		{
+			const sockets = this.lobbyToSockets.get(lobbyId)
+			const playerIdToSocket = new Map<string, WebSocket>()
+			if (sockets)
+			{
+				for (const sock of sockets)
+				{
+					const playerId = this.socketToPlayerId.get(sock)
+					if (playerId)
+						playerIdToSocket.set(playerId, sock)
+				}
+			}
+			this.gameRoomManager.createBattleRoyaleGame(
+				lobby.players,
+				playerIdToSocket,
+				lobby.settings.powerUpsEnabled,
+				lobby.settings.fruitFrequency,
+				lobby.settings.lifeCount
+			)
+			console.log(`[LOBBY] Battle Royale game started with ${lobby.players.length} players`)
+		}
 		const sockets = this.lobbyToSockets.get(lobbyId)
 		if (sockets)
 		{
@@ -435,16 +538,11 @@ export class LobbyManager
 	private broadcastLobbyUpdate(lobby: Lobby): void
 	{
 		const sockets = this.lobbyToSockets.get(lobby.id)
-		const message = JSON.stringify({
-			type: 'lobbyUpdate',
-			lobby: lobby
-		})
 
 		if (!sockets)
 			return
 		for (const socket of sockets)
-			if (socket.readyState === WebSocket.OPEN)
-				socket.send(message)
+			sendMessage(socket, { type: 'lobbyUpdate', lobby: lobby })
 	}
 
 	/**
@@ -454,27 +552,10 @@ export class LobbyManager
 	private broadcastLobbyListToAll(): void
 	{
 		const lobbies = this.getOpenLobbies()
-		const message = JSON.stringify({
-			type: 'lobbyList',
-			lobbies: lobbies
-		})
 
 		console.log(`[LOBBY] Broadcasting lobby list to ${this.allSockets.size} clients`)
 		for (const socket of this.allSockets.keys())
-		{
-			if (socket.readyState === WebSocket.OPEN)
-				socket.send(message)
-		}
+			sendMessage(socket, { type: 'lobbyList', lobbies: lobbies })
 	}
 
-	/**
-	 * @brief Send message to specific socket
-	 * @param socket Target WebSocket
-	 * @param message Message object
-	 */
-	private sendMessage(socket: WebSocket, message: any): void
-	{
-		if (socket.readyState === WebSocket.OPEN)
-			socket.send(JSON.stringify(message))
-	}
 }

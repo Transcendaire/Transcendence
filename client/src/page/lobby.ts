@@ -9,8 +9,7 @@ let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;
 let currentOpenLobbyId: string | null = null;
 
-function initLobby()
-{
+function initLobby() {
     console.log('[LOBBY] Initialisation de la page lobby');
 
     const createLobbyModal = getEl("createLobbyModal");
@@ -22,10 +21,9 @@ function initLobby()
     requestLobbyList();
 }
 
-function setupWebSocketCallbacks(): void
-{
+function setupWebSocketCallbacks(): void {
     console.log('[LOBBY] Configuration des callbacks WebSocket');
-    
+
     wsClient.onLobbyCreated = (lobbyId: string, lobby: Lobby) => {
         console.log('[LOBBY] Lobby créé:', lobbyId, lobby);
         setupLobbyModal(lobby);
@@ -35,7 +33,7 @@ function setupWebSocketCallbacks(): void
     wsClient.onLobbyUpdate = (lobby: Lobby) => {
         console.log('[LOBBY] Mise à jour du lobby:', lobby);
         requestLobbyList();
-        
+
         if (currentOpenLobbyId === lobby.id) {
             setupLobbyModal(lobby);
         }
@@ -51,16 +49,70 @@ function setupWebSocketCallbacks(): void
         console.error('[LOBBY] Erreur lobby:', message);
         alert(`Erreur: ${message}`);
     };
-    
+
     wsClient.onGameStart = (playerRole: 'player1' | 'player2') => {
         console.log(`[LOBBY] Match de tournoi démarre! Rôle: ${playerRole}`);
         sessionStorage.setItem('playerRole', playerRole);
         navigate('game');
     };
+    
+    wsClient.onTournamentPrepare = (playerRole: 'player1' | 'player2', opponentName: string) => {
+        console.log(`[LOBBY] Préparation tournoi: ${playerRole} vs ${opponentName}`);
+        sessionStorage.setItem('playerRole', playerRole);
+        sessionStorage.setItem('tournamentOpponent', opponentName);
+        navigate('game');
+    };
+
+    wsClient.onAlreadyConnected = (name: string) => {
+        const lobbyModal = document.getElementById('lobbyModal');
+        if (lobbyModal)
+            hide(lobbyModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà connecté ailleurs avec le nom "${name}".\n\n` +
+            `Voulez-vous déconnecter l'autre session ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInLobby = (name: string) => {
+        const lobbyModal = document.getElementById('lobbyModal');
+        if (lobbyModal)
+            hide(lobbyModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà dans un lobby avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter l'autre lobby et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInGame = (name: string) => {
+        const lobbyModal = document.getElementById('lobbyModal');
+        if (lobbyModal)
+            hide(lobbyModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà en jeu avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter la partie et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onDisconnectedByOtherSession = () => {
+        alert('Vous avez été déconnecté car une autre session a pris le relais.');
+        wsClient.disconnect();
+        navigate('home');
+    };
 }
 
-function requestLobbyList(): void
-{
+function requestLobbyList(): void {
     console.log('[LOBBY] Demande de la liste des lobbies');
     if (!wsClient.isConnected()) {
         console.log('[LOBBY] WebSocket non connecté, connexion en cours...');
@@ -74,13 +126,12 @@ function requestLobbyList(): void
     }
 }
 
-function renderLobbies(lobbies: Lobby[]): void
-{
+function renderLobbies(lobbies: Lobby[]): void {
     console.log('[LOBBY] Rendu de', lobbies.length, 'lobbies');
     const lobbyList = getEl("lobbiesList");
-    
+
     lobbyList.innerHTML = '';
-    
+
     if (lobbies.length === 0) {
         lobbyList.innerHTML = `
             <div class="text-center text-sonpi16-orange opacity-60 py-8">
@@ -90,7 +141,7 @@ function renderLobbies(lobbies: Lobby[]): void
         `;
         return;
     }
-    
+
     lobbies.forEach(lobby => {
 
         const lobbyDiv = createLobbyElement(lobby);
@@ -98,7 +149,7 @@ function renderLobbies(lobbies: Lobby[]): void
         const isFull = lobby.players.length >= lobby.maxPlayers;
 
         const joinButton = lobbyDiv.querySelector('.joinLobby') as HTMLButtonElement;
-    
+
         if (joinButton && !isFull) {
             joinButton.addEventListener('click', () => {
                 setupLobbyModal(lobby);
@@ -109,91 +160,89 @@ function renderLobbies(lobbies: Lobby[]): void
     });
 }
 
-function joinLobby(lobbyId: string): void
-{
+function joinLobby(lobbyId: string): void {
     console.log('[LOBBY] Tentative de rejoindre le lobby:', lobbyId);
-    
+
     if (!playerName || playerName.trim() === '') {
         alert('Veuillez vous connecter avant de rejoindre un lobby');
         navigate('home');
         return;
     }
-    
+
     if (!wsClient.isConnected()) {
         console.error('[LOBBY] WebSocket non connecté');
         alert('Connexion perdue, reconnexion en cours...');
         requestLobbyList();
         return;
     }
-    
-    wsClient.sendMessage({ 
-        type: 'joinLobby',
+
+    const joinMessage = {
+        type: 'joinLobby' as const,
         playerName: playerName,
-        lobbyId: lobbyId 
-    });
+        lobbyId: lobbyId
+    };
+    wsClient.setPendingAction(() => wsClient.sendMessage(joinMessage));
+    wsClient.sendMessage(joinMessage);
 }
 
-function startLobby(lobbyId: string): void
-{
+function startLobby(lobbyId: string): void {
     console.log('[LOBBY] Tentative de lancer le lobby:', lobbyId);
-    
+
     if (!wsClient.isConnected()) {
         console.error('[LOBBY] WebSocket non connecté');
         alert('Connexion perdue, reconnexion en cours...');
         requestLobbyList();
         return;
     }
-    
-    wsClient.sendMessage({ 
-        type: 'startLobby', 
-        lobbyId: lobbyId 
+
+    wsClient.sendMessage({
+        type: 'startLobby',
+        lobbyId: lobbyId
     });
 }
 
-function deleteLobby(lobbyId: string): void
-{
+function deleteLobby(lobbyId: string): void {
     console.log('[LOBBY] Tentative de supprimer le lobby:', lobbyId);
-    
+
     if (!confirm('Êtes-vous sûr de vouloir supprimer ce lobby ?')) {
         return;
     }
-    
+
     if (!wsClient.isConnected()) {
         console.error('[LOBBY] WebSocket non connecté');
         alert('Connexion perdue, reconnexion en cours...');
         requestLobbyList();
         return;
     }
-    
-    wsClient.sendMessage({ 
-        type: 'deleteLobby', 
-        lobbyId: lobbyId 
+
+    wsClient.sendMessage({
+        type: 'deleteLobby',
+        lobbyId: lobbyId
     });
 }
 
-function initCreationModal(createLobbyModal: HTMLElement)
-{
+function initCreationModal(createLobbyModal: HTMLElement) {
     const tournamentName = getEl("tournamentName") as HTMLInputElement;
     const createLobbyButton = getEl('createLobbyButton') as HTMLButtonElement;
     const cancelCreateButton = getEl('cancelCreateButton') as HTMLButtonElement;
     const form = getEl('creationForm') as HTMLFormElement;
     const gameModeSelect = getEl("gameMode") as HTMLSelectElement;
     const fruitFrequencyDiv = getEl("powerfruitsfrequency");
-    
+
     gameModeSelect.addEventListener('change', () => {
         if (gameModeSelect.value === "Normal")
             fruitFrequencyDiv.classList.add("hidden");
         else
             fruitFrequencyDiv.classList.remove("hidden");
     });
-    
+
     setupGlobalModalEvents(createLobbyModal, createLobbyButton, cancelCreateButton);
 
     form?.addEventListener('submit', (e) => {
         e.preventDefault();
-        
+
         let name = tournamentName.value.trim();
-        
+
         const gameType = getEl("gameType") as HTMLSelectElement;
         const gameMode = getEl("gameMode") as HTMLSelectElement;
         const mode = gameMode.value;
@@ -203,65 +252,66 @@ function initCreationModal(createLobbyModal: HTMLElement)
         const fruitFrequency = fruitFrequencySelect?.value as 'low' | 'normal' | 'high' || 'normal';
         const maxScoreSelect = getEl("maxScoreSelect") as HTMLSelectElement;
         const maxScore = parseInt(maxScoreSelect?.value || '5');
-        
+
         if (!name || name === '') name = `${gameType.value} de ${playerName}`;
-        
+
         if (name.length < 3) {
             alert('Le nom du lobby doit comporter au moins 3 caractères');
             return;
         }
-        
+
         if (!/^[a-zA-Z0-9_-\s]+$/.test(name)) {
             alert('Caractères invalides dans le nom du lobby');
             return;
         }
-        
+
         if (maxPlayers < 2 || maxPlayers > 16) {
             alert('Nombre de joueurs invalide (2-16)');
             return;
         }
-        
+
         if (!playerName || playerName.trim() === '') {
             alert('Veuillez vous connecter avant de créer un lobby');
             navigate('home');
             return;
         }
-        
+
         if (!wsClient.isConnected()) {
             alert('Connexion perdue, reconnexion en cours...');
             requestLobbyList();
             return;
         }
         
-        const type = gameType?.value || 'multiplayerGame';
-        const lobbyType: 'tournament' | 'multiplayergame' = 
-            type.toLowerCase() === 'tournament' ? 'tournament' : 'multiplayergame';
+        const type = gameType?.value || 'battleroyale';
+        const lobbyType: 'tournament' | 'battleroyale' = 
+            type.toLowerCase() === 'tournament' ? 'tournament' : 'battleroyale';
 
         console.log(`[LOBBY] Création d'un lobby: ${name}, type: ${type}, mode: ${mode}, joueurs: ${maxPlayers}`);
-        
+
         const powerUpsEnabled = mode.toLowerCase() === 'custom';
         const settings = {
-            maxScore: maxScore,
+            lifeCount: maxScore,
             powerUpsEnabled: powerUpsEnabled,
             fruitFrequency: powerUpsEnabled ? fruitFrequency : 'normal' as 'low' | 'normal' | 'high'
         };
-        
-        wsClient.sendMessage({
-            type: 'createCustomLobby',
+
+        const createMessage = {
+            type: 'createCustomLobby' as const,
             playerName: playerName,
             name: name,
             lobbyType: lobbyType,
             maxPlayers: maxPlayers,
             settings: settings
-        });
-        
+        };
+        wsClient.setPendingAction(() => wsClient.sendMessage(createMessage));
+        wsClient.sendMessage(createMessage);
+
         hide(createLobbyModal);
         form.reset();
     });
 }
 
-function setupLobbyModal(lobby: Lobby)
-{
+function setupLobbyModal(lobby: Lobby) {
     const lobbyModal = getEl("lobbyModal");
     const modalTitle = getEl('roomName') as HTMLHeadingElement;
     const playersList = getEl('playersList') as HTMLDivElement;
@@ -271,6 +321,7 @@ function setupLobbyModal(lobby: Lobby)
     const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
     const creator = lobby.players.find(p => p.id === lobby.creatorId);
     const isOwner = creator?.name === playerName;
+    const isFull = lobby.players.length >= lobby.maxPlayers;
 
     currentOpenLobbyId = lobby.id;
 
@@ -287,6 +338,8 @@ function setupLobbyModal(lobby: Lobby)
             const playerDiv = createPlayerElement(player, lobby);
             playersList.appendChild(playerDiv);
         });
+        if (!isFull)
+            addBot(lobby, playersList);
     }
 
     if (isOwner && lobby.players.length >= 2) {
@@ -298,9 +351,9 @@ function setupLobbyModal(lobby: Lobby)
     }
 
     quitButton.onclick = () => {
-        wsClient.sendMessage({ 
-            type: 'leaveLobby', 
-            lobbyId: lobby.id 
+        wsClient.sendMessage({
+            type: 'leaveLobby',
+            lobbyId: lobby.id
         });
         currentOpenLobbyId = null;
         hide(lobbyModal);
@@ -309,20 +362,19 @@ function setupLobbyModal(lobby: Lobby)
     show(lobbyModal);
 }
 
-function createLobbyElement(lobby : Lobby): HTMLDivElement
-{
+function createLobbyElement(lobby: Lobby): HTMLDivElement {
     const lobbyDiv = document.createElement('div');
     lobbyDiv.id = `lobby-${lobby.id}`;
     lobbyDiv.className = `bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                         hover:bg-opacity-20 transition-all duration-300 
                         border-2 border-transparent hover:border-sonpi16-orange`;
-        
-        const type = lobby.type === 'tournament' ? 'Tournoi ' : 'Partie ';
-        const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
-        const modeIcon = lobby.settings.powerUpsEnabled ? '⚡' : '🎮';
-        const isFull = lobby.players.length >= lobby.maxPlayers;
-        
-        lobbyDiv.innerHTML =`
+
+    const type = lobby.type === 'tournament' ? 'Tournoi ' : 'Partie ';
+    const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
+    const modeIcon = lobby.settings.powerUpsEnabled ? '⚡' : '🎮';
+    const isFull = lobby.players.length >= lobby.maxPlayers;
+
+    lobbyDiv.innerHTML = `
             <div class="flex items-center justify-between">
                 <div class="flex-1">
                     <h3 class="text-xl font-bold text-sonpi16-orange font-quency mb-2">
@@ -355,22 +407,99 @@ function createLobbyElement(lobby : Lobby): HTMLDivElement
     return lobbyDiv;
 }
 
-function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement
+function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement 
 {
     const playerDiv = document.createElement('div');
 
     playerDiv.id = player.id;
     playerDiv.className = `flex flex-row gap-12 items-center 
                             border-sonpi16-black rounded-xl 
-                            bg-sonpi16-orange w-full`
+                            bg-sonpi16-orange bg-opacity-30 w-full`
 
     const isOwner = player.id === lobby.creatorId;
     const ownerStar = isOwner ? ' ⭐' : '';
+    
+    const creator = lobby.players.find(p => p.id === lobby.creatorId);
+    const amICreator = creator?.name === playerName;
+    const showKickButton = amICreator && !isOwner;
+
 
     playerDiv.innerHTML = `
             <img src="./assets/Transcendaire.png" alt="avatar" class="w-16 h-16 rounded-full object-cover">
-            <span id="${player.id}" class="font-quency m">${player.name}${ownerStar}</span>`;
+            <span id="${player.id}" class="font-quency text-sonpi16-orange text-2lg">${player.name}${ownerStar}</span>
+            ${showKickButton ? 
+            `<button data-player-id="${player.id}" 
+                     class="kickButton w-10 h-10
+                            hover:scale-110 transition-all duration-200 
+                            flex items-center justify-center
+                            text-sonpi16-orange text-xl font-bold shadow-lg">
+                ✕
+             </button>` 
+            : ''
+            }`;
+
+    const kickBtn = playerDiv.querySelector('.kickButton') as HTMLButtonElement | null;
+    if (kickBtn) {
+        kickBtn.addEventListener('click', () => {
+            if (!wsClient.isConnected()) {
+                alert('Connexion perdue, reconnexion en cours...');
+                requestLobbyList();
+                return;
+            }
+            const targetPlayerId = kickBtn.getAttribute('data-player-id');
+            if (targetPlayerId) {
+                wsClient.sendMessage({
+                    type: 'removeBot',
+                    lobbyId: lobby.id,
+                    botId: targetPlayerId
+                });
+            }
+        });
+    }
+    
     return playerDiv;
+}
+
+function addBot(lobby: Lobby, playersList: HTMLDivElement) {
+    const addBotDiv = document.createElement('div');
+
+
+    addBotDiv.className = `flex flex-row gap-12 items-center 
+                            border-sonpi16-black rounded-xl
+                            w-16 h-16 justify-center
+                            bg-sonpi16-orange bg-opacity-30 w-full corder 
+                            border-4 border-dashed border-sonpi16-orange
+                            text-sonpi16-orange`
+
+    addBotDiv.innerHTML = `
+            <span class="font-quency m">Add Bot</span>
+            <button id="addBotButton" 
+                class="w-12 h-12 hover:scale-110 transition-all duration-200 items-center font-quency
+                   text-sonpi16-orange text-4xl font-bold">
+                    +
+            </button>
+            `;
+
+
+
+    playersList.appendChild(addBotDiv);
+    getEl("addBotButton").onclick = () => {
+        const botNumber = lobby.players.filter(p => p.isBot).length;
+        const robotEmojis = ['🤖', '🦾', '🦿', '👾', '🛸', '⚙️', '🔧'];
+        const botName = `Robot${botNumber + 1}${robotEmojis[botNumber % robotEmojis.length]} `;
+        const bot: LobbyPlayer = {
+            id: `robot-${Date.now()}`,
+            name: `${botName}`,
+            isBot: true,
+            isReady: true
+        }
+        console.log(`bot added => ${botName}`);
+        wsClient.sendMessage({
+            type: 'addBot',
+            lobbyId: lobby.id
+        })
+    };
+
 }
 
 registerPageInitializer("lobby", initLobby);

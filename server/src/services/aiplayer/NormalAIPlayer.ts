@@ -1,11 +1,9 @@
 import { AIPlayer } from './AIPlayer.js'
 import { Player } from '@app/shared/models/Player.js'
 import { Ball } from '@app/shared/models/Ball.js'
-import {
-	canvasWidth,
-	canvasHeight,
-	paddleOffset
-} from '@app/shared/consts.js'
+import { CloneBall } from '@app/shared/models/CloneBall.js'
+import { PowerUpFruit } from '@app/shared/types.js'
+import { canvasHeight } from '@app/shared/consts.js'
 
 /**
  * @brief Normal AI using direct ball velocities from game state
@@ -34,16 +32,21 @@ export class NormalAIPlayer extends AIPlayer
 		if (!ball)
 			return
 		this.usePowerUps(gameState)
-		this.decideUsingVelocity(ball)
+		this.decideUsingVelocity(ball, gameState.players)
 	}
 
-	private decideUsingVelocity(b: Ball): void
+	private decideUsingVelocity(b: Ball, players: Player[]): void
 	{
 		if (!this.isBallComing(b.velocityX))
 			return this.goToMiddle()
-		const targetX = this.playerId === 'player1'
-			? paddleOffset + 10
-			: canvasWidth - paddleOffset - 10
+
+		const playerIndex = this.playerId === 'player1' ? 0 : 1
+		const activePlayers = players.filter(p => !p.isEliminated())
+		const myPlayer = activePlayers[playerIndex]
+		if (!myPlayer)
+			return this.goToMiddle()
+
+		const targetX = myPlayer.paddle.positionX + myPlayer.paddle.width / 2
 		const timeToTarget = (targetX - b.positionX) / b.velocityX
 		if (!isFinite(timeToTarget) || timeToTarget <= 0)
 			return this.goToMiddle()
@@ -67,16 +70,15 @@ export class NormalAIPlayer extends AIPlayer
 
 	/**
 	 * @brief Activate available power-ups through input simulation
-	 *
-	 * Simulates input for slots with available power-ups. We try to
-	 * activate only when a slot currently contains a power-up and is
-	 * not already selected.
 	 */
-	private usePowerUps(gameState: { player1: Player; player2: Player; ball: Ball }): void
+	private usePowerUps(
+		gameState: { players: Player[]; ball: Ball; cloneBalls: CloneBall[]; fruits: PowerUpFruit[] }
+	): void
 	{
-		const aiPlayer = this.playerId === 'player1'
-			? gameState.player1
-			: gameState.player2
+		const playerIndex = this.playerId === 'player1' ? 0 : 1
+		const aiPlayer = gameState.players[playerIndex]
+		if (!aiPlayer)
+			return
 		for (let slotIndex = 0; slotIndex < 3; slotIndex++)
 		{
 			const powerUp = aiPlayer.itemSlots[slotIndex]

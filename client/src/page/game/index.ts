@@ -25,6 +25,13 @@ function initGame(): void
     console.log('[GAME] WebSocket connecté?', wsClient.isConnected());
     
     cleanupPreviousHandlers();
+    document.body.classList.remove('bg-sonpi16-orange');
+    document.body.classList.add('bg-sonpi16-black');
+    gameState.addCleanupHandler(() => {
+        document.body.classList.remove('bg-sonpi16-black');
+        document.body.classList.add('bg-sonpi16-orange');
+    });
+
     setupDisconnectionHandlers();
     
     requestAnimationFrame(() => {
@@ -39,15 +46,23 @@ function initGame(): void
         gameState.setCtx(ctx);
         
         const storedRole = sessionStorage.getItem('playerRole') as 'player1' | 'player2' | null;
+        const storedOpponent = sessionStorage.getItem('tournamentOpponent');
+        
         if (storedRole) {
             gameState.setCurrentPlayerRole(storedRole);
-            console.log('[GAME] Démarrage avec rôle:', storedRole);
+            console.log('[GAME] Rôle stocké:', storedRole, '- En attente du premier gameState du serveur...');
             sessionStorage.removeItem('playerRole');
-            console.log('[GAME] Lancement local du jeu avec storedRole');
-            startGame(storedRole, gameLoop);
         }
         else
             navigate("home");
+
+        if (storedOpponent) {
+            console.log('[GAME] Opponent stocké:', storedOpponent, '- Affichage du countdown');
+            gameState.setTournamentCountdown({ opponentName: storedOpponent, countdown: 3 });
+            gameState.setGameRunning(true);
+            sessionStorage.removeItem('tournamentOpponent');
+            gameState.setAnimationFrameId(requestAnimationFrame(gameLoop));
+        }
 
         console.log('[GAME] Initialisation terminée - Canvas et DOM prêts');
         setupWebSocketCallbacks(gameLoop);

@@ -1,3 +1,24 @@
+export type Point2D = {
+	x: number;
+	y: number;
+}
+
+export type SideData = {
+	start: Point2D;
+	end: Point2D;
+	center: Point2D;
+	angle: number;
+	length: number;
+}
+
+export type PolygonData = {
+	vertices: Point2D[];
+	sides: SideData[];
+	center: Point2D;
+	radius: number;
+	cornerRadius: number;
+}
+
 export type GameInput = {
 	playerId: string;
 	keys: {
@@ -19,7 +40,7 @@ export type PowerUpFruit = {
 }
 
 export type CustomGameSettings = {
-	maxScore: number;
+	lifeCount: number;
 	powerUpsEnabled: boolean;
 	fruitFrequency: 'low' | 'normal' | 'high';
 }
@@ -35,7 +56,7 @@ export type Lobby = {
 	id: string;
 	creatorId: string;
 	name: string;
-	type: 'tournament' | 'multiplayergame';
+	type: 'tournament' | 'battleroyale';
 	settings: CustomGameSettings;
 	players: LobbyPlayer[];
 	maxPlayers: number;
@@ -43,31 +64,40 @@ export type Lobby = {
 	createdAt: number;
 }
 
+export type PlayerState = {
+	paddle: {
+		y: number;
+		x?: number;
+		angle?: number;
+		sidePosition?: number;
+		length?: number;
+		width?: number;
+	};
+	lives: number;
+	isEliminated?: boolean;
+	name?: string;
+	ping?: number;
+	itemSlots?: PowerUpType[];
+	pendingPowerUps?: PowerUpType[];
+	selectedSlots?: boolean[];
+	hitStreak?: number;
+	chargingPowerUp?: PowerUpType;
+}
+
 export type GameState = {
-	player1: {
-		paddle: { y: number };
-		score: number;
-		itemSlots?: PowerUpType[];
-		pendingPowerUps?: PowerUpType[];
-		selectedSlots?: boolean[];
-		hitStreak?: number;
-		chargingPowerUp?: PowerUpType;
-	};
-	player2: {
-		paddle: { y: number };
-		score: number;
-		itemSlots?: PowerUpType[];
-		pendingPowerUps?: PowerUpType[];
-		selectedSlots?: boolean[];
-		hitStreak?: number;
-		chargingPowerUp?: PowerUpType;
-	};
+	players: PlayerState[];
 	ball: {
 		x: number;
 		y: number;
 		vx: number;
 		vy: number;
 	};
+	balls?: Array<{
+		x: number;
+		y: number;
+		vx: number;
+		vy: number;
+	}>;
 	cloneBalls?: Array<{
 		x: number;
 		y: number;
@@ -75,22 +105,24 @@ export type GameState = {
 		vy: number;
 	}>;
 	fruits?: PowerUpFruit[];
+	polygonData?: PolygonData;
+	isBattleRoyale?: boolean;
 }
 
 export type WebSocketMessage = 
 | { type: "join"; playerName: string }
 | { type: "joinCustom"; playerName: string }
-| { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; maxScore?: number }
+| { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; lifeCount?: number }
 | { type: "waiting"; message?: string }
 | { type: "playerJoined"; playerCount: number }
-| { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean }
+| { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean; player1Name: string; player2Name: string }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; score1: number; score2: number; isTournament?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
+| { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; isBattleRoyale?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
-| { type: "ping" }
+| { type: "ping"; pingValue?: number }
 | { type: "pong" }
-| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'multiplayergame'; maxPlayers: number; settings: CustomGameSettings }
+| { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'battleroyale'; maxPlayers: number; settings: CustomGameSettings }
 | { type: "joinLobby"; playerName: string; lobbyId: string }
 | { type: "leaveLobby"; lobbyId: string }
 | { type: "deleteLobby"; lobbyId: string }
@@ -104,6 +136,14 @@ export type WebSocketMessage =
 | { type: "lobbyError"; message: string }
 | { type: "waitingForMatch"; message: string }
 | { type: "tournamentComplete"; champion: string; tournamentName: string }
+| { type: "tournamentCountdown"; opponentName: string; countdown: number }
+| { type: "tournamentMatchUpdate"; siblingMatch?: { player1Name: string; player2Name: string; lives1: number; lives2: number }; otherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }> }
+| { type: "tournamentPrepare"; playerRole: 'player1' | 'player2'; opponentName: string }
+| { type: "alreadyConnected"; playerName: string }
+| { type: "alreadyInLobby"; playerName: string }
+| { type: "alreadyInGame"; playerName: string }
+| { type: "forceDisconnect"; playerName: string }
+| { type: "disconnectedByOtherSession" }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

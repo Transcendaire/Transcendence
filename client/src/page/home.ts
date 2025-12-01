@@ -7,14 +7,19 @@ import { checkAuthentication, getUserWithCookies, broadcastAuthEvent, initAuth }
 import { registerPageInitializer, navigate } from "../router";
 import { inputParserClass } from "../components/inputParser";
 import { wsClient } from "../components/WebSocketClient";
-import { getEl , show, hide, setupGlobalModalEvents } from "../app";
+import { getEl, show, hide, setupGlobalModalEvents } from "../app";
+import { initGoogle,loadGoogleScript } from "../components/googleAuth";
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
 const inputParser = new inputParserClass();
 
-async function initHomePage()
-{
+const handleGoogleSignIn = () => {
+    google.accounts.id.prompt();
+
+}
+
+async function initHomePage() {
     const gameModeModal = getEl("gameModeModal")
     const fastGameModal = getEl("fastGameModal")
     const aiGameModal = getEl("aiGameModal")
@@ -37,6 +42,12 @@ async function initHomePage()
 	});
 	
 	console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
+
+    await loadGoogleScript();
+    await initGoogle();
+
+    updateUI();
+
     setupWebsocket(waitingModal);
 
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
@@ -49,7 +60,7 @@ async function initHomePage()
         else
             show(loginModal)
     })
-    
+
     redirect.addEventListener('click', () => {
         hide(loginModal)
         show(signinModal)
@@ -63,8 +74,7 @@ async function initHomePage()
     initAIGameModal(aiGameModal, gameModeModal)
 }
 
-function initLoginModal(loginModal: HTMLElement)
-{
+function initLoginModal(loginModal: HTMLElement) {
     const loginButton = getEl("loginButton") as HTMLButtonElement;
     const checkButton = getEl("checkInput") as HTMLButtonElement;
     const cancelLoginButton = getEl("cancelLoginButton") as HTMLButtonElement;
@@ -72,12 +82,11 @@ function initLoginModal(loginModal: HTMLElement)
     const passwordInput = getEl("passwordCheck") as HTMLInputElement;
 
     setupGlobalModalEvents(loginModal, loginButton, cancelLoginButton);
-    loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
+    // loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
 
 
-    const connect = async () => 
-    {
-		console.log('Connect button clicked\n')	
+    const connect = async () => {
+        console.log('Connect button clicked\n')
         const password = passwordInput.value;
         const username = playerInput.value;
 
@@ -105,12 +114,11 @@ function initLoginModal(loginModal: HTMLElement)
 			updateUI();
 			broadcastAuthEvent('login');
 
-		} catch (error)
-		{
-			const message = String(error);
-			console.error('Erreur (connect): ', message);
-			alert(message);
-		}
+        } catch (error) {
+            const message = String(error);
+            console.error('Erreur (connect): ', message);
+            alert(message);
+        }
     }
 
     checkButton.addEventListener('click', connect);
@@ -119,8 +127,7 @@ function initLoginModal(loginModal: HTMLElement)
     });
 }
 
-async function initsigninModal(signinModal: HTMLElement)
-{
+async function initsigninModal(signinModal: HTMLElement) {
     const signinButton = getEl("signinButton") as HTMLButtonElement;
     const cancelSigninButton = getEl("cancelSigninButton") as HTMLButtonElement
     const usernameInput = getEl("newUser") as HTMLInputElement;
@@ -130,7 +137,7 @@ async function initsigninModal(signinModal: HTMLElement)
     const checkSignInInput = getEl("checkSignInInput") as HTMLButtonElement;
 
     setupGlobalModalEvents(signinModal, signinButton, cancelSigninButton);
-    signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
+    // signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
 
 
     const subscribe = async () => {
@@ -138,24 +145,24 @@ async function initsigninModal(signinModal: HTMLElement)
         const username = usernameInput.value.trim();
         const alias = aliasInput.value.trim();
         const password = passwordInput.value.trim();
-		const passwordValidation = confirmPasswordInput.value.trim();
+        const passwordValidation = confirmPasswordInput.value.trim();
 
 
-		 console.log('Form values:', { username, alias, password, passwordValidation });
-    	 console.log('confirmPasswordInput element:', confirmPasswordInput);
-    	 console.log('confirmPasswordInput value raw:', confirmPasswordInput.value);
-		try {
-			console.log('subscribe button clicked');
-			const response = await fetch('/api/auth/register', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					login: username, 
-					password,
-					passwordValidation,
-					alias
-				})
-			});
+        console.log('Form values:', { username, alias, password, passwordValidation });
+        console.log('confirmPasswordInput element:', confirmPasswordInput);
+        console.log('confirmPasswordInput value raw:', confirmPasswordInput.value);
+        try {
+            console.log('subscribe button clicked');
+            const response = await fetch('/api/auth/register', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    login: username,
+                    password,
+                    passwordValidation,
+                    alias
+                })
+            });
 
 			const data = await response.json();
 			if (!response.ok)
@@ -183,8 +190,7 @@ function initGameModeModal(
     gameModeModal: HTMLElement,
     fastGameModal: HTMLElement,
     aiGameModal: HTMLElement
-): void
-{
+): void {
     gameModeModal.addEventListener('click', (event) => {
         if (event.target === gameModeModal)
             hide(gameModeModal)
@@ -206,8 +212,7 @@ function initGameModeModal(
     })
 }
 
-function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElement): void
-{
+function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElement): void {
     fastGameModal.addEventListener('click', (event) => {
         if (event.target === fastGameModal)
             hide(fastGameModal)
@@ -222,6 +227,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 				return ;
 			}
             await wsClient.connect(`ws://${window.location.host}/ws`)
+            wsClient.setPendingAction(() => wsClient.joinGame(playerName))
             wsClient.joinGame(playerName)
         } catch (error) {
             alert("Impossible de se connecter au serveur")
@@ -237,6 +243,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 				return ;
 			}
             await wsClient.connect(`ws://${window.location.host}/ws`)
+            wsClient.setPendingAction(() => wsClient.joinCustomGame(playerName))
             wsClient.joinCustomGame(playerName)
         } catch (error) {
             alert("Impossible de se connecter au serveur")
@@ -251,8 +258,7 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
     })
 }
 
-function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): void
-{
+function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): void {
     aiGameModal.addEventListener('click', (event) => {
         if (event.target === aiGameModal)
             hide(aiGameModal)
@@ -275,6 +281,7 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
             const selectedMaxScore = parseInt(maxScore());
             console.log(`game ${selectedDifficulty === 0 ? 'easy' : 'normal'} ${selectedPowerUps === true ? 'avec' : 'sans'} pouvoir de ${selectedMaxScore} points max `);
             await wsClient.connect(`ws://${window.location.host}/ws`)
+            wsClient.setPendingAction(() => wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore))
             wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore)
         } catch (error) {
             alert("Impossible de se connecter au serveur")
@@ -287,8 +294,7 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
     })
 }
 
-function initWaitingModal(modal: HTMLElement)
-{
+function initWaitingModal(modal: HTMLElement) {
     const cancelWaitButton = getEl("cancelWaitButton");
 
     cancelWaitButton.addEventListener('click', () => {
@@ -315,11 +321,10 @@ async function logout(): Promise<void>
 }
 
 
-function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () => string 
-{
+function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () => string {
     const activeClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-sonpi16-orange text-sonpi16-black border-4 border-white transition-all duration-300";
     const inactiveClass = "flex-1 py-3 rounded-xl font-quency font-bold text-lg bg-gray-600 text-gray-300 border-4 border-transparent transition-all duration-300 hover:bg-gray-500";
-    
+
     const buttons = buttonIds.map(id => getEl(id) as HTMLButtonElement);
     let selectedIndex = initialIndex;
 
@@ -360,7 +365,7 @@ function updateUI(): void {
     const logoutButton = getEl("logoutButton");
     const profileButton = getEl("profileButton");
     const signinButton = getEl("signinButton");
-    
+
     if (isLoggedIn) {
         hide(loginButton);
         hide(signinButton);
@@ -376,10 +381,8 @@ function updateUI(): void {
     }
 }
 
-function setupWebsocket(waitingModal: HTMLElement)
-{
-    wsClient.onWaitingForPlayer = () => 
-    {
+function setupWebsocket(waitingModal: HTMLElement) {
+    wsClient.onWaitingForPlayer = () => {
         console.log('waiting for player')
         show(waitingModal);
     }
@@ -394,6 +397,48 @@ function setupWebsocket(waitingModal: HTMLElement)
     wsClient.onPlayerJoined = (playerCount: number) => {
         const playerCountSpan = getEl("playerCount");
         playerCountSpan.textContent = playerCount.toString();
+    };
+
+    wsClient.onAlreadyConnected = (name: string) => {
+        hide(waitingModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà connecté ailleurs avec le nom "${name}".\n\n` +
+            `Voulez-vous déconnecter l'autre session ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInLobby = (name: string) => {
+        hide(waitingModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà dans un lobby avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter l'autre lobby et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onAlreadyInGame = (name: string) => {
+        hide(waitingModal);
+        const shouldDisconnect = confirm(
+            `Vous êtes déjà en jeu avec le nom "${name}".\n\n` +
+            `Voulez-vous quitter la partie et continuer ?`
+        );
+        if (shouldDisconnect)
+            wsClient.forceDisconnectOther(name);
+        else
+            wsClient.clearPendingAction();
+    };
+
+    wsClient.onDisconnectedByOtherSession = () => {
+        alert('Vous avez été déconnecté car une autre session a pris le relais.');
+        wsClient.disconnect();
+        hide(waitingModal);
     };
 }
 

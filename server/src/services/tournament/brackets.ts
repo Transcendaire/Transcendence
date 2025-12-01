@@ -47,15 +47,18 @@ export class SingleEliminationBracket implements BracketService
 	}
 	/**
 	 * @brief Generates the complete bracket structure for a tournament
-	 * @param tournamentId ID of the tournament
-	 * @param tournamentName Name of the tournament
+	 * @param tournamentPlayers Optional array of players (for bots support)
 	 * @return 2D array of matches representing the tournament bracket
 	 */
-	public	generateBracket(): Match[][]
+	public	generateBracket(tournamentPlayers?: Array<{id: string, alias: string}>): Match[][]
 	{
 		let brackets: Match[][] = [];
-		let totalMatches: number = this.findTotalNumberOfMatches(this.db.getTournament(this.tournamentId, undefined));
-		let players = this.db.getTournamentPlayers(this.tournamentId);
+		let totalMatches: number = this.findTotalNumberOfMatches(this.db.getTournament(this.tournamentId, undefined), tournamentPlayers);
+		let players: Array<{player_id: string, alias: string}> = []
+		if (tournamentPlayers && tournamentPlayers.length > 0)
+			players = tournamentPlayers.map(p => ({ player_id: p.id, alias: p.alias }))
+		else
+			players = this.db.getTournamentPlayers(this.tournamentId)
 		let playersCount = players.length;
 		let round = 0;
 		
@@ -71,8 +74,8 @@ export class SingleEliminationBracket implements BracketService
 			{
 				if (round === 0)
 				{
-					let player1 = { id: players[i].player_id, alias: players[i].alias };
-					let player2 = { id: players[i + 1].player_id, alias: players[i + 1].alias };
+					let player1 = { id: players[i]!.player_id, alias: players[i]!.alias };
+					let player2 = { id: players[i + 1]!.player_id, alias: players[i + 1]!.alias };
 
 					this.storeFirstRoundMatch(player1, player2, matches, matchNumber);
 				}
@@ -91,7 +94,7 @@ export class SingleEliminationBracket implements BracketService
 				i += 2;
 			}
 			brackets.push(matches);
-			playersCount = Math.ceil(playersCount / 2); //* if carry over, math.ceil accounts for it
+			playersCount = Math.ceil(playersCount / 2);
 			totalMatches -= roundMatches;
 			round++
 		}
@@ -107,8 +110,11 @@ export class SingleEliminationBracket implements BracketService
 	public updateMatchResult(match: Match, winnerId: string): void
 	{
 		match.winnerId = winnerId;
-		let updatedWinnerAlias: string = this.db.getPlayerBy("id", winnerId)?.alias as string;
-		match.winnerAlias = updatedWinnerAlias;
+		const dbPlayer = this.db.getPlayerBy("id", winnerId)
+		if (dbPlayer)
+			match.winnerAlias = dbPlayer.alias
+		else
+			match.winnerAlias = winnerId === match.player1Id ? match.player1Alias : match.player2Alias
 		match.status = "completed";
 	}
 
@@ -197,11 +203,14 @@ export class SingleEliminationBracket implements BracketService
 	/**
  	* @brief Calculates total number of matches needed for a tournament
  	* @param tournament The tournament object containing player count
+	* @param tournamentPlayers Optional array of players (for bots support)
  	* @return Total number of matches (always player count - 1)
  	* @throws Error if tournament is undefined
  	*/
-	private findTotalNumberOfMatches(tournament: any): number
+	private findTotalNumberOfMatches(tournament: any, tournamentPlayers?: Array<{id: string, alias: string}>): number
 	{
+		if (tournamentPlayers && tournamentPlayers.length > 0)
+			return tournamentPlayers.length - 1
 		if (tournament === undefined)
 			throw new BracketError(`findMaxRound: Couldn't find tournament ${this.tournamentName} in database`);
 		
@@ -233,11 +242,14 @@ export class SingleEliminationBracket implements BracketService
 			player1Id: player1.id,
 			player2Id: player2.id,
 			player1Alias: player1.alias,
-			player2Alias:player2.alias,
+			player2Alias: player2.alias,
 			round: 0,
 			status: 'pending'
 		});
-		this.db.recordMatch(this.tournamentId, this.tournamentName, player1.id, player2.id, 0, 0, 'pending')
+		const p1IsBot = player1.id.startsWith('bot-')
+		const p2IsBot = player2.id.startsWith('bot-')
+		if (!p1IsBot && !p2IsBot)
+			this.db.recordMatch(this.tournamentId, this.tournamentName, player1.id, player2.id, 0, 0, 'pending')
 	}
 
 	/**

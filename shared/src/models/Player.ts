@@ -4,11 +4,11 @@ import { canvasHeight, paddleSize } from "../consts.js"
 export type PowerUp = 'Son' | 'Pi' | '16' | null;
 
 /**
- * @brief Player representation with score and paddle
+ * @brief Player representation with lives and paddle
  */
 export class Player
 {
-    public score: number;
+    public lives: number;
     public paddle: Paddle;
     public readonly name: string;
     public hitStreak: number;
@@ -16,38 +16,43 @@ export class Player
     public pendingPowerUps: PowerUp[];
     public selectedSlots: boolean[];
     public chargingPowerUp: PowerUp;
+    public lastChargeTime: number;
 
     /**
      * @brief Constructor
      * @param name Player display name
      * @param paddleX X position for the player's paddle
+     * @param initialLives Starting number of lives
      */
-    constructor(name: string, paddleX: number)
+    constructor(name: string, paddleX: number, initialLives: number = 5)
     {
         this.name = name;
-        this.score = 0;
+        this.lives = initialLives;
         this.hitStreak = 0;
         this.itemSlots = [null, null, null];
         this.pendingPowerUps = [];
         this.selectedSlots = [false, false, false];
         this.chargingPowerUp = null;
+        this.lastChargeTime = 0;
         this.paddle = new Paddle(paddleX, canvasHeight / 2 - paddleSize / 2);
     }
 
     /**
-     * @brief Increment player score by one point
+     * @brief Decrease player lives by one
      */
-    public incrementScore(): void
+    public loseLife(): void
     {
-        this.score++;
+        if (this.lives > 0)
+            this.lives--;
     }
 
     /**
-     * @brief Reset player score to zero
+     * @brief Check if player is eliminated (0 lives)
+     * @returns True if player has no lives left
      */
-    public resetScore(): void
+    public isEliminated(): boolean
     {
-        this.score = 0;
+        return this.lives <= 0;
     }
 
     /**
@@ -56,6 +61,7 @@ export class Player
     public incrementHitStreak(): void
     {
         this.hitStreak++;
+        this.lastChargeTime = Date.now();
     }
 
     /**
@@ -65,6 +71,32 @@ export class Player
     {
         this.hitStreak = 0;
         this.chargingPowerUp = null;
+        this.lastChargeTime = 0;
+    }
+
+    /**
+     * @brief Check if player can gain a charge (cooldown elapsed)
+     * @param cooldownMs Cooldown in milliseconds
+     * @returns True if cooldown has elapsed
+     */
+    public canGainCharge(cooldownMs: number = 333): boolean
+    {
+        return Date.now() - this.lastChargeTime >= cooldownMs;
+    }
+
+    /**
+     * @brief Award full charge (3 hits) for a power-up slot
+     */
+    public awardFullCharge(): void
+    {
+        if (!this.chargingPowerUp)
+        {
+            const selected = this.selectRandomChargingPowerUp();
+            if (!selected)
+                return;
+        }
+        this.hitStreak = 3;
+        this.lastChargeTime = Date.now();
     }
 
     /**

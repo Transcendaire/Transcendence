@@ -74,9 +74,8 @@ export async function navigate(route: Route) {
     render(route);
 }
 
-
-export function getCurrentRoute(): Route {
-
+export function getCurrentRoute(): Route 
+{
   const path = window.location.pathname.slice(1);
     return(path || 'home') as Route;
 }

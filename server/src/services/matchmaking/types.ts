@@ -1,6 +1,7 @@
 import { WebSocket } from 'ws'
 import { GameService } from '../game/game.js'
 import { AIPlayer } from '../aiplayer/AIPlayer.js'
+import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
 
 /**
  * @brief Player connected to matchmaking system
@@ -10,6 +11,45 @@ export interface Player
 	socket: WebSocket
 	name: string
 	id: string
+}
+
+/**
+ * @brief Player input state for Battle Royale
+ */
+export interface PlayerInputState
+{
+	up: boolean
+	down: boolean
+	slot1?: boolean
+	slot2?: boolean
+	slot3?: boolean
+}
+
+/**
+ * @brief Battle Royale player with socket and input tracking
+ */
+export interface BattleRoyalePlayer
+{
+	socket: WebSocket | null
+	name: string
+	id: string
+	isBot: boolean
+	input: PlayerInputState
+	prevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
+	ping: number
+	ai?: BRNormalAIPlayer
+}
+
+/**
+ * @brief Battle Royale game room for 3-16 players
+ */
+export interface BattleRoyaleRoom
+{
+	id: string
+	players: BattleRoyalePlayer[]
+	gameService: GameService
+	gameLoop: NodeJS.Timeout | null
+	isCustom: boolean
 }
 
 /**
@@ -26,6 +66,8 @@ export interface GameRoom
 	player2Input: { up: boolean; down: boolean; slot1?: boolean; slot2?: boolean; slot3?: boolean }
 	player1PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
 	player2PrevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
+	player1Ping: number
+	player2Ping: number
 	ai?: AIPlayer
 	isCustom: boolean
 	tournamentMatch?: {
@@ -33,5 +75,6 @@ export interface GameRoom
 		matchId: string
 		isFinalMatch: boolean
 		onComplete: (winnerId: string, score1: number, score2: number) => void
+		onUpdate?: () => void
 	}
 }

@@ -15,9 +15,7 @@ export async function registerPlugins(server: FastifyInstance)
 {
 	const db = getDatabase();
 
-	await server.register(fastifyCookie, {
-		secret: process.env.COOKIE_SECRET || 'add an env variable for cookie secret'
-	})
+	await server.register(fastifyCookie)
 
 	await server.register(websocket);
 

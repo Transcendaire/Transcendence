@@ -3,6 +3,7 @@ import { randomUUID } from "crypto"
 import { Player, User } from "../types.js"
 import { DatabaseError, errDatabase } from "@app/shared/errors.js"
 import { getDatabase } from "./databaseSingleton.js";
+import { timeStamp } from "console";
 	
 /**
  * @brief Validates alias format and constraints
@@ -52,6 +53,23 @@ export class DatabaseService {
 			alias TEXT UNIQUE NOT NULL,
 			created_at INTEGER NOT NULL,
 			status TEXT NOT NULL
+			);
+            CREATE TABLE IF NOT EXISTS friend_requests (
+            id TEXT PRIMARY KEY,
+            from_user_id TEXT NOT NULL,
+            to_user_id TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            UNIQUE(from_user_id, to_user_id),
+            FOREIGN KEY(from_user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(to_user_id) REFERENCES users(id) ON DELETE CASCADE
+            );
+			CREATE TABLE IF NOT EXISTS friends (
+			user_id TEXT NOT NULL,
+			friend_id TEXT NOT NULL,
+			since INTEGER NOT NULL,
+			PRIMARY KEY (user_id, friend_id),
+            FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY(friend_id) REFERENCES users(id) ON DELETE CASCADE
 			);
 			CREATE TABLE IF NOT EXISTS tournaments (
 			  id TEXT PRIMARY KEY,
@@ -113,6 +131,8 @@ export class DatabaseService {
 		return id;
 	}
 
+							//******************   GET        ************************ */
+
 	public getUserByLogin(login: string): User | undefined
 	{
 		return this.db.prepare('SELECT * FROM users where login = ?').get(login);
@@ -137,6 +157,9 @@ export class DatabaseService {
 	{
 		this.db.prepare('UPDATE users SET online = ? WHERE id = ?').run(online ? 1 : 0, userId);//! check if it works with a boolean
 	}
+
+
+							//********************** UPDATES       ********************************* */
 
 	/**
 	 * @brief Updates user's game statistics
@@ -165,23 +188,210 @@ export class DatabaseService {
 			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
 
 		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+		this.updatePlayerAlias(userId, newAlias);
 	}
 
-	public getUserBy(type: string, value: string)
+    /**
+     * @brief Updates user's password
+     * @param userId User's UUID
+     * @param hashedPassword New hashed password
+     */
+    public updateUserPassword(userId: string, hashedPassword: string): void
 	{
-		const columnMap: Record<string,string> = {
-			"id": "SELECT * FROM users WHERE id= ?",
-			"login": "SELECT * FROM users WHERE alias= ?",
-			"alias": "SELECT * FROM users WHERE created_at= ?",
-			"all": "SELECT * FROM users"
-		};
-		const query: string | undefined = columnMap[type];
+        this.db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
+    }
 
-		if (!query)
-			throw new DatabaseError(`Invalid data request in ${type}`);
-		return this.db.prepare(query).get(value) as (User | undefined);
+
+								//********* FRIENDS ******************/
+    /**
+     * @brief Send a friend request to another user
+     * @param fromUserId Sender's user ID
+     * @param toUserAlias Recipient's alias
+     * @throws DatabaseError if target not found, trying to add self, already friends, or request already exists
+     */
+	public sendFriendRequest(fromUserId: string, toUserAlias: string): string
+	{
+		const userToAdd = this.getUserByAlias(toUserAlias);
+
+		if (!userToAdd || !userToAdd.id)
+			throw new DatabaseError('L\'utilisateur n\'existe pas', undefined, 400);
+		
+		if (userToAdd.id === fromUserId)
+			throw new DatabaseError('Impossible de s\'ajouter soi-même en ami', undefined, 400);
+
+		const alreadyFriends = this.db.prepare(
+			'SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?'
+		).get(fromUserId, userToAdd.id);
+
+		if (alreadyFriends)
+			throw new DatabaseError(`Vous êtes déjà ami avec ${toUserAlias}`, undefined, 400);
+
+		const existingRequest = this.db.prepare(
+			'SELECT 1 FROM friend_requests WHERE (from_user_id = ? AND to_user_id = ?) OR (from_user_id = ? AND to_user_id = ?)'
+		).get(fromUserId, userToAdd.id, userToAdd.id, fromUserId);
+
+		if (existingRequest)
+			throw new DatabaseError('Une demande d\'ami existe déjà entre vous', undefined, 400);
+
+		const requestId = randomUUID();
+		this.db.prepare(
+			'INSERT INTO friend_requests (id, from_user_id, to_user_id, created_at) VALUES (?, ?, ?, ?)'
+		).run(requestId, fromUserId, userToAdd.id, Date.now());
+		return requestId;
 	}
 
+	/**
+     * @brief Get all pending friend requests received by a user
+     * @param userId User's ID
+     * @returns Array of pending requests with sender info
+     */
+    public getPendingFriendRequests(userId: string): any[]
+	{
+        return this.db.prepare(`
+            SELECT r.id, r.from_user_id, u.alias as from_alias, r.created_at
+            FROM friend_requests r
+            JOIN users u ON u.id = r.from_user_id
+            WHERE r.to_user_id = ?
+            ORDER BY r.created_at DESC
+        `).all(userId);
+    }
+
+    /**
+     * @brief Get all friend requests sent by a user
+     * @param userId User's ID
+     * @returns Array of sent requests with recipient info
+     */
+    public getSentFriendRequests(userId: string): any[]
+	{
+        return this.db.prepare(`
+            SELECT r.id, r.to_user_id, u.alias as to_alias, r.created_at
+            FROM friend_requests r
+            JOIN users u ON u.id = r.to_user_id
+            WHERE r.from_user_id = ?
+            ORDER BY r.created_at DESC
+        `).all(userId);
+    }
+
+    /**
+     * @brief Handles a friend request (accepting or rejecting)
+     * @param userId User receiving the request (recipient)
+     * @param fromAlias Alias of the user who sent the request
+	 * @param accept Boolean being true if recipient accepts the request and false otherwise
+     * @throws DatabaseError if sender not found or request doesn't exist
+     */
+	public handleFriendRequest(userId: string, fromAlias: string, accept: boolean): void
+	{
+		const sender = this.getUserByAlias(fromAlias);
+
+        if (!sender)
+            throw new DatabaseError("L'utilisateur ayant envoyé la demande d\'ami est introuvable", undefined, 404);
+        
+        const request = this.db.prepare(
+            "SELECT id FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?"
+        ).get(sender.id, userId);
+        
+        if (!request)
+            throw new DatabaseError("Demande d'ami introuvable", undefined, 404);
+
+		if (accept)
+		{
+			const now = Date.now();
+			
+			this.db.prepare(
+				'INSERT INTO friends (user_id, friend_id, since) VALUES (?, ?, ?)'
+			).run(userId, sender.id, now);
+			
+			this.db.prepare(
+				'INSERT INTO friends (user_id, friend_id, since) VALUES (?, ?, ?)'
+			).run(sender.id, userId, now);
+		}
+		
+		this.db.prepare(
+			'DELETE FROM friend_requests WHERE id = ?'
+		).run(request.id);
+
+	}
+
+    /**
+     * @brief Cancel a sent friend request
+     * @param userId User canceling the request (sender)
+     * @param toAlias Alias of the intended recipient
+     * @throws DatabaseError if recipient not found
+     */
+	public cancelFriendRequest(userId: string, toAlias: string): void
+	{
+		const recipient = this.getUserByAlias(toAlias);
+
+		if (!recipient)
+			throw new DatabaseError("Utilisateur introuvable", undefined, 404);
+
+		this.db.prepare(
+			'DELETE FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?'
+		).run(userId, recipient.id);
+	} 
+
+    /**
+     * @brief Get all friends with their online status
+     * @param userId User's ID
+     * @returns Array of friends with { id, alias, online, since }
+     */
+	public getFriends(userId: string): any[]
+	{
+		return this.db.prepare(`
+			SELECT u.id, u.alias, u.online, f.since
+			FROM friends f
+			JOIN users u ON u.id = f.friend_id
+			WHERE f.user_id = ?
+			ORDER BY u.alias ASC
+			`).all(userId);
+	}
+
+	public getFriendsWithAlias(alias: string): any[]
+	{
+		const idObject = this.db.prepare("SELECT id FROM users WHERE alias = ?").get(alias);
+
+		if (!idObject || !idObject.id)
+			return [];
+
+		const friends = this.getFriends(idObject.id);
+		return friends;
+	}
+
+    /**
+     * @brief Remove a friend (bidirectional)
+     * @param userId Current user's ID
+     * @param friendAlias Alias of friend to remove
+     * @throws DatabaseError if friend not found
+     */
+	public removeFriend(userId: string, friendAlias: string): void
+	{
+		const friend = this.getUserByAlias(friendAlias);
+
+		if (!friend)
+			throw new DatabaseError('Utilisateur introuvable', undefined, 404);
+
+		this.db.prepare(
+			'DELETE FROM friends WHERE (user_id = ? AND friend_id = ?) OR (user_id = ? AND friend_id = ?)'
+		).run(userId, friend.id, friend.id, userId);
+	}
+
+    /**
+     * @brief Check if two users are friends
+     * @param userId First user's ID
+     * @param friendId Second user's ID
+     * @returns True if friends, false otherwise
+     */
+	public areFriends(userId: string, friendId: string): boolean
+	{
+		const result = this.db.prepare(
+			'SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?'
+		).get(userId, friendId);
+
+		return (result > 0);
+	}
+
+
+							//*******   PLAYERS     **********/
 	/**
 	 * @brief Creates a new player in the database
 	 * @param alias Unique player alias
@@ -247,7 +457,6 @@ export class DatabaseService {
 
 		if (!newAlias || newAlias.trim().length < 3)
 			throw new DatabaseError("Le nom doit faire au moins trois caractères");
-		checkAliasValidity(newAlias);
 
 		if (!this.db.prepare("SELECT 1 FROM players WHERE id = ?").get(id))
 			throw new DatabaseError("Player not found");

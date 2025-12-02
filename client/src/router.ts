@@ -1,10 +1,13 @@
-export type Route = 'home' | 'profile' | 'game' | 'lobby';
+import { checkAuthentication } from "./page/auth.js";
+
+export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
 
 const ROUTES: Record<Route, string> = {
     home: '/page/home.html',
     profile: '/page/profile.html',
     game: '/page/game.html',
-    lobby: '/page/lobby.html'
+    lobby: '/page/lobby.html',
+	friends: '/page/friends.html'
 };
 
 type PageInitializer = () => void;
@@ -50,8 +53,23 @@ export async function render(route: Route)
     }
 }
 
-export function navigate(route: Route) 
-{
+// export function navigate(route: Route) {
+//     console.log('Navigation vers:', route);
+//     window.history.pushState({ route }, '', `/${route}`);
+//     render(route);
+// }
+//!See with Pierre
+export async function navigate(route: Route) {
+
+	const protectedRoutes = ['lobby', 'game', 'profile', 'friends'];
+	if (protectedRoutes.includes(route)) {
+		const isAuthenticated = await checkAuthentication();
+		if (!isAuthenticated)
+		{
+			route = 'home'
+			alert('Veuillez vous reconnecter');
+		}
+	}
     console.log('Navigation vers:', route);
     window.history.pushState({ route }, '', `/${route}`);
     render(route);

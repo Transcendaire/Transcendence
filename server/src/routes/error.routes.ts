@@ -1,7 +1,8 @@
 import { FastifyInstance } from "fastify"
 import { BadRequest, ServerError, DatabaseError, UserError, TournamentError, BracketError } from "@app/shared/errors.js"
 
-export async function registerErrorRoutes(server: FastifyInstance) //*redundant but readable
+//!removes useless errors (bracket Error)
+export async function registerErrorRoutes(server: FastifyInstance) //*redundant but readable 
 {
 	server.setErrorHandler((error, req, res) => {
 		if (error instanceof BadRequest)

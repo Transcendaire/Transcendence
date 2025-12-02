@@ -15,7 +15,7 @@ export async function registerPlugins(server: FastifyInstance)
 {
 	const db = getDatabase();
 
-	await server.register(fastifyCookie, { //*are cookies needed?
+	await server.register(fastifyCookie, {
 		secret: process.env.COOKIE_SECRET || 'add an env variable for cookie secret'
 	})
 
@@ -43,8 +43,16 @@ export async function registerPlugins(server: FastifyInstance)
 		if (user)
 			req.user = user;
 		else
-			res.clearCookie('user_id');
+		{
+			res.clearCookie('user_id', {
+				path: '/',
+				httpOnly: true,
+				sameSite: 'lax'
+			});
+			req.cookies.id = "";
+		}
 	})
 
 
 }
+

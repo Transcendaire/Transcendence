@@ -64,6 +64,21 @@ export type Lobby = {
 	createdAt: number;
 }
 
+export type PlayerOnlineStatus = 'offline' | 'online' | 'in-game';
+
+export type FriendStatus = {
+	id: number;
+	alias: string;
+	status: PlayerOnlineStatus;
+	since: string;
+}
+
+export type OnlinePlayer = {
+	alias: string;
+	status: PlayerOnlineStatus;
+	isFriend: boolean;
+}
+
 export type PlayerState = {
 	paddle: {
 		y: number;
@@ -144,6 +159,11 @@ export type WebSocketMessage =
 | { type: "alreadyInGame"; playerName: string }
 | { type: "forceDisconnect"; playerName: string }
 | { type: "disconnectedByOtherSession" }
+| { type: "requestFriendList"; playerName: string }
+| { type: "friendList"; friends: FriendStatus[] }
+| { type: "friendStatusUpdate"; friend: FriendStatus }
+| { type: "requestOnlinePlayers"; playerName: string }
+| { type: "onlinePlayersList"; players: OnlinePlayer[] }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

@@ -1,4 +1,4 @@
-import type { GameState, GameInput, WebSocketMessage, Lobby } from "@shared/types";
+import type { GameState, GameInput, WebSocketMessage, Lobby, FriendStatus, OnlinePlayer } from "@shared/types";
 
 /**
  * @brief Get WebSocket URL with correct protocol
@@ -45,6 +45,9 @@ export class WebSocketClient
     public onAlreadyInLobby?: (playerName: string) => void;
     public onAlreadyInGame?: (playerName: string) => void;
     public onDisconnectedByOtherSession?: () => void;
+    public onFriendList?: (friends: FriendStatus[]) => void;
+    public onFriendStatusUpdate?: (friend: FriendStatus) => void;
+    public onOnlinePlayersList?: (players: OnlinePlayer[]) => void;
     
     public get onGameStart() {
         return this._onGameStart;
@@ -250,6 +253,21 @@ export class WebSocketClient
                 console.log('[WEBSOCKET] Disconnected by other session');
                 this.onDisconnectedByOtherSession?.();
                 break;
+            
+            case 'friendList':
+                if (message.friends)
+                    this.onFriendList?.(message.friends);
+                break;
+            
+            case 'friendStatusUpdate':
+                if (message.friend)
+                    this.onFriendStatusUpdate?.(message.friend);
+                break;
+            
+            case 'onlinePlayersList':
+                if (message.players)
+                    this.onOnlinePlayersList?.(message.players);
+                break;
                 
             default:
                 console.warn('[WEBSOCKET] Type de message inconnu:', message.type);
@@ -447,6 +465,24 @@ export class WebSocketClient
         } else {
             console.error('[WEBSOCKET] Impossible d\'envoyer le message, WebSocket non connecté');
         }
+    }
+
+    /**
+     * @brief Request friend list with current status
+     * @param playerName Requesting player's name
+     */
+    public requestFriendList(playerName: string): void
+    {
+        this.sendMessage({ type: 'requestFriendList', playerName });
+    }
+
+    /**
+     * @brief Request list of all online players
+     * @param playerName Requesting player's name
+     */
+    public requestOnlinePlayers(playerName: string): void
+    {
+        this.sendMessage({ type: 'requestOnlinePlayers', playerName });
     }
 }
 

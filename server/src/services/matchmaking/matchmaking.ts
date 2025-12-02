@@ -1,11 +1,12 @@
 import { WebSocket } from 'ws'
-import { GameInput, WebSocketMessage } from '../../types.js'
+import { GameInput, WebSocketMessage, FriendStatus, PlayerOnlineStatus, OnlinePlayer } from '../../types.js'
 import { Player } from './types.js'
 import { GameRoomManager } from './gameRoom.js'
 import { QuickMatchService } from './quickMatch.js'
 import { LobbyManager } from './lobbyManager.js'
 import { TournamentManagerService } from '../tournament/tournamentManager.js'
 import { sendMessage } from '../../utils/websocket.js'
+import { getDatabase } from '../../db/databaseSingleton.js'
 
 /**
  * @brief Main matchmaking orchestrator
@@ -27,6 +28,9 @@ export class MatchmakingService
 	constructor()
 	{
 		this.gameRoomManager = new GameRoomManager()
+		this.gameRoomManager.setStatusCallback((name, status) => {
+			this.broadcastStatusToFriends(name, status)
+		})
 		this.quickMatch = new QuickMatchService(this.gameRoomManager)
 		this.tournamentManager = new TournamentManagerService(this)
 		this.lobbyManager = new LobbyManager(this.gameRoomManager, this.playerSockets, this.tournamentManager)
@@ -122,7 +126,10 @@ export class MatchmakingService
 			id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 		}
 		this.playerSockets.set(socket, tempPlayer)
+		this.playerNameToSocket.set(name, socket)
 		console.log(`[MATCHMAKING] New socket registered: ${tempPlayer.id} (${name})`)
+		if (name !== 'Anonymous')
+			this.broadcastStatusToFriends(name, 'online')
 	}
 
 	/**
@@ -204,6 +211,14 @@ export class MatchmakingService
 				if (message.playerName)
 					this.handleForceDisconnect(socket, message.playerName)
 				break
+			case 'requestFriendList':
+				if (message.playerName)
+					this.handleRequestFriendList(socket, message.playerName)
+				break
+			case 'requestOnlinePlayers':
+				if (message.playerName)
+					this.handleRequestOnlinePlayers(socket, message.playerName)
+				break
 		}
 	}
 
@@ -279,13 +294,16 @@ export class MatchmakingService
 		const player = this.playerSockets.get(socket)
 		if (!player)
 			return
-		if (player.name)
-			this.playerNameToSocket.delete(player.name)
+		const playerName = player.name
+		if (playerName)
+			this.playerNameToSocket.delete(playerName)
 		this.quickMatch.removeFromQueue(socket)
 		this.lobbyManager.handleDisconnect(socket)
 		if (this.gameRoomManager.handleBattleRoyaleDisconnect(socket))
 		{
 			this.playerSockets.delete(socket)
+			if (playerName && playerName !== 'Anonymous')
+				this.broadcastStatusToFriends(playerName, 'offline')
 			return
 		}
 		const gameRoom = this.gameRoomManager.findGameByPlayer(socket)
@@ -331,6 +349,8 @@ export class MatchmakingService
 			}
 		}
 		this.playerSockets.delete(socket)
+		if (playerName && playerName !== 'Anonymous')
+			this.broadcastStatusToFriends(playerName, 'offline')
 	}
 
 	/**
@@ -477,5 +497,90 @@ export class MatchmakingService
 		const lobbies = this.lobbyManager.getOpenLobbies()
 
 		sendMessage(socket, { type: 'lobbyList', lobbies: lobbies })
+	}
+
+	/**
+	 * @brief Get player status based on connection state
+	 * @param playerName Player's name
+	 * @returns 'offline', 'online', or 'in-game'
+	 */
+	private getPlayerStatus(playerName: string): PlayerOnlineStatus
+	{
+		const socket = this.playerNameToSocket.get(playerName)
+		if (!socket || socket.readyState !== socket.OPEN)
+			return 'offline'
+		if (this.isPlayerNameInActiveGame(playerName))
+			return 'in-game'
+		return 'online'
+	}
+
+	/**
+	 * @brief Handle request for friend list with status
+	 * @param socket Requester's WebSocket
+	 * @param playerName Requester's name
+	 */
+	private handleRequestFriendList(socket: WebSocket, playerName: string): void
+	{
+		const db = getDatabase()
+		const dbFriends = db.getFriendsWithAlias(playerName)
+		const friends: FriendStatus[] = dbFriends.map((f: { id: number; alias: string; since: string }) => ({
+			id: f.id,
+			alias: f.alias,
+			status: this.getPlayerStatus(f.alias),
+			since: f.since
+		}))
+		sendMessage(socket, { type: 'friendList', friends })
+	}
+
+	/**
+	 * @brief Handle request for online players list
+	 * @param socket Requester's WebSocket
+	 * @param playerName Requester's name
+	 */
+	private handleRequestOnlinePlayers(socket: WebSocket, playerName: string): void
+	{
+		const db = getDatabase()
+		const dbFriends = db.getFriendsWithAlias(playerName)
+		const friendAliases = new Set(dbFriends.map((f: { alias: string }) => f.alias))
+		const players: OnlinePlayer[] = []
+		for (const [name, sock] of this.playerNameToSocket)
+		{
+			if (name === playerName || sock.readyState !== sock.OPEN)
+				continue
+			players.push({
+				alias: name,
+				status: this.getPlayerStatus(name),
+				isFriend: friendAliases.has(name)
+			})
+		}
+		players.sort((a, b) => {
+			if (a.isFriend !== b.isFriend)
+				return a.isFriend ? -1 : 1
+			return a.alias.localeCompare(b.alias)
+		})
+		sendMessage(socket, { type: 'onlinePlayersList', players })
+	}
+
+	/**
+	 * @brief Broadcast player status to all friends
+	 * @param playerName Player whose status changed
+	 * @param status New status
+	 */
+	public broadcastStatusToFriends(playerName: string, status: PlayerOnlineStatus): void
+	{
+		const db = getDatabase()
+		const dbFriends = db.getFriendsWithAlias(playerName)
+		const update: FriendStatus = {
+			id: 0,
+			alias: playerName,
+			status: status,
+			since: ''
+		}
+		for (const friend of dbFriends)
+		{
+			const friendSocket = this.playerNameToSocket.get(friend.alias)
+			if (friendSocket && friendSocket.readyState === friendSocket.OPEN)
+				sendMessage(friendSocket, { type: 'friendStatusUpdate', friend: update })
+		}
 	}
 }

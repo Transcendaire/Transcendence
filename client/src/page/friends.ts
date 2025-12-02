@@ -42,7 +42,7 @@ async function fetchPendingRequests()
 async function fetchSentRequests()
 {
 	const response = await fetch('/api/friends/requests/sent');
-+
+
 	if (!response.ok)
 		throw new Error('Erreur lors de la récupération des demandes envoyées');
 

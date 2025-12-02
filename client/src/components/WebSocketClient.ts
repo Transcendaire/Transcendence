@@ -1,6 +1,16 @@
 import type { GameState, GameInput, WebSocketMessage, Lobby } from "@shared/types";
 
 /**
+ * @brief Get WebSocket URL with correct protocol
+ * @returns WebSocket URL (wss:// for HTTPS, ws:// for HTTP)
+ */
+export function getWebSocketUrl(): string
+{
+	const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+	return `${protocol}//${window.location.host}/ws`;
+}
+
+/**
  * @brief WebSocket client for real-time game communication
  */
 export class WebSocketClient
@@ -56,12 +66,13 @@ export class WebSocketClient
      */
     public connect(serverUrl: string): Promise<void>
     {
+        console.log(`[WebSocket] Tentative de connexion à: ${serverUrl}`);
         return new Promise((resolve, reject) => {
             try {
                 this.ws = new WebSocket(serverUrl);
                 
                 this.ws.onopen = () => {
-                    console.log('WebSocket connecté');
+                    console.log(`[WebSocket] Connecté avec succès à: ${serverUrl}`);
                     this.reconnectAttempts = 0;
                     resolve();
                 };
@@ -402,7 +413,7 @@ export class WebSocketClient
         console.log(`Tentative de reconnexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
         
         setTimeout(() => {
-            this.connect(`ws://${window.location.host}/ws`).catch(console.error);
+            this.connect(getWebSocketUrl()).catch(console.error);
         }, this.reconnectDelay * this.reconnectAttempts);
     }
 

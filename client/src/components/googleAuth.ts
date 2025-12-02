@@ -1,16 +1,14 @@
 let isGoogleScriptLoaded = false;
 let isGoogleScriptLoading = false;
 
-// Callback appelée automatiquement par Google après connexion
 function handleCredentialResponse(response: any) {
     handleGoogleLogin(response.credential);
 }
 
-// Envoyer le JWT token au backend
-async function handleGoogleLogin(credential: string) {
-    console.log('[GOOGLE] Envoi du token au backend...');
-
+async function handleGoogleLogin(credential: string) 
+{
     try {
+        console.log('[GOOGLE] 🚀 fetch() démarre...');
         const response = await fetch('/api/auth/google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -19,26 +17,25 @@ async function handleGoogleLogin(credential: string) {
         });
 
         const data = await response.json();
-        
+
         if (!response.ok) {
-            console.error('[GOOGLE] ❌ Erreur backend:', data.error);
             alert(data.error || 'Erreur connexion Google');
             return;
         }
 
-        console.log('[GOOGLE] ✅ Connexion réussie !', data);
-        alert(`Bienvenue ${data.alias || data.email} !`);
-        
-        // TODO: Mettre à jour l'état de l'application
-        // window.location.reload(); ou mettre à jour playerName, isLoggedIn
-        
+        localStorage.setItem('userId', data.id);
+        localStorage.setItem('userEmail', data.email);
+        localStorage.setItem('userAlias', data.alias);
+        localStorage.setItem('userPicture', data.picture || '');
+
+        window.location.reload();
+
     } catch (error) {
-        console.error('[GOOGLE] ❌ Erreur réseau:', error);
-        alert('Impossible de contacter le serveur');
+        console.error('[GOOGLE] ❌ Erreur réseau (serveur inaccessible):', error);
+        alert('Impossible de contacter le serveur. Vérifiez que le backend est démarré.');
     }
 }
 
-// Charger le script Google
 export function loadGoogleScript(): Promise<void> {
     return new Promise((resolve, reject) => {
         if (isGoogleScriptLoaded) {
@@ -55,7 +52,7 @@ export function loadGoogleScript(): Promise<void> {
                     resolve();
                 }
             }, 100);
-            
+
             setTimeout(() => {
                 clearInterval(checkInterval);
                 if (!isGoogleScriptLoaded) {
@@ -65,7 +62,6 @@ export function loadGoogleScript(): Promise<void> {
             return;
         }
 
-        console.log('[GOOGLE] Chargement du script...');
         isGoogleScriptLoading = true;
 
         const script = document.createElement('script');
@@ -91,13 +87,12 @@ export function loadGoogleScript(): Promise<void> {
 }
 
 export async function initGoogle() {
-    
+
     const clientId = "782178545544-31i17kv4fli13eqj7o0l4dclqnbb3hql.apps.googleusercontent.com";
-    console.log('[GOOGLE] Client ID:', clientId);
 
     try {
         await loadGoogleScript();
-        
+
         let attempts = 0;
         while (typeof google === 'undefined' && attempts < 50) {
             await new Promise(resolve => setTimeout(resolve, 100));
@@ -117,52 +112,46 @@ export async function initGoogle() {
             cancel_on_tap_outside: true,
         });
 
-
-        attachCustomButton();
-
     } catch (error) {
         console.error('[GOOGLE] ❌ Erreur initialisation:', error);
         alert('Impossible de charger Google Sign-In');
     }
 }
 
-// Attacher l'événement à ton bouton custom
-function attachCustomButton() {
-    const customButton = document.getElementById('googleLoginButton');
-    if (!customButton) {
-        console.error('[GOOGLE] ❌ Bouton #googleLoginButton introuvable');
-        return;
+function attachCustomButton() : HTMLElement {
+
+
+    let hiddenContainer = document.getElementById('googleSignInDivHidden');
+    if (!hiddenContainer) {
+        hiddenContainer = document.createElement('div');
+        hiddenContainer.id = 'googleSignInDivHidden';
+        hiddenContainer.style.position = 'fixed';
+        hiddenContainer.style.top = '-9999px';
+        hiddenContainer.style.left = '-9999px';
+        hiddenContainer.style.opacity = '0';
+        hiddenContainer.style.pointerEvents = 'none';
+        document.body.appendChild(hiddenContainer);
     }
+    return hiddenContainer;
+}
 
+export function triggerGoogleLogin() 
+{
+    try {
+        let hiddenContainer = attachCustomButton();
+        google.accounts.id.renderButton(
+            hiddenContainer,
+            { theme: "outline", size: "large" }
+        );
 
-    customButton.addEventListener('click', () => {        
-        let hiddenContainer = document.getElementById('googleSignInDivHidden');
-        if (!hiddenContainer) {
-            hiddenContainer = document.createElement('div');
-            hiddenContainer.id = 'googleSignInDivHidden';
-            hiddenContainer.style.position = 'fixed';
-            hiddenContainer.style.top = '-9999px';
-            hiddenContainer.style.left = '-9999px';
-            hiddenContainer.style.opacity = '0';
-            hiddenContainer.style.pointerEvents = 'none';
-            document.body.appendChild(hiddenContainer);
+        const googleBtn = hiddenContainer.querySelector('div[role="button"]') as HTMLElement | null;
+        if (googleBtn) {
+            console.log('[GOOGLE] Déclenchement automatique du clic sur le bouton Google...');
+            googleBtn.click();
+        } else {
+            console.error('[GOOGLE] Bouton Google non trouvé dans le conteneur caché');
         }
-
-        try {
-            google.accounts.id.renderButton(
-                hiddenContainer,
-                { theme: "outline", size: "large" }
-            );
-
-            const googleBtn = hiddenContainer!.querySelector('div[role="button"]') as HTMLElement;
-            if (googleBtn) {
-                    console.log('[GOOGLE] Déclenchement automatique du clic sur le bouton Google...');
-                    googleBtn.click();
-                } else {
-                    console.error('[GOOGLE] Bouton Google non trouvé dans le conteneur caché');
-            }
-        } catch (error) {
-            console.error('[GOOGLE] Erreur lors du rendu du bouton caché:', error);
-        }
-    });
+    } catch (error) {
+        console.error('[GOOGLE] Erreur lors du rendu du bouton caché:', error);
+    }
 }

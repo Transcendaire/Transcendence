@@ -2,7 +2,7 @@ import { registerPageInitializer, navigate } from "../router";
 import { inputParserClass } from "../components/inputParser";
 import { wsClient } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
-import { initGoogle,loadGoogleScript } from "../components/googleAuth";
+import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
@@ -32,7 +32,6 @@ async function initHomePage() {
         isLoggedIn = true;
     }
 
-    await loadGoogleScript();
     await initGoogle();
 
     updateUI();
@@ -42,6 +41,7 @@ async function initHomePage() {
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
     getEl("profileButton").addEventListener('click', () => navigate("profile"));
     getEl("logoutButton").addEventListener('click', logout)
+
 
     playButton.addEventListener('click', () => {
         if (isLoggedIn)
@@ -71,8 +71,6 @@ function initLoginModal(loginModal: HTMLElement) {
     const passwordInput = getEl("passwordCheck") as HTMLInputElement;
 
     setupGlobalModalEvents(loginModal, loginButton, cancelLoginButton);
-    // loginButton.addEventListener('click', () => console.log('bouton login cliquer'));
-
 
     const connect = async () => {
         console.log('Connect button clicked\n')
@@ -107,7 +105,8 @@ function initLoginModal(loginModal: HTMLElement) {
             alert(message);
         }
     }
-
+    
+    getEl("googleLoginButton").addEventListener('click', triggerGoogleLogin);
     checkButton.addEventListener('click', connect);
     checkButton.addEventListener('keydown', (event: KeyboardEvent) => {
         if (event.key === 'Enter') connect

@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
 import websocket from '@fastify/websocket'
+import fastifyMultipart from '@fastify/multipart'
 import fastifyCookie from '@fastify/cookie'
 import fastifyStatic from '@fastify/static'
 import { paths } from '../config/paths.js'
@@ -19,6 +20,13 @@ export async function registerPlugins(server: FastifyInstance)
 
 	await server.register(websocket);
 
+	await server.register(fastifyMultipart, {
+		limits: {
+			fileSize: 5 * 1024 * 1024,
+			files: 1
+		}
+	});
+
 	await server.register(fastifyStatic, {
 		root: paths.public,
 		prefix: '/',
@@ -31,6 +39,12 @@ export async function registerPlugins(server: FastifyInstance)
 		index: false,
 		decorateReply: false
 	})
+
+    await server.register(fastifyStatic, {
+        root: paths.avatars,
+        prefix: '/avatars/',
+        decorateReply: false
+    })
 
 
 	server.addHook('preHandler', async (req: FastifyRequest, res: FastifyReply ) => {

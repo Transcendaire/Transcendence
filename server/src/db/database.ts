@@ -43,6 +43,7 @@ export class DatabaseService {
 			password TEXT, -- this is hashed
 			alias TEXT UNIQUE NOT NULL, -- pseudo but called it alias for concordance
 			created_at INTEGER NOT NULL,
+			avatar TEXT DEFAULT 'Transcendaire.png',
 			tournament_alias TEXT,
 			games_played INTEGER DEFAULT 0,
 			games_won INTEGER DEFAULT 0,

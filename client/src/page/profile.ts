@@ -28,6 +28,7 @@ async function updateAlias(newAlias: string)
 
 	return { success: true, message: data.message, alias: newAlias };
 }
+
 //*current password est le mot de passe récupéré via le formulaire sur le profil, pas celui de la base de données
 async function updatePassword(currentPassword: string, newPassword: string)
 {

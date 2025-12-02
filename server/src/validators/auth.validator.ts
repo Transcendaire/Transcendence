@@ -4,7 +4,7 @@ import { verifyPassword } from "../utils/passwords.js";
 
 const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).+$/;
 const LOGIN_PATTERN = /^[a-zA-Z0-9_!@#$%&*=-]+$/;
-const ALIAS_PATTERN = /^[a-zA-Z0-9_-]+$/;
+const ALIAS_PATTERN = /^[a-zA-Z0-9_ -]+$/;
 const db = getDatabase()
 
 export function validateRegistering(requestBody: any) //*purely simple parsing (no duplicates check and so on)

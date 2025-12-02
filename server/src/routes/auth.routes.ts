@@ -21,6 +21,7 @@ export async function registerAuthRoutes(server: FastifyInstance)
 		res.setCookie('user_id', userId, {
 			path: '/',
 			httpOnly: true,
+			secure: true,
 			sameSite: 'lax',
 			maxAge: 60 * 60 * 24//*24 hours
 		});
@@ -45,6 +46,7 @@ export async function registerAuthRoutes(server: FastifyInstance)
 		res.setCookie('user_id', user!.id, {
 			path: '/',
 			httpOnly: true,
+			secure: true,
 			sameSite: 'lax',
 			maxAge: 60 * 60  * 24//* 24 hours
 		})

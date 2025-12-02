@@ -346,6 +346,17 @@ export class DatabaseService {
 			`).all(userId);
 	}
 
+	public getFriendsWithAlias(alias: string): any[]
+	{
+		const idObject = this.db.prepare("SELECT id FROM users WHERE alias = ?").get(alias);
+
+		if (!idObject || !idObject.id)
+			return [];
+
+		const friends = this.getFriends(idObject.id);
+		return friends;
+	}
+
     /**
      * @brief Remove a friend (bidirectional)
      * @param userId Current user's ID

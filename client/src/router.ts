@@ -1,12 +1,13 @@
 import { checkAuthentication } from "./page/auth.js";
 
-export type Route = 'home' | 'profile' | 'game' | 'lobby';
+export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
 
 const ROUTES: Record<Route, string> = {
     home: '/page/home.html',
     profile: '/page/profile.html',
     game: '/page/game.html',
-    lobby: '/page/lobby.html'
+    lobby: '/page/lobby.html',
+	friends: '/page/friends.html'
 };
 
 type PageInitializer = () => void;
@@ -60,7 +61,7 @@ export async function render(route: Route)
 //!See with Pierre
 export async function navigate(route: Route) {
 
-	const protectedRoutes = ['lobby', 'game', 'profile'];
+	const protectedRoutes = ['lobby', 'game', 'profile', 'friends'];
 	if (protectedRoutes.includes(route)) {
 		const isAuthenticated = await checkAuthentication();
 		if (!isAuthenticated)

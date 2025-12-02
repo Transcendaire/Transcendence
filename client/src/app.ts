@@ -5,7 +5,9 @@ import { render, getCurrentRoute, type Route } from './router';
 import './page/home';
 import './page/profile';
 import './page/game/index';
-import './page/lobby'
+import './page/lobby';
+import './page/friends';
+
 
 console.log('[APP] Application chargée');
 

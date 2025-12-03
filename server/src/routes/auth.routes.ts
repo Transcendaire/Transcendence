@@ -85,7 +85,7 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 
 		const user = (req as any).user;
 
-		console.log(`user: ${user}`);
+		console.log(`user: ${user.alias}`);
 		if (!user)
 			return res.code(401).send({ alias: undefined });
 		else

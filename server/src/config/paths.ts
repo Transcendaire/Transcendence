@@ -14,5 +14,5 @@ export const paths = {
 	uploads: path.join(__dirname, `${pathToUploads}`),
     avatars: path.join(__dirname, `${pathToUploads}/avatars`),
     defaultAvatars: path.join(__dirname, `${pathToUploads}/avatars/defaults`),
-    userAvatars: path.join(__dirname, `${pathToUploads}/avatars/users`)
+    usersAvatars: path.join(__dirname, `${pathToUploads}/avatars/users`)
 }

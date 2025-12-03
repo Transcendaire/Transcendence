@@ -15,18 +15,16 @@ export async function registerUserRoutes(server: FastifyInstance)
 
 		const { currentPassword, newPassword } = req.body as any;
 
-		const user = req.user;
-
-		validateCurrentPassword(currentPassword, user.password);
+		validateCurrentPassword(currentPassword, authUser.password);
 		validateNewPassword(newPassword);
 
 		if (currentPassword === newPassword)
 			return res.code(400).send({ message: 'Le nouveau mot de passe doit être différent de l\'ancien' });
 
 		const hashedPassword = hashPassword(newPassword);
-		db.updateUserPassword(user.id, hashedPassword);
+		db.updateUserPassword(authUser.id, hashedPassword);
 
-		const newSessionId = db.createOrUpdateSession(user.id);
+		const newSessionId = db.createOrUpdateSession(authUser.id);
 
 		res.setCookie('session_id', newSessionId, {
 			path: '/',
@@ -58,4 +56,5 @@ export async function registerUserRoutes(server: FastifyInstance)
             alias: newAlias.trim()
         });
     });
+
 }

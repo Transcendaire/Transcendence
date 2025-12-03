@@ -9,7 +9,6 @@ export function getDatabase(): DatabaseService {
 	return singleton;
 }
 
-
 export function resetDatabase()
 {
 	singleton = null;

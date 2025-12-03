@@ -2,6 +2,8 @@ import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player, User } from "../types.js"
 import { DatabaseError, errDatabase } from "@app/shared/errors.js"
+import { DEFAULT_AVATAR_FILENAME } from '../utils/consts.js'
+import { paths } from '../config/paths.js'
 import { getDatabase } from "./databaseSingleton.js";
 import { timeStamp } from "console";
 	
@@ -129,10 +131,11 @@ export class DatabaseService {
 	{
 		const id = randomUUID();
 		const currDate = Date.now();
+
 		this.db.prepare(`
-			INSERT INTO users (id, login, password, alias, created_at)
+			INSERT INTO users (id, login, password, alias, created_at, avatar)
 			VALUES (?, ?, ?, ?, ?)`
-		).run(id, login.trim(), hashedPassword, alias.trim(), currDate);
+		).run(id, login.trim(), hashedPassword, alias.trim(), currDate, DEFAULT_AVATAR_FILENAME);
 		this.createPlayer(alias, id, currDate);
 
 		return id;
@@ -153,6 +156,12 @@ export class DatabaseService {
 	public getUserByAlias(alias: string)
 	{
 		return this.db.prepare('SELECT * FROM users where alias = ?').get(alias);
+	}
+
+	public getUserAvatar(userId: string): string | undefined
+	{
+		const result = this.db.prepare('SELECT avatar FROM users WHERE id = ?').get(userId) as { avatar: string } | undefined;
+		return result?.avatar;
 	}
 
 	/**
@@ -194,8 +203,22 @@ export class DatabaseService {
 		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
 			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
 
+		//*in users table
 		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+
+		//* in players table
 		this.updatePlayerAlias(userId, newAlias);
+
+		//*in tournament_players table
+		this.db.prepare('UPDATE tournament_players SET alias = ? WHERE player_id = ?').run(newAlias, userId);
+
+
+		this.db.prepare(`
+        UPDATE matches 
+        SET alias_a = CASE WHEN player_a_id = ? THEN ? ELSE alias_a END,
+            alias_b = CASE WHEN player_b_id = ? THEN ? ELSE alias_b END
+        WHERE player_a_id = ? OR player_b_id = ?
+    	`).run(userId, newAlias.trim(), userId, newAlias.trim(), userId, userId);
 	}
 
     /**
@@ -207,6 +230,13 @@ export class DatabaseService {
 	{
         this.db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
     }
+
+
+	public updateUserAvatar(userId: string, avatarFilename: string): void
+	{
+		this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarFilename, userId);
+	}
+
 
 								//************* COOKIES ***************/
 

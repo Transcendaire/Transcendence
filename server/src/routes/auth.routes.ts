@@ -17,12 +17,14 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 		const hashedPassword = hashPassword(password);
 		const userId = db.createUser(login, hashedPassword, alias);
 
-		res.setCookie('user_id', userId, {
+		const sessionId = db.createOrUpdateSession(userId);
+
+		res.setCookie('session_id', sessionId, {
 			path: '/',
 			httpOnly: true,
 			secure: true,
 			sameSite: 'lax',
-			maxAge: 60 * 60 * 24//*24 hours
+			maxAge: 60 * 60 * 24 //*24 hours
 		});
 
 		db.setUserOnlineStatus(userId, true);
@@ -36,13 +38,13 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 
 	server.post('/api/auth/login', async (req, res) => {
 
-		console.log('Login request received with body:', req.body);
 		validateLoggingIn(req.body);
 		const { login, password } = req.body as any;
 		const user = db.getUserByLogin(login);
-		console.log('Validation passed for login:', login);
 
-		res.setCookie('user_id', user!.id, {
+		const sessionId = db.createOrUpdateSession(user!.id);
+
+		res.setCookie('session_id', sessionId, {
 			path: '/',
 			httpOnly: true,
 			secure: true,
@@ -63,16 +65,18 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 	server.post('/api/auth/logout', async (req, res) => {
 		const user = (req as any).user;
 
-		console.log(`user(logout route) is ${user}`)
 		if (user && user.id)
+		{
 			db.setUserOnlineStatus(user.id, false);
+			db.deleteSession(user.id);
+		}
 
-		res.clearCookie('user_id', {
+		res.clearCookie('session_id', {
 			path: '/',
 			httpOnly: true,
 			sameSite: 'lax'
 		});
-		req.cookies.id = "";
+		// req.cookies.id = "";//!changed
 		return res.code(204).send();
 
 	})
@@ -146,7 +150,7 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 				const randomPassword = Math.random().toString(36).slice(-16);
 				const hashedPassword = hashPassword(randomPassword);
 
-				const userId = db.createUser(email, hashedPassword, name);
+				const userId = db.createUser(email, hashedPassword, name);//!fix (add 1 if alias already exists....)
 				user = db.getUserById(userId);
 
 				console.log('[AUTH] ✅ Utilisateur créé:', user?.alias);
@@ -154,12 +158,14 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 				console.log('[AUTH] 👋 Utilisateur existant:', user.alias);
 			}
 
-			res.setCookie('user_id', user!.id, {
+			const sessionId = db.createOrUpdateSession(user!.id);
+
+			res.setCookie('session_id', sessionId, {
 				path: '/',
 				httpOnly: true,
 				secure: true,
 				sameSite: 'lax',
-				maxAge: 60 * 60 * 24//*24 hours
+				maxAge: 60 * 60 * 24 //*24 hours
 			});
 
 			db.setUserOnlineStatus(user!.id, true);

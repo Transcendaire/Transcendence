@@ -49,6 +49,12 @@ export class DatabaseService {
 			games_won INTEGER DEFAULT 0,
 			online BOOLEAN DEFAULT false 
 			);
+			CREATE TABLE IF NOT EXISTS users_cookies (
+			user_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+			);
 			CREATE TABLE IF NOT EXISTS players (
 			id TEXT PRIMARY KEY,
 			alias TEXT UNIQUE NOT NULL,
@@ -202,6 +208,45 @@ export class DatabaseService {
         this.db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
     }
 
+								//************* COOKIES ***************/
+
+	public createOrUpdateSession(userId: string): string
+	{
+		const sessionId = randomUUID();
+		const existingSession = this.db.prepare('SELECT 1 FROM users_cookies WHERE user_id = ?').get(userId);
+		const now = Date.now();
+
+		if (existingSession)
+			this.db.prepare('UPDATE users_cookies SET session_id = ?, created_at = ? WHERE user_id = ?').run(sessionId, now, userId);
+		else
+			this.db.prepare('INSERT into users_cookies (user_id, session_id, created_at) VALUES (?, ?, ?)').run(userId, sessionId, now);
+
+		return sessionId;
+	}
+
+	public getUserBySessionId(sessionId: string): User | undefined
+	{
+		const result = this.db.prepare(`
+        	SELECT u.* 
+        	FROM users u
+        	JOIN users_cookies uc ON uc.user_id = u.id
+        	WHERE uc.session_id = ?
+    	`).get(sessionId) as User | undefined;
+
+    	return result;
+	}
+
+
+	public deleteSession(userId: string): void
+	{
+		this.db.prepare('DELETE FROM users_cookies WHERE user_id = ?').run(userId);
+	}
+	
+
+	public deleteSessionById(sessionId: string): void
+	{
+		this.db.prepare('DELETE FROM users_cookies WHERE session_id = ?').run(sessionId);
+	}
 
 								//********* FRIENDS ******************/
     /**

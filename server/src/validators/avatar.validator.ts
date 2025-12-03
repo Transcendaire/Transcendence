@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 import { randomUUID } from 'crypto'
 import { FastifyRequest } from 'fastify'
-import { BadRequest } from '@app/shared/errors'
+import { BadRequest } from '@app/shared/errors.js'
 
 export async function validateAvatar(req: FastifyRequest)
 {

@@ -26,6 +26,16 @@ export async function registerUserRoutes(server: FastifyInstance)
 		const hashedPassword = hashPassword(newPassword);
 		db.updateUserPassword(user.id, hashedPassword);
 
+		const newSessionId = db.createOrUpdateSession(user.id);
+
+		res.setCookie('session_id', newSessionId, {
+			path: '/',
+			httpOnly: true,
+			secure: true,
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 //*24 hours
+		});
+
 		return res.code(200).send({ success: true, message: 'Mot de passe mis à jour avec succès'});
 	})
 

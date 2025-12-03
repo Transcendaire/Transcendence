@@ -46,22 +46,23 @@ export async function registerPlugins(server: FastifyInstance)
         decorateReply: false
     })
 
-
 	server.addHook('preHandler', async (req: FastifyRequest, res: FastifyReply ) => {
-		const id = req.cookies.user_id;
-		if (!id)
+		const sessionId = req.cookies.session_id;
+		if (!sessionId)
 			return ;
-		const user = db.getUserById(id);
+
+		const user = db.getUserBySessionId(sessionId);
+
 		if (user)
 			req.user = user;
 		else
 		{
-			res.clearCookie('user_id', {
+			res.clearCookie('session_id', {
 				path: '/',
 				httpOnly: true,
 				sameSite: 'lax'
 			});
-			req.cookies.id = "";
+			// req.cookies.id = "";//!changed
 		}
 	})
 

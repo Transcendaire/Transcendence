@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "^9.4.0",
-    "@fastify/multipart": "^9.3.0",
+    "@fastify/multipart": "^8.3.1",
     "@fastify/static": "^6.12.0",
     "@fastify/websocket": "^8.2.0",
     "@types/better-sqlite3": "^7.6.13",

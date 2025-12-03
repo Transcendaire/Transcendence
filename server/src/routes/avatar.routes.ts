@@ -25,16 +25,17 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		if (oldAvatar && oldAvatar !== DEFAULT_AVATAR_FILENAME)//! check
 		{
 			try {
-				await fs.unlink(oldAvatar)
+				const oldPath = path.join(paths.usersAvatars, oldAvatar);
+				await fs.unlink(oldPath)
 			} catch(error) {
-				{}
+				console.log('[AVATAR] Failed to delete old avatar:', error);
 			}
 		}
 		db.updateUserAvatar(user.id, filename);
 
 		// changeAvatar(user.id, filename);
 
-		return res.code(200).send({ success: true, message: 'Avatar mis à jour avec succès' })
+		return res.code(200).send({ success: true, message: 'Avatar mis à jour avec succès', avatar: `/avatars/users/${filename}` })
 	})
 
 
@@ -71,15 +72,16 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		{
 			const oldPath = path.join(paths.usersAvatars, oldAvatar);
 			try {
-				await fs.unlink(oldPath)
-			} catch(error){
-				{}
+				await fs.access(oldPath);
+				await fs.unlink(oldPath);
+			} catch(error) {
+				console.log('[AVATAR] Failed to delete old avatar:', error);
 			}
 		}
 		
 		db.updateUserAvatar(user.id, DEFAULT_AVATAR_FILENAME);
 
-		return res.code(200).send({ success: true, message: 'Avatar réinitialisé' });
+		return res.code(200).send({ success: true, message: 'Avatar réinitialisé', avatar: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`});
 	})
-
 }
+

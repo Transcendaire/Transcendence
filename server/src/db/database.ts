@@ -134,7 +134,7 @@ export class DatabaseService {
 
 		this.db.prepare(`
 			INSERT INTO users (id, login, password, alias, created_at, avatar)
-			VALUES (?, ?, ?, ?, ?)`
+			VALUES (?, ?, ?, ?, ?, ?)`
 		).run(id, login.trim(), hashedPassword, alias.trim(), currDate, DEFAULT_AVATAR_FILENAME);
 		this.createPlayer(alias, id, currDate);
 
@@ -198,7 +198,7 @@ export class DatabaseService {
 	 */
 	public updateUserAlias(userId: string, newAlias: string): void
 	{
-		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(userId);
+		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(newAlias.trim());
 
 		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
 			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);

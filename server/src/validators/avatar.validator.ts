@@ -5,8 +5,6 @@ import { paths } from '../config/paths.js'
 import { randomUUID } from 'crypto'
 import { FastifyRequest } from 'fastify'
 import { BadRequest } from '@app/shared/errors.js'
-import { getDatabase } from '../db/databaseSingleton.js'
-const db = getDatabase();
 
 export async function validateAvatar(req: FastifyRequest, userId: string): Promise<string>
 {
@@ -20,6 +18,10 @@ export async function validateAvatar(req: FastifyRequest, userId: string): Promi
 		throw new BadRequest('Format invalide. Les formats autorisés sont JPEG et PNG', 400);
 
 	const buffer = await data.toBuffer();
+
+	const MAX_SIZE = 5 * 1024 * 1024;
+	if (buffer.length > MAX_SIZE)
+		throw new BadRequest('Fichier trop volumineux. Le maximum autorisé est 5MB', 413);
 
 	const fileExtension = path.extname(data.filename) || '.png'; //*defaults to png if no extension
 	const filename = `${userId}-${randomUUID()}${fileExtension}`;

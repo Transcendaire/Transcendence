@@ -18,7 +18,7 @@ function checkAliasValidity(alias: string): void
 		throw new DatabaseError("Alias cannot be less than 3 characters");
 	if (alias.length > 20)
 		throw new DatabaseError("Alias too long (max 20 characters");
-	if (!/^[a-zA-Z0-9_!@#$%&*=-]+$/.test(alias))
+	if (!/^[a-zA-Z0-9_ !@#$%&*=-]+$/.test(alias))
 		throw new DatabaseError("Alias contains at least one invalid character");
 }
 

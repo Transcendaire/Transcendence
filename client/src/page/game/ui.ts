@@ -25,7 +25,6 @@ export function setupDisconnectionHandlers(): void
             console.log('[GAME] Abandon de la partie');
             if (wsClient.isConnected())
                 wsClient.surrender()
-            returnToLobby()
         }
     };
 

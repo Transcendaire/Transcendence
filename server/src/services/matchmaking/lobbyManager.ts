@@ -271,15 +271,21 @@ export class LobbyManager
 	 */
 	private addBotToLobby(lobby: Lobby): void
 	{
-		const botCount = lobby.players.filter(p => p.isBot).length
+		const existingNumbers = lobby.players
+			.filter(p => p.isBot && p.name.startsWith('Bot #'))
+			.map(p => parseInt(p.name.replace('Bot #', ''), 10))
+			.filter(n => !isNaN(n))
+
+		let botNumber = 1
+		while (existingNumbers.includes(botNumber))
+			botNumber++
 		const botId = `bot-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`
 		const bot: LobbyPlayer = {
 			id: botId,
-			name: `Bot #${botCount + 1}`,
+			name: `Bot #${botNumber}`,
 			isBot: true,
 			isReady: true
 		}
-
 		lobby.players.push(bot)
 	}
 

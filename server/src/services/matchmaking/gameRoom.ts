@@ -1,5 +1,5 @@
 import { WebSocket } from 'ws'
-import { GameState, WebSocketMessage } from '../../types.js'
+import { GameState, WebSocketMessage, PlayerOnlineStatus } from '../../types.js'
 import { LobbyPlayer } from '@app/shared/types.js'
 import { Player, GameRoom, BattleRoyaleRoom, BattleRoyalePlayer } from './types.js'
 import { GameService, PlayerInput } from '../game/game.js'
@@ -10,6 +10,8 @@ import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 import { sendMessage } from '../../utils/websocket.js'
 
+type StatusCallback = (playerName: string, status: PlayerOnlineStatus) => void;
+
 /**
  * @brief Manages active game rooms and their game loops
  */
@@ -17,6 +19,12 @@ export class GameRoomManager
 {
 	private activeGames: Map<string, GameRoom> = new Map()
 	private battleRoyaleGames: Map<string, BattleRoyaleRoom> = new Map()
+	private onStatusChange?: StatusCallback
+
+	public setStatusCallback(callback: StatusCallback): void
+	{
+		this.onStatusChange = callback
+	}
 
 	/**
 	 * @brief Create game room for 1v1 match
@@ -60,6 +68,9 @@ export class GameRoomManager
 			...(tournamentMatch && { tournamentMatch })
 		}
 		this.activeGames.set(gameId, room)
+		this.onStatusChange?.(player1.name, 'in-game')
+		if (player2.id !== 'AI')
+			this.onStatusChange?.(player2.name, 'in-game')
 		return gameId
 	}
 
@@ -105,6 +116,7 @@ export class GameRoomManager
 		}
 		room.ai!.start()
 		this.activeGames.set(gameId, room)
+		this.onStatusChange?.(player1.name, 'in-game')
 		return gameId
 	}
 
@@ -202,6 +214,9 @@ export class GameRoomManager
 			}
 		}
 		console.log(`[GAME_ROOM] Battle Royale game ${gameId} created with ${playerCount} players`)
+		for (const player of brPlayers)
+			if (!player.isBot)
+				this.onStatusChange?.(player.name, 'in-game')
 		const gameState = gameService.getGameState()
 		for (let i = 0; i < gameState.players.length; i++)
 		{
@@ -407,6 +422,8 @@ export class GameRoomManager
 		{
 			if (player.ai)
 				player.ai.stop()
+			if (!player.isBot)
+				this.onStatusChange?.(player.name, 'online')
 		}
 		this.battleRoyaleGames.delete(gameId)
 		console.log(`[GAME_ROOM] Battle Royale ${gameId} cleaned up`)
@@ -613,6 +630,9 @@ export class GameRoomManager
 			clearInterval(room.gameLoop)
 		if (room.ai)
 			room.ai.stop()
+		this.onStatusChange?.(room.player1.name, 'online')
+		if (room.player2.id !== 'AI')
+			this.onStatusChange?.(room.player2.name, 'online')
 		this.activeGames.delete(gameId)
 	}
 

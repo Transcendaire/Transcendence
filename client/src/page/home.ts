@@ -34,6 +34,7 @@ async function initHomePage() {
 		if (alias) {
 			playerName = alias;
 			isLoggedIn = true;
+			connectWebSocketForStatus();
 		} else {
 			playerName = "";
 			isLoggedIn = false;
@@ -110,6 +111,7 @@ function initLoginModal(loginModal: HTMLElement) {
 			isLoggedIn = true;
 			hide(loginModal)
 			updateUI();
+			connectWebSocketForStatus();
 			broadcastAuthEvent('login');
 
         } catch (error) {
@@ -174,6 +176,7 @@ async function initsigninModal(signinModal: HTMLElement) {
 			isLoggedIn = true;
 			hide(signinModal);
 			updateUI()
+			connectWebSocketForStatus();
 			broadcastAuthEvent('login');
 		} catch (error) {
 			const message = String(error);
@@ -297,14 +300,33 @@ function initWaitingModal(modal: HTMLElement) {
     const cancelWaitButton = getEl("cancelWaitButton");
 
     cancelWaitButton.addEventListener('click', () => {
-        wsClient.disconnect();
+        wsClient.cancelQueue();
         hide(modal);
     });
 }
 
 
+/**
+ * @brief Connect to WebSocket to appear online to friends
+ * @details Called after login/register or when page loads with authenticated user
+ */
+async function connectWebSocketForStatus(): Promise<void>
+{
+	if (!playerName || playerName === '')
+		return
+	try {
+		await wsClient.connect(getWebSocketUrl())
+		wsClient.registerPlayer(playerName)
+		console.log(`[HOME] WebSocket connected for status: ${playerName}`)
+	} catch (error) {
+		console.log('[HOME] Failed to connect WebSocket for status:', error)
+	}
+}
+
+
 async function logout(): Promise<void>
 {
+	wsClient.disconnect()
 	try {
 		const res = await fetch('/api/auth/logout', {
 			method: 'POST',

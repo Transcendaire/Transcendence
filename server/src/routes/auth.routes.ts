@@ -122,9 +122,6 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 			const name = payload.name || email?.split('@')[0] || 'User';
 			const picture = payload.picture;
 
-			console.log('[AUTH]    - Email:', email);
-			console.log('[AUTH]    - Nom:', name);
-
 			if (!email) {
 				return res.code(400).send({ error: 'Email manquant' });
 			}

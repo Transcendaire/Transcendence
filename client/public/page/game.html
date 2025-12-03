@@ -1,35 +1,47 @@
-  <div id="gameScreen" class="flex flex-col justify-center items-center h-screen gap-4">
+<div id="gameScreen" class="flex flex-col justify-center items-center h-screen gap-4">
     <div class="flex justify-center items-start gap-4">
-        <div class="hidden min-[1700px]:block w-80 h-80 bg-sonpi16-orange" style="-webkit-mask: url('/assets/images/logo.png') center / contain no-repeat; mask: url('/assets/images/logo.png') center / contain no-repeat;"></div>
-        
+        <div class="hidden min-[1700px]:block w-80 h-80 bg-sonpi16-orange"
+            style="-webkit-mask: url('/assets/images/logo.png') center / contain no-repeat; mask: url('/assets/images/logo.png') center / contain no-repeat;">
+        </div>
+
         <div class="flex flex-col items-center justify-between h-[804px] min-w-[120px]">
             <div class="flex flex-col items-center gap-2 w-full">
-                <div id="player1Name" class="text-sonpi16-orange text-center" style="font-family: QuencyPixel-Regular;"></div>
-                <div id="player1Ping" class="text-sonpi16-orange text-sm" style="font-family: QuencyPixel-Regular;">--ms</div>
+                <div id="player1Name" class="text-sonpi16-orange text-center" style="font-family: QuencyPixel-Regular;">
+                </div>
+                <div id="player1Ping" class="text-sonpi16-orange text-sm" style="font-family: QuencyPixel-Regular;">--ms
+                </div>
             </div>
-            <div id="heartsPlayer1" class="flex flex-col flex-wrap gap-1 h-full w-full items-center content-start flex-1 min-h-0 py-4" style="direction: rtl;">
+            <div id="heartsPlayer1"
+                class="flex flex-col flex-wrap gap-1 h-full w-full items-center content-start flex-1 min-h-0 py-4"
+                style="direction: rtl;">
             </div>
             <div id="powerUpsPlayer1" class="flex flex-col gap-2 mb-0">
             </div>
         </div>
-        
+
         <canvas id="pong" width="800" height="800" class="border-2 border-sonpi16-orange"></canvas>
-        
+
         <div class="flex flex-col items-center justify-between h-[804px] min-w-[120px]">
             <div class="flex flex-col items-center gap-2 w-full">
-                <div id="player2Name" class="text-sonpi16-orange text-center" style="font-family: QuencyPixel-Regular;"></div>
-                <div id="player2Ping" class="text-sonpi16-orange text-sm" style="font-family: QuencyPixel-Regular;">--ms</div>
+                <div id="player2Name" class="text-sonpi16-orange text-center" style="font-family: QuencyPixel-Regular;">
+                </div>
+                <div id="player2Ping" class="text-sonpi16-orange text-sm" style="font-family: QuencyPixel-Regular;">--ms
+                </div>
             </div>
-            <div id="heartsPlayer2" class="flex flex-col flex-wrap gap-1 h-full w-full items-center content-start flex-1 min-h-0 py-4">
+            <div id="heartsPlayer2"
+                class="flex flex-col flex-wrap gap-1 h-full w-full items-center content-start flex-1 min-h-0 py-4">
             </div>
             <div id="powerUpsPlayer2" class="flex flex-col gap-2 mb-0">
             </div>
         </div>
-        
-        <div class="hidden min-[1700px]:block w-80 h-80 bg-sonpi16-orange scale-x-[-1]" style="-webkit-mask: url('/assets/images/logo.png') center / contain no-repeat; mask: url('/assets/images/logo.png') center / contain no-repeat;"></div>
+
+        <div class="hidden min-[1700px]:block w-80 h-80 bg-sonpi16-orange scale-x-[-1]"
+            style="-webkit-mask: url('/assets/images/logo.png') center / contain no-repeat; mask: url('/assets/images/logo.png') center / contain no-repeat;">
+        </div>
     </div>
 
-    <button id="surrenderButton" class="bg-sonpi16-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded" style="font-family: QuencyPixel-Regular;">
+    <button id="surrenderButton" class="bg-sonpi16-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
+        style="font-family: QuencyPixel-Regular;">
         Abandon
     </button>
 </div>

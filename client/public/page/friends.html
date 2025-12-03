@@ -1,0 +1,121 @@
+<div class="container mx-auto px-4 py-8 max-w-7xl">
+    <!-- Header with back button -->
+    <div class="flex items-center justify-between mb-8">
+        <button id="backHomeFromFriends" class="flex items-center text-sonpi16-black hover:scale-105 transition">
+            <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            <span class="font-quency text-xl">Retour</span>
+        </button>
+        
+        <h1 class="text-4xl font-bold text-sonpi16-black font-quency">Amis</h1>
+        
+        <div class="w-24"></div> <!-- Spacer for centering -->
+    </div>
+
+    <div class="grid lg:grid-cols-3 gap-6">
+        
+        <!-- Left Column: Add Friend + Requests -->
+        <div class="space-y-6">
+            
+            <!-- Add Friend Section -->
+            <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl">
+                <h2 class="text-2xl font-bold text-sonpi16-orange mb-4 font-quency flex items-center gap-2">
+                    <span class="text-3xl">➕</span>
+                    Ajouter un ami
+                </h2>
+                
+                <div class="space-y-3">
+                    <input 
+                        id="addFriendInput" 
+                        type="text" 
+                        placeholder="Alias du joueur..."
+                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                               px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
+                               focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
+                               font-quency placeholder-sonpi16-orange placeholder-opacity-50"
+                    />
+                    
+                    <button 
+                        id="sendFriendRequestButton"
+                        class="w-full bg-sonpi16-orange text-sonpi16-black px-4 py-3 rounded-lg 
+                               font-bold hover:bg-opacity-90 transition-all font-quency 
+                               hover:scale-105 active:scale-95">
+                        Envoyer la demande
+                    </button>
+                    
+                    <p id="addFriendMessage" class="text-sm text-center font-quency hidden"></p>
+                </div>
+            </div>
+
+            <!-- Pending Requests (Received) -->
+            <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-sonpi16-orange font-quency flex items-center gap-2">
+                        <span class="text-3xl">📬</span>
+                        Demandes reçues
+                    </h2>
+                    <span id="pendingCount" 
+                          class="bg-sonpi16-orange text-sonpi16-black px-3 py-1 rounded-full 
+                                 font-bold font-quency">
+                        0
+                    </span>
+                </div>
+                
+                <div id="pendingRequestsList" 
+                     class="space-y-3 max-h-96 overflow-y-auto pr-2 
+                            scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
+                    <p class="text-gray-400 text-center py-8 font-quency">Aucune demande en attente</p>
+                </div>
+            </div>
+
+            <!-- Sent Requests -->
+            <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-2xl font-bold text-sonpi16-orange font-quency flex items-center gap-2">
+                        <span class="text-3xl">📤</span>
+                        Demandes envoyées
+                    </h2>
+                    <span id="sentCount" 
+                          class="bg-sonpi16-orange text-sonpi16-black px-3 py-1 rounded-full 
+                                 font-bold font-quency">
+                        0
+                    </span>
+                </div>
+                
+                <div id="sentRequestsList" 
+                     class="space-y-3 max-h-96 overflow-y-auto pr-2 
+                            scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
+                    <p class="text-gray-400 text-center py-8 font-quency">Aucune demande envoyée</p>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Friends List -->
+        <div class="lg:col-span-2">
+            <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl min-h-[700px]">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-3xl font-bold text-sonpi16-orange font-quency flex items-center gap-3">
+                        <span class="text-4xl">👥</span>
+                        Mes amis
+                    </h2>
+                    <span id="friendsCount" 
+                          class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-full 
+                                 font-bold text-xl font-quency">
+                        0
+                    </span>
+                </div>
+
+                <div id="friendsList" 
+                     class="grid md:grid-cols-2 gap-4 max-h-[800px] overflow-y-auto pr-2 
+                            scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
+                    <p class="text-gray-400 text-center py-8 font-quency col-span-2">
+                        Vous n'avez pas encore d'amis
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>

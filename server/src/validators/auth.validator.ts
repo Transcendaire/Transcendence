@@ -47,9 +47,6 @@ export function validateRegistering(requestBody: any) //*purely simple parsing (
 
 	if (password !== passwordValidation)
 		throw new BadRequest('Les mots de passe sont différents');
-
-
-	//*length, different, existing, 
 }
 
 export function checkForDuplicatesAtRegistering(login: string, alias: string)

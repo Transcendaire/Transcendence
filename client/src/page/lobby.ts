@@ -3,6 +3,7 @@ import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { playerName } from "./home";
 import type { Lobby, LobbyPlayer } from "@shared/types";
+import { checkAuthentication } from "./auth.js";
 
 let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;

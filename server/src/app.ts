@@ -5,7 +5,7 @@ import { paths } from './config/paths.js'
 import { register } from 'module';
 
 export async function createApp() { //*no network binding. Just registering stuff
-	const server = fastify({ logger: true });
+	const server = fastify({ logger: false });
 
 	console.log('Server paths:')
     console.log('  Current directory:', process.cwd())

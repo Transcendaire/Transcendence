@@ -152,13 +152,13 @@ export class TournamentManagerService
 	/**
 	 * @brief Checks if a player name is in an active (non-completed) tournament
 	 * @param playerName Player's name to check
-	 * @returns True if player is in an active tournament
+	 * @returns True if player is active (not eliminated) in a running tournament
 	 */
 	public isPlayerNameInActiveTournament(playerName: string): boolean
 	{
 		for (const tournament of this.tournamentsMap.values())
 		{
-			if (tournament.getStatus() !== 'completed' && tournament.hasPlayer(playerName))
+			if (tournament.getStatus() !== 'completed' && tournament.hasActivePlayer(playerName))
 				return true;
 		}
 		return false;

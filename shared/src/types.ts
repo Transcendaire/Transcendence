@@ -125,6 +125,7 @@ export type GameState = {
 }
 
 export type WebSocketMessage = 
+| { type: "register"; playerName: string }
 | { type: "join"; playerName: string }
 | { type: "joinCustom"; playerName: string }
 | { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; lifeCount?: number }
@@ -135,6 +136,7 @@ export type WebSocketMessage =
 | { type: "gameState"; data: GameState }
 | { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; isBattleRoyale?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
+| { type: "cancelQueue" }
 | { type: "ping"; pingValue?: number }
 | { type: "pong" }
 | { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'battleroyale'; maxPlayers: number; settings: CustomGameSettings }

@@ -116,6 +116,7 @@ export class GameRoomManager
 		}
 		room.ai!.start()
 		this.activeGames.set(gameId, room)
+		this.onStatusChange?.(player1.name, 'in-game')
 		return gameId
 	}
 

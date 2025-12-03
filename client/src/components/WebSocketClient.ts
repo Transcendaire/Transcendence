@@ -69,6 +69,11 @@ export class WebSocketClient
      */
     public connect(serverUrl: string): Promise<void>
     {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN)
+        {
+            console.log(`[WebSocket] Already connected, reusing existing connection`);
+            return Promise.resolve();
+        }
         console.log(`[WebSocket] Tentative de connexion à: ${serverUrl}`);
         return new Promise((resolve, reject) => {
             try {
@@ -275,6 +280,21 @@ export class WebSocketClient
     }
 
     /**
+     * @brief Register player for online status tracking
+     * @param playerName Player's display name
+     */
+    public registerPlayer(playerName: string): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = {
+                type: 'register',
+                playerName
+            };
+            this.ws.send(JSON.stringify(message));
+        }
+    }
+
+    /**
      * @brief Join game with player name
      * @param playerName Player's display name
      */
@@ -370,6 +390,17 @@ export class WebSocketClient
     {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message: WebSocketMessage = { type: 'surrender' }
+            this.ws.send(JSON.stringify(message))
+        }
+    }
+
+    /**
+     * @brief Cancel matchmaking queue search
+     */
+    public cancelQueue(): void
+    {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message: WebSocketMessage = { type: 'cancelQueue' }
             this.ws.send(JSON.stringify(message))
         }
     }

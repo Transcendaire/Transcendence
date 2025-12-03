@@ -95,6 +95,21 @@ export class Tournament {
 	}
 
 	/**
+	 * @brief Get player alias by their socket
+	 * @param socket WebSocket connection to search for
+	 * @returns Player alias or undefined if not found
+	 */
+	public getPlayerAliasBySocket(socket: WebSocket): string | undefined
+	{
+		for (const player of this.players.values())
+		{
+			if (player.socket === socket)
+				return player.alias;
+		}
+		return undefined;
+	}
+
+	/**
 	 * @brief Adds a player to the tournament (in-memory and in database)
 	 * @param alias Player's alias
 	 * @param socket Optional WebSocket connection
@@ -542,6 +557,12 @@ export class Tournament {
 	 */
 	private startMatchAfterCountdown(match: Match, player1: TournamentPlayer, player2: TournamentPlayer): void
 	{
+		if (player1.status === 'eliminated' || player2.status === 'eliminated')
+		{
+			console.log(`[TOURNAMENT] Match cancelled: a player was eliminated during countdown`)
+			return
+		}
+
 		const gameRoomManager = this.matchmakingService.getGameRoomManager();
 		const isFinalMatch = this.currRound === this.maxRound - 1;
 		console.log(`[TOURNAMENT] Match is final: ${isFinalMatch} (round ${this.currRound + 1}/${this.maxRound})`);
@@ -754,6 +775,12 @@ export class Tournament {
 	 */
 	private startAIMatchAfterCountdown(match: Match, humanPlayer: TournamentPlayer, botPlayer: TournamentPlayer): void
 	{
+		if (humanPlayer.status === 'eliminated')
+		{
+			console.log(`[TOURNAMENT] AI match cancelled: ${humanPlayer.alias} was eliminated during countdown`)
+			return
+		}
+
 		const gameRoomManager = this.matchmakingService.getGameRoomManager()
 		const humanIsPlayer1 = match.player1Id === humanPlayer.id
 		const isFinalMatch = this.currRound === this.maxRound - 1

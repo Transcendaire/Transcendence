@@ -308,10 +308,25 @@ export class MatchmakingService
 	 */
 	public removePlayer(socket: WebSocket, skipStatusBroadcast: boolean = false): void
 	{
+		console.log(`[MATCHMAKING] removePlayer called for socket`)
 		const player = this.playerSockets.get(socket)
 
 		if (!player)
+		{
+			const tournament = this.tournamentManager.findTournamentBySocket(socket)
+
+			if (tournament && tournament.getStatus() === 'running')
+			{
+				const playerAlias = tournament.getPlayerAliasBySocket(socket)
+
+				if (playerAlias)
+				{
+					console.log(`[MATCHMAKING] Player ${playerAlias} disconnected during tournament (found by socket only)`)
+					tournament.eliminatePlayer(playerAlias)
+				}
+			}
 			return
+		}
 		const playerName = player.name
 
 		if (playerName)
@@ -374,6 +389,7 @@ export class MatchmakingService
 		else if (playerName && playerName !== 'Anonymous')
 		{
 			const tournament = this.tournamentManager.findTournamentOfPlayer(playerName)
+			console.log(`[MATCHMAKING] Player ${playerName} not in gameRoom, checking tournament: ${tournament ? 'FOUND' : 'NOT FOUND'}`)
 
 			if (tournament && tournament.getStatus() === 'running')
 			{

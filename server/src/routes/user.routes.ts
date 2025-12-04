@@ -48,4 +48,36 @@ export async function registerUserRoutes(server: FastifyInstance)
             alias: newAlias.trim()
         });
     });
+
+	server.get('/api/user/profile/:alias', async (req, res) => {
+		const { alias } = req.params as { alias: string };
+
+		if (!alias)
+			return res.code(400).send({ message: 'Alias requis' });
+
+		const user = db.getUserByAlias(alias);
+		if (!user)
+			return res.code(404).send({ message: 'Utilisateur non trouvé' });
+
+		const stats = db.getPlayerStats(alias);
+		const matchHistory = db.getPlayerMatchHistory(alias, 20);
+		const tournamentResults = db.getPlayerTournamentResults(alias, 10);
+
+		const tournamentResultsWithMatches = tournamentResults.map((result: any) => {
+			const allMatches = db.getMatches(result.tournament_id);
+			const completedMatches = allMatches?.filter((m: any) => m.state === 'completed') || [];
+			return {
+				...result,
+				matches: completedMatches
+			};
+		});
+
+		return res.code(200).send({
+			alias: user.alias,
+			createdAt: user.created_at,
+			stats,
+			matchHistory,
+			tournamentResults: tournamentResultsWithMatches
+		});
+	});
 }

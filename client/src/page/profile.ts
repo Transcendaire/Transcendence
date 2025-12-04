@@ -1,15 +1,345 @@
 import { registerPageInitializer, navigate } from "../router";
-import { getEl } from "../app";
+import { getEl, show, hide } from "../app";
 import { playerName } from "./home";
+import { getUserWithCookies } from "./auth";
+import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 
-function initprofilepage() {
-    getEl("backHome").addEventListener('click',  () => navigate('home'));
-    const username = getEl("username");
-
-    username.innerText = playerName;
+interface MatchHistoryEntry {
+    id: string;
+    player_alias: string;
+    game_type: '1v1' | 'battle_royale';
+    opponent_info: string;
+    player_count: number;
+    bot_count: number;
+    score_for: number;
+    score_against: number;
+    position: number;
+    position_with_bots: number;
+    result: 'win' | 'loss';
+    tournament_id: string | null;
+    created_at: number;
 }
 
-registerPageInitializer('profile', initprofilepage)
+interface TournamentMatch {
+    id: string;
+    tournament_id: string;
+    player_a_id: string;
+    player_b_id: string;
+    alias_a: string;
+    alias_b: string;
+    score_a: number;
+    score_b: number;
+    state: string;
+    created_at: number;
+}
+
+interface TournamentResultEntry {
+    id: string;
+    player_alias: string;
+    tournament_id: string;
+    tournament_name: string;
+    position: number;
+    total_participants: number;
+    matches_won: number;
+    matches_lost: number;
+    created_at: number;
+    matches: TournamentMatch[];
+}
+
+interface PlayerStats {
+    totalGames: number;
+    wins: number;
+    losses: number;
+    winRate: number;
+    tournamentsPlayed: number;
+    tournamentsWon: number;
+}
+
+interface ProfileData {
+    alias: string;
+    createdAt: number;
+    stats: PlayerStats;
+    matchHistory: MatchHistoryEntry[];
+    tournamentResults: TournamentResultEntry[];
+}
+
+function getAliasFromUrl(): string | null
+{
+    const params = new URLSearchParams(window.location.search);
+    return params.get('alias');
+}
+
+async function fetchProfileData(alias: string): Promise<ProfileData | null>
+{
+    try
+    {
+        const response = await fetch(`/api/user/profile/${encodeURIComponent(alias)}`);
+        if (!response.ok)
+        {
+            console.error('[PROFILE] Failed to fetch profile:', response.status);
+            return null;
+        }
+        return await response.json();
+    }
+    catch (error)
+    {
+        console.error('[PROFILE] Error fetching profile:', error);
+        return null;
+    }
+}
+
+function formatDate(timestamp: number): string
+{
+    const date = new Date(timestamp);
+    return date.toLocaleDateString('fr-FR', {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric'
+    });
+}
+
+function formatRelativeTime(timestamp: number): string
+{
+    const now = Date.now();
+    const diffMs = now - timestamp;
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 1)
+        return 'À l\'instant';
+    if (diffMins < 60)
+        return `Il y a ${diffMins}m`;
+    
+    const diffHours = Math.floor(diffMins / 60);
+    if (diffHours < 24)
+        return `Il y a ${diffHours}h`;
+    
+    const diffDays = Math.floor(diffHours / 24);
+    if (diffDays < 7)
+        return `Il y a ${diffDays}j`;
+    
+    return formatDate(timestamp);
+}
+
+function getPositionBadge(position: number): string
+{
+    switch (position)
+    {
+        case 1: return '<span class="text-yellow-500 font-bold">🥇 1er</span>';
+        case 2: return '<span class="text-gray-400 font-bold">🥈 2ème</span>';
+        case 3: return '<span class="text-amber-600 font-bold">🥉 3ème</span>';
+        default: return `<span class="text-gray-600">${position}ème</span>`;
+    }
+}
+
+function renderMatchHistory(matches: MatchHistoryEntry[]): void
+{
+    const container = getEl('match-history-list');
+    
+    if (matches.length === 0)
+    {
+        container.innerHTML = `
+            <p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = matches.map(match => {
+        const isWin = match.result === 'win';
+        const isBR = match.game_type === 'battle_royale';
+        const bgColor = isWin ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+        const resultText = isWin ? 'Victoire' : 'Défaite';
+        const resultColor = isWin ? 'text-green-600' : 'text-red-600';
+        const totalPlayers = match.player_count + (match.bot_count || 0);
+        
+        let gameTypeLabel = '';
+        if (isBR)
+            gameTypeLabel = `<span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Battle Royale (${totalPlayers})</span>`;
+        else if (match.tournament_id)
+            gameTypeLabel = '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Tournoi</span>';
+        else
+            gameTypeLabel = '<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Quickmatch</span>';
+
+        let scoreDisplay = '';
+        if (isBR)
+        {
+            const hasBots = match.bot_count && match.bot_count > 0;
+            if (hasBots)
+                scoreDisplay = `${match.position}/${match.player_count} joueurs • ${match.position_with_bots}/${totalPlayers} total`;
+            else
+                scoreDisplay = `Position: ${match.position}/${match.player_count}`;
+        }
+        else
+            scoreDisplay = `${match.score_for} - ${match.score_against}`;
+
+        const botSuffix = (match.bot_count && match.bot_count > 0) ? ` et ${match.bot_count} Bot${match.bot_count > 1 ? 's' : ''}` : '';
+
+        return `
+            <div class="flex items-center justify-between p-4 rounded-lg border ${bgColor}">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 ${isWin ? 'bg-green-500' : 'bg-red-500'} rounded-full flex items-center justify-center">
+                        <span class="text-white font-bold">${isWin ? '✓' : '✗'}</span>
+                    </div>
+                    <div>
+                        <p class="font-quency font-bold text-sonpi16-black">vs ${match.opponent_info}${botSuffix}</p>
+                        <div class="flex items-center gap-2">
+                            ${gameTypeLabel}
+                            <span class="text-xs text-gray-500">${formatRelativeTime(match.created_at)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="font-bold ${resultColor}">${resultText}</p>
+                    <p class="text-sm text-gray-600">${scoreDisplay}</p>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderTournamentResults(results: TournamentResultEntry[]): void
+{
+    const container = getEl('tournament-results-list');
+    
+    if (results.length === 0)
+    {
+        container.innerHTML = `
+            <p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>
+        `;
+        return;
+    }
+
+    container.innerHTML = results.map((result, index) => {
+        const isChampion = result.position === 1;
+        const bgColor = isChampion ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200';
+        const matchesHtml = result.matches && result.matches.length > 0
+            ? result.matches.map(m => {
+                const isWinnerA = m.score_a > m.score_b;
+                return `
+                    <div class="flex justify-between items-center py-2 px-3 bg-white rounded border">
+                        <span class="font-quency ${isWinnerA ? 'font-bold text-green-600' : 'text-gray-600'}">${m.alias_a}</span>
+                        <span class="text-sm font-bold">${m.score_a} - ${m.score_b}</span>
+                        <span class="font-quency ${!isWinnerA ? 'font-bold text-green-600' : 'text-gray-600'}">${m.alias_b}</span>
+                    </div>
+                `;
+            }).join('')
+            : '<p class="text-gray-400 text-sm py-2">Aucun match enregistré</p>';
+
+        return `
+            <div class="rounded-lg border ${bgColor} overflow-hidden">
+                <div class="flex items-center justify-between p-4 cursor-pointer hover:bg-opacity-80 transition-all"
+                     onclick="document.getElementById('tournament-matches-${index}').classList.toggle('hidden'); this.querySelector('.chevron').classList.toggle('rotate-180');">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 bg-sonpi16-orange rounded-full flex items-center justify-center">
+                            <span class="text-white font-bold text-lg">${isChampion ? '🏆' : result.position}</span>
+                        </div>
+                        <div>
+                            <p class="font-quency font-bold text-sonpi16-black">${result.tournament_name}</p>
+                            <p class="text-sm text-gray-600">${result.matches_won}V - ${result.matches_lost}D</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="text-right">
+                            ${getPositionBadge(result.position)}
+                            <p class="text-xs text-gray-500">${formatRelativeTime(result.created_at)}</p>
+                        </div>
+                        <svg class="chevron w-5 h-5 text-gray-400 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/>
+                        </svg>
+                    </div>
+                </div>
+                <div id="tournament-matches-${index}" class="hidden border-t px-4 py-3 space-y-2 bg-gray-50">
+                    <p class="text-xs text-gray-500 font-bold mb-2">Matchs du tournoi:</p>
+                    ${matchesHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
+{
+    const usernameEl = getEl('username');
+    const userInitialEl = getEl('userInitial');
+    const joinDateEl = getEl('join-date');
+    const totalGamesEl = getEl('total-games');
+    const winsEl = getEl('wins');
+    const lossesEl = getEl('losses');
+    const winRateEl = getEl('win-rate');
+    const tournamentsPlayedEl = getEl('tournaments-played');
+    const tournamentsWonEl = getEl('tournaments-won');
+    const editBtn = getEl('edit-profile');
+
+    usernameEl.innerText = data.alias;
+    userInitialEl.innerText = data.alias.charAt(0).toUpperCase();
+    joinDateEl.innerText = formatDate(data.createdAt);
+
+    totalGamesEl.innerText = data.stats.totalGames.toString();
+    winsEl.innerText = data.stats.wins.toString();
+    lossesEl.innerText = data.stats.losses.toString();
+    winRateEl.innerText = `${data.stats.winRate}%`;
+    tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString();
+    tournamentsWonEl.innerText = data.stats.tournamentsWon.toString();
+
+    if (isOwnProfile)
+        show(editBtn);
+    else
+        hide(editBtn);
+
+    renderMatchHistory(data.matchHistory);
+    renderTournamentResults(data.tournamentResults);
+}
+
+async function connectWebSocketForStatus(alias: string): Promise<void>
+{
+    if (!alias)
+        return
+    try
+    {
+        await wsClient.connect(getWebSocketUrl())
+        wsClient.registerPlayer(alias)
+        console.log(`[PROFILE] WebSocket connected for status: ${alias}`)
+    }
+    catch (error)
+    {
+        console.log('[PROFILE] Failed to connect WebSocket for status:', error)
+    }
+}
+
+async function initProfilePage(): Promise<void>
+{
+    console.log('[PROFILE] Initializing profile page');
+
+    const currentUserAlias = playerName || await getUserWithCookies() || "";
+    if (currentUserAlias)
+        await connectWebSocketForStatus(currentUserAlias);
+
+    getEl("backHome").addEventListener('click', () => navigate('home'));
+
+    const urlAlias = getAliasFromUrl();
+    const targetAlias = urlAlias || currentUserAlias;
+
+    if (!targetAlias)
+    {
+        console.error('[PROFILE] No alias found, redirecting to home');
+        navigate('home');
+        return;
+    }
+
+    const isOwnProfile = !urlAlias || urlAlias === currentUserAlias;
+    const profileData = await fetchProfileData(targetAlias);
+
+    if (!profileData)
+    {
+        console.error('[PROFILE] Failed to load profile for:', targetAlias);
+        const usernameEl = getEl('username');
+        usernameEl.innerText = 'Utilisateur non trouvé';
+        return;
+    }
+
+    updateProfileUI(profileData, isOwnProfile);
+}
+
+registerPageInitializer('profile', initProfilePage)
 
 
 async function updateAlias(newAlias: string)
@@ -28,7 +358,7 @@ async function updateAlias(newAlias: string)
 
 	return { success: true, message: data.message, alias: newAlias };
 }
-//*current password est le mot de passe récupéré via le formulaire sur le profil, pas celui de la base de données
+
 async function updatePassword(currentPassword: string, newPassword: string)
 {
 	const response = await fetch('/api/user/password', {
@@ -45,5 +375,7 @@ async function updatePassword(currentPassword: string, newPassword: string)
 
 	return ({ success: true });
 }
+
+
 
 

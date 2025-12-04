@@ -849,7 +849,40 @@ export class Tournament {
 		console.log(`[TOURNAMENT] Match ${match.id} completed: ${match.player1Alias} ${livesA}-${livesB} ${match.player2Alias}`);
 		this.bracketService.updateMatchResult(match, winnerId);
 		if (!p1IsBot && !p2IsBot)
+		{
 			this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, livesA, livesB, 'completed');
+			try
+			{
+				const p1Won = winnerId === match.player1Id;
+				this.db.recordGameResult(
+					match.player1Alias,
+					'1v1',
+					match.player2Alias,
+					2,
+					livesA,
+					livesB,
+					p1Won ? 1 : 2,
+					p1Won ? 'win' : 'loss',
+					this.id
+				);
+				this.db.recordGameResult(
+					match.player2Alias,
+					'1v1',
+					match.player1Alias,
+					2,
+					livesB,
+					livesA,
+					p1Won ? 2 : 1,
+					p1Won ? 'loss' : 'win',
+					this.id
+				);
+				console.log(`[TOURNAMENT] Match history recorded for ${match.player1Alias} vs ${match.player2Alias}`);
+			}
+			catch (error)
+			{
+				console.error('[TOURNAMENT] Failed to record match history:', error);
+			}
+		}
 		if (winner)
 			winner.status = 'waiting';
 		if (loser)
@@ -899,8 +932,126 @@ export class Tournament {
 		{
 			champion.status = 'champion';
 			console.log(`[TOURNAMENT] Tournament ${this.name} completed! Champion: ${championAlias}`);
+			this.recordTournamentResults(championAlias);
 			this.notifyEndOfTournament(championAlias);
 		}
+	}
+
+	/**
+	 * @brief Record tournament results for all human players
+	 * @param championAlias Alias of the tournament champion
+	 */
+	private recordTournamentResults(championAlias: string): void
+	{
+		const humanPlayers = Array.from(this.players.values()).filter(p => !p.id.startsWith('bot-'));
+		if (humanPlayers.length === 0)
+			return;
+
+		const totalParticipants = this.players.size;
+		const matchResults = this.calculatePlayerMatchResults();
+
+		for (const player of humanPlayers)
+		{
+			const position = this.calculatePlayerPosition(player.alias, championAlias);
+			const stats = matchResults.get(player.alias) || { won: 0, lost: 0 };
+
+			try
+			{
+				this.db.recordTournamentResult(
+					player.alias,
+					this.id,
+					this.name,
+					position,
+					totalParticipants,
+					stats.won,
+					stats.lost
+				);
+				console.log(`[TOURNAMENT] Recorded result for ${player.alias}: position ${position}, ${stats.won}W-${stats.lost}L`);
+			}
+			catch (error)
+			{
+				console.error(`[TOURNAMENT] Failed to record result for ${player.alias}:`, error);
+			}
+		}
+	}
+
+	/**
+	 * @brief Calculate wins and losses for each player from bracket
+	 * @returns Map of player alias to win/loss counts
+	 */
+	private calculatePlayerMatchResults(): Map<string, { won: number; lost: number }>
+	{
+		const results = new Map<string, { won: number; lost: number }>();
+
+		for (const round of this.bracket)
+		{
+			for (const match of round)
+			{
+				if (match.status !== 'completed' || !match.winnerId)
+					continue;
+				const p1IsBot = match.player1Id.startsWith('bot-');
+				const p2IsBot = match.player2Id.startsWith('bot-');
+				if (!p1IsBot)
+				{
+					const stats = results.get(match.player1Alias) || { won: 0, lost: 0 };
+					if (match.winnerId === match.player1Id)
+						stats.won++;
+					else
+						stats.lost++;
+					results.set(match.player1Alias, stats);
+				}
+				if (!p2IsBot && match.player2Alias !== '~TBD')
+				{
+					const stats = results.get(match.player2Alias) || { won: 0, lost: 0 };
+					if (match.winnerId === match.player2Id)
+						stats.won++;
+					else
+						stats.lost++;
+					results.set(match.player2Alias, stats);
+				}
+			}
+		}
+		return results;
+	}
+
+	/**
+	 * @brief Calculate player's final position in tournament
+	 * @param playerAlias Player's alias
+	 * @param championAlias Champion's alias
+	 * @returns Position (1 = champion, 2 = finalist, etc.)
+	 */
+	private calculatePlayerPosition(playerAlias: string, championAlias: string): number
+	{
+		if (playerAlias === championAlias)
+			return 1;
+
+		const finalMatch = this.bracket[this.maxRound - 1]?.[0];
+		if (finalMatch)
+		{
+			const finalistAlias = finalMatch.player1Alias === championAlias
+				? finalMatch.player2Alias
+				: finalMatch.player1Alias;
+			if (playerAlias === finalistAlias)
+				return 2;
+		}
+
+		for (let round = this.maxRound - 2; round >= 0; round--)
+		{
+			for (const match of this.bracket[round] || [])
+			{
+				if (match.status !== 'completed')
+					continue;
+				const loserAlias = match.winnerId === match.player1Id
+					? match.player2Alias
+					: match.player1Alias;
+				if (loserAlias === playerAlias)
+				{
+					const playersEliminatedThisRound = Math.pow(2, this.maxRound - round - 1);
+					return playersEliminatedThisRound + 1;
+				}
+			}
+		}
+		return this.maxPlayers;
 	}
 
 	private notifyEndOfTournament(championAlias: string)

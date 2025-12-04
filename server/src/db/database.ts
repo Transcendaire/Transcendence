@@ -103,6 +103,37 @@ export class DatabaseService {
 			  FOREIGN KEY(player_a_id) REFERENCES players(id),
 			  FOREIGN KEY(player_b_id) REFERENCES players(id)
 			);
+			CREATE TABLE IF NOT EXISTS match_history (
+			  id TEXT PRIMARY KEY,
+			  player_id TEXT NOT NULL,
+			  player_alias TEXT NOT NULL,
+			  game_type TEXT NOT NULL,
+			  opponent_info TEXT NOT NULL,
+			  player_count INTEGER NOT NULL,
+			  bot_count INTEGER DEFAULT 0,
+			  score_for INTEGER NOT NULL,
+			  score_against INTEGER NOT NULL,
+			  position INTEGER,
+			  position_with_bots INTEGER,
+			  result TEXT NOT NULL,
+			  tournament_id TEXT,
+			  created_at INTEGER NOT NULL,
+			  FOREIGN KEY(player_id) REFERENCES players(id)
+			);
+			CREATE TABLE IF NOT EXISTS tournament_results (
+			  id TEXT PRIMARY KEY,
+			  player_id TEXT NOT NULL,
+			  player_alias TEXT NOT NULL,
+			  tournament_id TEXT NOT NULL,
+			  tournament_name TEXT NOT NULL,
+			  position INTEGER NOT NULL,
+			  total_participants INTEGER NOT NULL,
+			  matches_won INTEGER NOT NULL,
+			  matches_lost INTEGER NOT NULL,
+			  created_at INTEGER NOT NULL,
+			  FOREIGN KEY(player_id) REFERENCES players(id),
+			  FOREIGN KEY(tournament_id) REFERENCES tournaments(id)
+			);
 		`);
 	}
 
@@ -174,22 +205,36 @@ export class DatabaseService {
 			this.db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
 	}
 
-	/**
-	 * @brief Updates user's alias
-	 * @param userId User's UUID
-	 * @param newAlias New alias
-	 * @note No check is done on newAlias (alias' validity, because the server already did it)
-	 */
-	public updateUserAlias(userId: string, newAlias: string): void
-	{
-		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(userId);
+    /**
+     * @brief Updates user's alias
+     * @param userId User's UUID
+     * @param newAlias New alias
+     * @note No check is done on newAlias (alias' validity, because the server already did it)
+     */
+    public updateUserAlias(userId: string, newAlias: string): void
+    {
+        const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(userId);
 
-		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
-			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
+        if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
+            throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
 
-		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
-		this.updatePlayerAlias(userId, newAlias);
-	}
+        //*in users table
+        this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+
+        //* in players table
+        this.updatePlayerAlias(userId, newAlias);
+
+        //*in tournament_players table
+        this.db.prepare('UPDATE tournament_players SET alias = ? WHERE player_id = ?').run(newAlias, userId);
+
+
+        this.db.prepare(`
+        UPDATE matches 
+        SET alias_a = CASE WHEN player_a_id = ? THEN ? ELSE alias_a END,
+            alias_b = CASE WHEN player_b_id = ? THEN ? ELSE alias_b END
+        WHERE player_a_id = ? OR player_b_id = ?
+        `).run(userId, newAlias.trim(), userId, newAlias.trim(), userId, userId);
+    }
 
     /**
      * @brief Updates user's password
@@ -883,6 +928,172 @@ export class DatabaseService {
 
 		}
 	}
+
+
+	/**
+	 * @brief Records a game result in match history for a player
+	 * @param playerAlias Player's alias
+	 * @param gameType Type of game ('1v1' or 'battle_royale')
+	 * @param opponentInfo Opponent name for 1v1, or comma-separated list for BR
+	 * @param playerCount Number of human players in the game
+	 * @param scoreFor Player's score (lives remaining or position)
+	 * @param scoreAgainst Opponent's score for 1v1
+	 * @param position Final position among human players (1 for winner)
+	 * @param result 'win' or 'loss'
+	 * @param tournamentId Optional tournament ID if part of a tournament
+	 * @param botCount Number of bots in the game (for battle_royale)
+	 * @param positionWithBots Final position among all players including bots
+	 * @returns Generated match history entry ID
+	 */
+	public recordGameResult(
+		playerAlias: string,
+		gameType: '1v1' | 'battle_royale',
+		opponentInfo: string,
+		playerCount: number,
+		scoreFor: number,
+		scoreAgainst: number,
+		position: number,
+		result: 'win' | 'loss',
+		tournamentId?: string,
+		botCount: number = 0,
+		positionWithBots?: number
+	): string
+	{
+		const player = this.getPlayer(playerAlias);
+		if (!player)
+			throw new DatabaseError(`recordGameResult: player ${playerAlias} not found`);
+
+		const id = randomUUID();
+		this.db.prepare(`
+			INSERT INTO match_history (
+				id, player_id, player_alias, game_type, opponent_info,
+				player_count, bot_count, score_for, score_against, position, position_with_bots, result,
+				tournament_id, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).run(
+			id, player.id, playerAlias, gameType, opponentInfo,
+			playerCount, botCount, scoreFor, scoreAgainst, position, positionWithBots || position, result,
+			tournamentId || null, Date.now()
+		);
+		return id;
+	}
+
+	/**
+	 * @brief Records a tournament final result for a player
+	 * @param playerAlias Player's alias
+	 * @param tournamentId Tournament UUID
+	 * @param tournamentName Tournament name
+	 * @param position Final position in tournament (1 = winner)
+	 * @param totalParticipants Total number of participants
+	 * @param matchesWon Number of matches won
+	 * @param matchesLost Number of matches lost
+	 * @returns Generated tournament result entry ID
+	 */
+	public recordTournamentResult(
+		playerAlias: string,
+		tournamentId: string,
+		tournamentName: string,
+		position: number,
+		totalParticipants: number,
+		matchesWon: number,
+		matchesLost: number
+	): string
+	{
+		const player = this.getPlayer(playerAlias);
+		if (!player)
+			throw new DatabaseError(`recordTournamentResult: player ${playerAlias} not found`);
+
+		const id = randomUUID();
+		this.db.prepare(`
+			INSERT INTO tournament_results (
+				id, player_id, player_alias, tournament_id, tournament_name,
+				position, total_participants, matches_won, matches_lost, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).run(
+			id, player.id, playerAlias, tournamentId, tournamentName,
+			position, totalParticipants, matchesWon, matchesLost, Date.now()
+		);
+		return id;
+	}
+
+	/**
+	 * @brief Retrieves match history for a player
+	 * @param playerAlias Player's alias
+	 * @param limit Maximum number of entries to return (default 50)
+	 * @returns Array of match history entries ordered by date desc
+	 */
+	public getPlayerMatchHistory(playerAlias: string, limit: number = 50): any[]
+	{
+		return this.db.prepare(`
+			SELECT * FROM match_history
+			WHERE player_alias = ?
+			ORDER BY created_at DESC
+			LIMIT ?
+		`).all(playerAlias, limit);
+	}
+
+	/**
+	 * @brief Retrieves tournament results for a player
+	 * @param playerAlias Player's alias
+	 * @param limit Maximum number of entries to return (default 20)
+	 * @returns Array of tournament results ordered by date desc
+	 */
+	public getPlayerTournamentResults(playerAlias: string, limit: number = 20): any[]
+	{
+		return this.db.prepare(`
+			SELECT * FROM tournament_results
+			WHERE player_alias = ?
+			ORDER BY created_at DESC
+			LIMIT ?
+		`).all(playerAlias, limit);
+	}
+
+	/**
+	 * @brief Retrieves aggregated stats for a player
+	 * @param playerAlias Player's alias
+	 * @returns Object with total games, wins, losses, win rate
+	 */
+	public getPlayerStats(playerAlias: string): {
+		totalGames: number;
+		wins: number;
+		losses: number;
+		winRate: number;
+		tournamentsPlayed: number;
+		tournamentsWon: number;
+	}
+	{
+		const matchStats = this.db.prepare(`
+			SELECT 
+				COUNT(*) as totalGames,
+				SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+				SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses
+			FROM match_history
+			WHERE player_alias = ?
+		`).get(playerAlias) as { totalGames: number; wins: number; losses: number };
+
+		const tournamentStats = this.db.prepare(`
+			SELECT 
+				COUNT(*) as tournamentsPlayed,
+				SUM(CASE WHEN position = 1 THEN 1 ELSE 0 END) as tournamentsWon
+			FROM tournament_results
+			WHERE player_alias = ?
+		`).get(playerAlias) as { tournamentsPlayed: number; tournamentsWon: number };
+
+		const totalGames = matchStats?.totalGames || 0;
+		const wins = matchStats?.wins || 0;
+		const losses = matchStats?.losses || 0;
+
+		return {
+			totalGames,
+			wins,
+			losses,
+			winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0,
+			tournamentsPlayed: tournamentStats?.tournamentsPlayed || 0,
+			tournamentsWon: tournamentStats?.tournamentsWon || 0
+		};
+	}
 }
+
+
 
 

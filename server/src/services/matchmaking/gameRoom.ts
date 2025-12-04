@@ -9,6 +9,7 @@ import { NormalAIPlayer } from '../aiplayer/NormalAIPlayer.js'
 import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
 import { canvasWidth, canvasHeight } from '@app/shared/consts.js'
 import { sendMessage } from '../../utils/websocket.js'
+import { getDatabase } from '../../db/databaseSingleton.js'
 
 type StatusCallback = (playerName: string, status: PlayerOnlineStatus) => void;
 
@@ -347,6 +348,58 @@ export class GameRoomManager
 			}
 		}
 		console.log(`[GAME_ROOM] Battle Royale ${room.id} ended, winner: ${winner}`)
+
+		const humanPlayers = room.players.filter(p => !p.isBot)
+		const botCount = room.players.filter(p => p.isBot).length
+		if (humanPlayers.length >= 2)
+		{
+			try
+			{
+				const db = getDatabase()
+				const totalPlayers = room.players.length
+				const humanCount = humanPlayers.length
+				const humanNames = humanPlayers.map(p => p.name)
+
+				const eliminationOrder = room.gameService.getEliminationOrder()
+				if (winnerIndex >= 0)
+					eliminationOrder.push(winnerIndex)
+
+				for (let i = 0; i < humanPlayers.length; i++)
+				{
+					const player = humanPlayers[i]!
+					const playerIndex = room.players.findIndex(p => p.name === player.name)
+					const gsPlayer = gameState.players[playerIndex]
+					const isWinner = playerIndex === winnerIndex
+
+					const eliminationPos = eliminationOrder.indexOf(playerIndex)
+					const positionAll = totalPlayers - eliminationPos
+
+					const humanElimOrder = eliminationOrder.filter(idx => !room.players[idx]?.isBot)
+					const humanElimPos = humanElimOrder.indexOf(playerIndex)
+					const positionHumans = humanCount - humanElimPos
+
+					const otherHumans = humanNames.filter(n => n !== player.name).join(', ')
+					db.recordGameResult(
+						player.name,
+						'battle_royale',
+						otherHumans,
+						humanCount,
+						gsPlayer?.lives || 0,
+						0,
+						positionHumans,
+						isWinner ? 'win' : 'loss',
+						undefined,
+						botCount,
+						positionAll
+					)
+				}
+				console.log(`[GAME_ROOM] Battle Royale result recorded for ${humanPlayers.length} human players`)
+			}
+			catch (error)
+			{
+				console.error('[GAME_ROOM] Failed to record Battle Royale result:', error)
+			}
+		}
 	}
 
 	/**
@@ -572,9 +625,10 @@ export class GameRoomManager
 	/**
 	 * @brief Handle player disconnection from Battle Royale
 	 * @param socket Disconnected player's socket
+	 * @param isSurrender If true, player is surrendering (not just disconnecting)
 	 * @returns True if handled
 	 */
-	public handleBattleRoyaleDisconnect(socket: WebSocket): boolean
+	public handleBattleRoyaleDisconnect(socket: WebSocket, isSurrender: boolean = false): boolean
 	{
 		const found = this.findBattleRoyaleByPlayer(socket);
 		if (!found)
@@ -583,10 +637,25 @@ export class GameRoomManager
 		const player = room.players[playerIndex];
 		if (!player)
 			return false;
-		console.log(`[BR] Player ${player.name} disconnected`);
+		console.log(`[BR] Player ${player.name} ${isSurrender ? 'surrendered' : 'disconnected'}`);
+		
+		if (isSurrender && player.socket)
+		{
+			console.log(`[BR] Sending gameOver to surrendering player ${player.name}`);
+			sendMessage(player.socket, {
+				type: 'gameOver',
+				winner: 'player0' as 'player1' | 'player2', // They lost
+				lives1: 0,
+				lives2: 0,
+				isTournament: false,
+				isBattleRoyale: true,
+				shouldDisconnect: true,
+				forfeit: true
+			});
+		}
+		
 		player.socket = null;
 		const gameOver = room.gameService.eliminatePlayer(playerIndex);
-		
 		if (gameOver)
 		{
 			const gameState = room.gameService.getGameState();
@@ -606,7 +675,8 @@ export class GameRoomManager
 						lives2: gameState.players[1]?.lives || 0,
 						isTournament: false,
 						isBattleRoyale: true,
-						shouldDisconnect: true
+						shouldDisconnect: true,
+						forfeit: isSurrender
 					});
 				}
 			}
@@ -726,6 +796,38 @@ export class GameRoomManager
 				console.log(`[GAME_ROOM] Tournament match completed: ${room.tournamentMatch.matchId}`)
 				room.tournamentMatch.onComplete(winnerId, p1.lives, p2.lives)
 			}
+			else if (room.player2.id !== 'AI')
+			{
+				try
+				{
+					const db = getDatabase()
+					db.recordGameResult(
+						room.player1.name,
+						'1v1',
+						room.player2.name,
+						2,
+						p1.lives,
+						p2.lives,
+						winner === 'player1' ? 1 : 2,
+						winner === 'player1' ? 'win' : 'loss'
+					)
+					db.recordGameResult(
+						room.player2.name,
+						'1v1',
+						room.player1.name,
+						2,
+						p2.lives,
+						p1.lives,
+						winner === 'player2' ? 1 : 2,
+						winner === 'player2' ? 'win' : 'loss'
+					)
+					console.log(`[GAME_ROOM] Quickmatch result recorded: ${room.player1.name} vs ${room.player2.name}`)
+				}
+				catch (error)
+				{
+					console.error('[GAME_ROOM] Failed to record quickmatch result:', error)
+				}
+			}
 			this.endGame(gameId)
 			return
 		}
@@ -764,5 +866,4 @@ export class GameRoomManager
 		if (room.tournamentMatch?.onUpdate)
 			room.tournamentMatch.onUpdate();
 	}
-
 }

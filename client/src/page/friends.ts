@@ -167,13 +167,13 @@ function renderFriends(friends: Friend[]): void {
         <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                     border-2 border-transparent hover:border-sonpi16-orange 
                     transition-all duration-300" data-friend-alias="${friend.alias}">
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center justify-between mb-3 cursor-pointer friend-profile-link" data-alias="${friend.alias}">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-sonpi16-orange rounded-full flex items-center justify-center">
+                    <div class="w-12 h-12 bg-sonpi16-orange rounded-full flex items-center justify-center hover:scale-110 transition-transform">
                         <span class="text-white font-quency text-xl">${friend.alias[0]!.toUpperCase()}</span>
                     </div>
                     <div>
-                        <p class="text-sonpi16-orange font-quency font-bold text-lg">${friend.alias}</p>
+                        <p class="text-sonpi16-orange font-quency font-bold text-lg hover:underline">${friend.alias}</p>
                         <div class="flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full status-dot ${getStatusColor(friend.status)}"></div>
                             <span class="text-sm status-text ${getStatusTextColor(friend.status)} font-quency">
@@ -193,8 +193,17 @@ function renderFriends(friends: Friend[]): void {
         </div>
     `).join('');
 
+    container.querySelectorAll('.friend-profile-link').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const alias = (e.currentTarget as HTMLElement).dataset.alias;
+            if (alias)
+                navigate(`profile?alias=${encodeURIComponent(alias)}`);
+        });
+    });
+
     container.querySelectorAll('.remove-friend-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const alias = (e.target as HTMLElement).dataset.alias;
             if (!alias)
 				return;

@@ -38,7 +38,7 @@
           </div>
         </div>
 
-        <button id="edit-profile" class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded-xl hover:scale-105 transition font-quency">
+        <button id="edit-profile" class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded-xl hover:scale-105 transition font-quency hidden">
           Éditer
         </button>
       </div>
@@ -54,15 +54,31 @@
         </div>
         
         <div class="text-center p-4 bg-gray-50 rounded-lg">
-          <p class="text-gray-600 mb-2">Plus longue série</p>
-          <p class="text-3xl font-bold text-green-600" id="win-streak">0</p>
+          <p class="text-gray-600 mb-2">Tournois joués</p>
+          <p class="text-3xl font-bold text-blue-600" id="tournaments-played">0</p>
         </div>
         
         <div class="text-center p-4 bg-gray-50 rounded-lg">
-          <p class="text-gray-600 mb-2">Points marqués</p>
-          <p class="text-3xl font-bold text-sonpi16-black" id="total-points">0</p>
+          <p class="text-gray-600 mb-2">Tournois gagnés</p>
+          <p class="text-3xl font-bold text-yellow-500" id="tournaments-won">0</p>
         </div>
       </div>
-    </div>   
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+      <h2 class="text-2xl font-bold font-quency text-sonpi16-black mb-6">Historique des matchs</h2>
+      
+      <div id="match-history-list" class="space-y-3 max-h-96 overflow-y-auto">
+        <p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+      <h2 class="text-2xl font-bold font-quency text-sonpi16-black mb-6">Résultats de tournois</h2>
+      
+      <div id="tournament-results-list" class="space-y-3 max-h-96 overflow-y-auto">
+        <p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>
+      </div>
+    </div>
     </div>
   </div>

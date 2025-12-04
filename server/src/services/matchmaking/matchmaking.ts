@@ -7,6 +7,7 @@ import { LobbyManager } from './lobbyManager.js'
 import { TournamentManagerService } from '../tournament/tournamentManager.js'
 import { sendMessage } from '../../utils/websocket.js'
 import { FriendStatusService } from '../friends/FriendStatusService.js'
+import { getDatabase } from '../../db/databaseSingleton.js'
 
 /**
  * @brief Main matchmaking orchestrator
@@ -413,6 +414,15 @@ export class MatchmakingService
 		if (!player)
 			return
 		const playerName = player.name
+
+		if (this.gameRoomManager.handleBattleRoyaleDisconnect(socket, true))
+		{
+			console.log(`[MATCHMAKING] Player ${playerName} surrendered from Battle Royale`)
+			if (playerName && playerName !== 'Anonymous')
+				this.friendStatus.broadcastStatus(playerName, 'online')
+			return
+		}
+
 		const gameRoom = this.gameRoomManager.findGameByPlayer(socket)
 
 		if (!gameRoom)
@@ -483,6 +493,38 @@ export class MatchmakingService
 					lives2: p2.lives,
 					forfeit: true
 				})
+			}
+			if (opponent.id !== 'AI')
+			{
+				try
+				{
+					const db = getDatabase()
+					db.recordGameResult(
+						disconnectedPlayer.name,
+						'1v1',
+						opponent.name,
+						2,
+						isPlayer1 ? p1.lives : p2.lives,
+						isPlayer1 ? p2.lives : p1.lives,
+						2,
+						'loss'
+					)
+					db.recordGameResult(
+						opponent.name,
+						'1v1',
+						disconnectedPlayer.name,
+						2,
+						isPlayer1 ? p2.lives : p1.lives,
+						isPlayer1 ? p1.lives : p2.lives,
+						1,
+						'win'
+					)
+					console.log(`[MATCHMAKING] Forfeit result recorded: ${disconnectedPlayer.name} forfeited vs ${opponent.name}`)
+				}
+				catch (error)
+				{
+					console.error('[MATCHMAKING] Failed to record forfeit result:', error)
+				}
 			}
 		}
 		this.gameRoomManager.endGame(gameRoom.id)

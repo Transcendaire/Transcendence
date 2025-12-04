@@ -59,24 +59,32 @@ export async function render(route: Route)
 //     render(route);
 // }
 //!See with Pierre
-export async function navigate(route: Route) {
+export async function navigate(routeWithParams: Route | string) 
+{
+	const routeString = routeWithParams as string;
+	const [routePart, queryPart] = routeString.split('?');
+	const route = (routePart || 'home') as Route;
+	const queryString = queryPart ? `?${queryPart}` : '';
 
 	const protectedRoutes = ['lobby', 'game', 'profile', 'friends'];
 	if (protectedRoutes.includes(route)) {
 		const isAuthenticated = await checkAuthentication();
 		if (!isAuthenticated)
 		{
-			route = 'home'
+			window.history.pushState({ route: 'home' }, '', '/home');
+			render('home');
 			alert('Veuillez vous reconnecter');
+			return;
 		}
 	}
-    console.log('Navigation vers:', route);
-    window.history.pushState({ route }, '', `/${route}`);
+    console.log('Navigation vers:', route, queryString);
+    window.history.pushState({ route }, '', `/${route}${queryString}`);
     render(route);
 }
 
 export function getCurrentRoute(): Route 
 {
-  const path = window.location.pathname.slice(1);
-    return(path || 'home') as Route;
+	const path = window.location.pathname.slice(1);
+	const routePart = path.split('?')[0];
+    return (routePart || 'home') as Route;
 }

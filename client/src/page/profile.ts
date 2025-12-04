@@ -58,6 +58,7 @@ interface PlayerStats {
 interface ProfileData {
     alias: string;
     createdAt: number;
+    avatar: string;
     stats: PlayerStats;
     matchHistory: MatchHistoryEntry[];
     tournamentResults: TournamentResultEntry[];
@@ -65,132 +66,276 @@ interface ProfileData {
 
 type FriendStatus = 'none' | 'friends' | 'pending-sent' | 'pending-received'
 
-async function getFriendStatus(alias: string): Promise<FriendStatus>
+// ============ Avatar Functions ============
+
+function updateDeleteButtonVisibility(hasCustomAvatar: boolean): void
 {
+    const deleteBtn = document.getElementById('deleteAvatarBtn');
+    if (deleteBtn)
+    {
+        if (hasCustomAvatar)
+            deleteBtn.classList.remove('hidden');
+        else
+            deleteBtn.classList.add('hidden');
+    }
+}
+
+async function loadAvatar(): Promise<void>
+{
+    const avatarImg = getEl('userAvatar') as HTMLImageElement;
+    const userInitial = getEl('userInitial');
+
     try
     {
-        const res = await fetch(`/api/friends/status/${encodeURIComponent(alias)}`)
-        if (!res.ok)
-            return 'none'
-        const data = await res.json()
-        return data.status || 'none'
+        const response = await fetch('/api/user/avatar', { credentials: 'include' });
+        if (!response.ok)
+        {
+            avatarImg.src = '/avatars/defaults/Transcendaire.png';
+            updateDeleteButtonVisibility(false);
+            return;
+        }
+        const data = await response.json();
+
+        avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png';
+        avatarImg.classList.remove('hidden');
+        userInitial.classList.add('hidden');
+
+        const hasCustomAvatar = !data.avatar.includes('/avatars/defaults/');
+        updateDeleteButtonVisibility(hasCustomAvatar);
     }
-    catch { return 'none' }
+    catch (error)
+    {
+        console.error('[PROFILE] Error loading avatar:', error);
+        avatarImg.src = '/avatars/defaults/Transcendaire.png';
+        updateDeleteButtonVisibility(false);
+    }
+}
+
+async function uploadAvatar(file: File): Promise<void>
+{
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/api/user/avatar', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        const data = await response.json();
+        if (!response.ok)
+            throw new Error(data.message || 'Erreur lors de l\'upload');
+
+        showToast('Avatar mis à jour avec succès', 'success');
+        await loadAvatar();
+    } catch (error) {
+        console.error('[PROFILE] Error uploading avatar:', error);
+        showToast(error instanceof Error ? error.message : 'Erreur lors de l\'upload', 'error');
+    }
+}
+
+async function deleteAvatar(): Promise<void>
+{
+    try {
+        const response = await fetch('/api/user/avatar', {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        const data = await response.json();
+        if (!response.ok)
+            throw new Error(data.message || 'Erreur lors de la suppression');
+
+        showToast('Avatar supprimé, avatar par défaut restauré', 'success');
+        await loadAvatar();
+    } catch (error) {
+        console.error('[PROFILE] Error deleting avatar:', error);
+        showToast(error instanceof Error ? error.message : 'Erreur lors de la suppression', 'error');
+    }
+}
+
+function initAvatarEdit(): void
+{
+    const editBtn = getEl('editAvatarBtn');
+    const deleteBtn = getEl('deleteAvatarBtn');
+    const fileInput = getEl('avatarFileInput') as HTMLInputElement;
+    const deleteModal = getEl('deleteAvatarModal');
+    const confirmDeleteBtn = getEl('confirmDeleteAvatar');
+    const cancelDeleteBtn = getEl('cancelDeleteAvatar');
+
+    editBtn.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async (e) => {
+        const target = e.target as HTMLInputElement;
+        const file = target.files?.[0];
+        if (!file) return;
+
+        if (!['image/jpeg', 'image/png'].includes(file.type)) {
+            showToast('Format invalide. Utilisez JPEG ou PNG', 'error');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Fichier trop volumineux (max 5MB)', 'error');
+            return;
+        }
+
+        await uploadAvatar(file);
+        fileInput.value = '';
+    });
+
+    deleteBtn.addEventListener('click', () => show(deleteModal));
+    confirmDeleteBtn.addEventListener('click', async () => {
+        hide(deleteModal);
+        await deleteAvatar();
+    });
+    cancelDeleteBtn.addEventListener('click', () => hide(deleteModal));
+    deleteModal.addEventListener('click', (e) => {
+        if (e.target === deleteModal) hide(deleteModal);
+    });
+}
+
+function initAliasEdit(): void
+{
+    // TODO: Implement alias edit functionality
+}
+
+function showToast(message: string, type: 'success' | 'error'): void
+{
+    const existingToast = document.getElementById('toast');
+    if (existingToast) existingToast.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'toast';
+    toast.className = `fixed top-4 right-4 px-6 py-4 rounded-xl shadow-2xl font-quency font-bold text-white z-50 
+                       transform transition-all duration-300 ease-in-out
+                       ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(-20px)';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ============ Friend Functions ============
+
+async function getFriendStatus(alias: string): Promise<FriendStatus>
+{
+    try {
+        const res = await fetch(`/api/friends/status/${encodeURIComponent(alias)}`);
+        if (!res.ok) return 'none';
+        const data = await res.json();
+        return data.status || 'none';
+    } catch { return 'none'; }
 }
 
 async function sendFriendRequest(alias: string): Promise<boolean>
 {
-    try
-    {
+    try {
         const res = await fetch('/api/friends/request', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ alias })
-        })
-        return res.ok
-    }
-    catch { return false }
+        });
+        return res.ok;
+    } catch { return false; }
 }
 
 async function cancelFriendRequest(alias: string): Promise<boolean>
 {
-    try
-    {
-        const res = await fetch(`/api/friends/request/${encodeURIComponent(alias)}`, { method: 'DELETE' })
-        return res.ok
-    }
-    catch { return false }
+    try {
+        const res = await fetch(`/api/friends/request/${encodeURIComponent(alias)}`, { method: 'DELETE' });
+        return res.ok;
+    } catch { return false; }
 }
 
 async function acceptFriendRequest(alias: string): Promise<boolean>
 {
-    try
-    {
+    try {
         const res = await fetch('/api/friends/accept', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ alias })
-        })
-        return res.ok
-    }
-    catch { return false }
+        });
+        return res.ok;
+    } catch { return false; }
 }
 
 async function removeFriend(alias: string): Promise<boolean>
 {
-    try
-    {
-        const res = await fetch(`/api/friends/${encodeURIComponent(alias)}`, { method: 'DELETE' })
-        return res.ok
-    }
-    catch { return false }
+    try {
+        const res = await fetch(`/api/friends/${encodeURIComponent(alias)}`, { method: 'DELETE' });
+        return res.ok;
+    } catch { return false; }
 }
 
 function updateFriendButton(btn: HTMLElement, status: FriendStatus): void
 {
-    btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold'
-    switch (status)
-    {
+    btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
+    switch (status) {
         case 'none':
-            btn.innerText = 'Ajouter en ami'
-            btn.classList.add('bg-green-600', 'text-white')
-            break
+            btn.innerText = 'Ajouter en ami';
+            btn.classList.add('bg-green-600', 'text-white');
+            break;
         case 'pending-sent':
-            btn.innerText = 'Demande envoyée ✗'
-            btn.classList.add('bg-yellow-500', 'text-white')
-            break
+            btn.innerText = 'Demande envoyée ✗';
+            btn.classList.add('bg-yellow-500', 'text-white');
+            break;
         case 'pending-received':
-            btn.innerText = 'Accepter la demande'
-            btn.classList.add('bg-blue-600', 'text-white')
-            break
+            btn.innerText = 'Accepter la demande';
+            btn.classList.add('bg-blue-600', 'text-white');
+            break;
         case 'friends':
-            btn.innerText = 'Supprimer l\'ami'
-            btn.classList.add('bg-red-600', 'text-white')
-            break
+            btn.innerText = 'Supprimer l\'ami';
+            btn.classList.add('bg-red-600', 'text-white');
+            break;
     }
 }
 
 async function setupFriendButton(targetAlias: string, currentAlias: string): Promise<void>
 {
-    const btn = getEl('friend-action-btn')
-    if (targetAlias === currentAlias)
-    {
-        hide(btn)
-        return
+    const btn = getEl('friend-action-btn');
+    if (targetAlias === currentAlias) {
+        hide(btn);
+        return;
     }
 
-    let status = await getFriendStatus(targetAlias)
-    updateFriendButton(btn, status)
-    show(btn)
+    let status = await getFriendStatus(targetAlias);
+    updateFriendButton(btn, status);
+    show(btn);
 
     btn.onclick = async () => {
-        btn.classList.add('opacity-50', 'pointer-events-none')
-        let success = false
+        btn.classList.add('opacity-50', 'pointer-events-none');
+        let success = false;
 
-        switch (status)
-        {
+        switch (status) {
             case 'none':
-                success = await sendFriendRequest(targetAlias)
-                if (success) status = 'pending-sent'
-                break
+                success = await sendFriendRequest(targetAlias);
+                if (success) status = 'pending-sent';
+                break;
             case 'pending-sent':
-                success = await cancelFriendRequest(targetAlias)
-                if (success) status = 'none'
-                break
+                success = await cancelFriendRequest(targetAlias);
+                if (success) status = 'none';
+                break;
             case 'pending-received':
-                success = await acceptFriendRequest(targetAlias)
-                if (success) status = 'friends'
-                break
+                success = await acceptFriendRequest(targetAlias);
+                if (success) status = 'friends';
+                break;
             case 'friends':
-                success = await removeFriend(targetAlias)
-                if (success) status = 'none'
-                break
+                success = await removeFriend(targetAlias);
+                if (success) status = 'none';
+                break;
         }
 
-        updateFriendButton(btn, status)
-        btn.classList.remove('opacity-50', 'pointer-events-none')
-    }
+        updateFriendButton(btn, status);
+        btn.classList.remove('opacity-50', 'pointer-events-none');
+    };
 }
+
+// ============ Profile Data Functions ============
 
 function getAliasFromUrl(): string | null
 {
@@ -200,18 +345,14 @@ function getAliasFromUrl(): string | null
 
 async function fetchProfileData(alias: string): Promise<ProfileData | null>
 {
-    try
-    {
+    try {
         const response = await fetch(`/api/user/profile/${encodeURIComponent(alias)}`);
-        if (!response.ok)
-        {
+        if (!response.ok) {
             console.error('[PROFILE] Failed to fetch profile:', response.status);
             return null;
         }
         return await response.json();
-    }
-    catch (error)
-    {
+    } catch (error) {
         console.error('[PROFILE] Error fetching profile:', error);
         return null;
     }
@@ -233,26 +374,21 @@ function formatRelativeTime(timestamp: number): string
     const diffMs = now - timestamp;
     const diffMins = Math.floor(diffMs / 60000);
 
-    if (diffMins < 1)
-        return 'À l\'instant';
-    if (diffMins < 60)
-        return `Il y a ${diffMins}m`;
+    if (diffMins < 1) return 'À l\'instant';
+    if (diffMins < 60) return `Il y a ${diffMins}m`;
     
     const diffHours = Math.floor(diffMins / 60);
-    if (diffHours < 24)
-        return `Il y a ${diffHours}h`;
+    if (diffHours < 24) return `Il y a ${diffHours}h`;
     
     const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7)
-        return `Il y a ${diffDays}j`;
+    if (diffDays < 7) return `Il y a ${diffDays}j`;
     
     return formatDate(timestamp);
 }
 
 function getPositionBadge(position: number): string
 {
-    switch (position)
-    {
+    switch (position) {
         case 1: return '<span class="text-yellow-500 font-bold">🥇 1er</span>';
         case 2: return '<span class="text-gray-400 font-bold">🥈 2ème</span>';
         case 3: return '<span class="text-amber-600 font-bold">🥉 3ème</span>';
@@ -264,11 +400,8 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void
 {
     const container = getEl('match-history-list');
     
-    if (matches.length === 0)
-    {
-        container.innerHTML = `
-            <p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>
-        `;
+    if (matches.length === 0) {
+        container.innerHTML = `<p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>`;
         return;
     }
 
@@ -289,16 +422,15 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void
             gameTypeLabel = '<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Quickmatch</span>';
 
         let scoreDisplay = '';
-        if (isBR)
-        {
+        if (isBR) {
             const hasBots = match.bot_count && match.bot_count > 0;
             if (hasBots)
                 scoreDisplay = `${match.position}/${match.player_count} joueurs • ${match.position_with_bots}/${totalPlayers} total`;
             else
                 scoreDisplay = `Position: ${match.position}/${match.player_count}`;
-        }
-        else
+        } else {
             scoreDisplay = `${match.score_for} - ${match.score_against}`;
+        }
 
         const botSuffix = (match.bot_count && match.bot_count > 0) ? ` et ${match.bot_count} Bot${match.bot_count > 1 ? 's' : ''}` : '';
 
@@ -329,11 +461,8 @@ function renderTournamentResults(results: TournamentResultEntry[]): void
 {
     const container = getEl('tournament-results-list');
     
-    if (results.length === 0)
-    {
-        container.innerHTML = `
-            <p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>
-        `;
+    if (results.length === 0) {
+        container.innerHTML = `<p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>`;
         return;
     }
 
@@ -396,7 +525,7 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
     const winRateEl = getEl('win-rate');
     const tournamentsPlayedEl = getEl('tournaments-played');
     const tournamentsWonEl = getEl('tournaments-won');
-    const editBtn = getEl('edit-profile');
+    const avatarImg = getEl('userAvatar') as HTMLImageElement;
 
     usernameEl.innerText = data.alias;
     userInitialEl.innerText = data.alias.charAt(0).toUpperCase();
@@ -409,10 +538,19 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
     tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString();
     tournamentsWonEl.innerText = data.stats.tournamentsWon.toString();
 
+    avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png';
+    avatarImg.classList.remove('hidden');
+    userInitialEl.classList.add('hidden');
+
     if (isOwnProfile)
-        show(editBtn);
-    else
-        hide(editBtn);
+    {
+        const avatarOverlay = getEl('avatar-edit-overlay');
+        const editAliasBtn = getEl('editAliasBtn');
+        avatarOverlay.classList.remove('hidden');
+        editAliasBtn.classList.remove('hidden');
+        const hasCustomAvatar = !!data.avatar && !data.avatar.includes('/avatars/defaults/');
+        updateDeleteButtonVisibility(hasCustomAvatar);
+    }
 
     renderMatchHistory(data.matchHistory);
     renderTournamentResults(data.tournamentResults);
@@ -420,53 +558,46 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
 
 async function connectWebSocketForStatus(alias: string): Promise<void>
 {
-    if (!alias)
-        return
-    try
-    {
-        await wsClient.connect(getWebSocketUrl())
-        wsClient.registerPlayer(alias)
-        console.log(`[PROFILE] WebSocket connected for status: ${alias}`)
-    }
-    catch (error)
-    {
-        console.log('[PROFILE] Failed to connect WebSocket for status:', error)
+    if (!alias) return;
+    try {
+        await wsClient.connect(getWebSocketUrl());
+        wsClient.registerPlayer(alias);
+        console.log(`[PROFILE] WebSocket connected for status: ${alias}`);
+    } catch (error) {
+        console.log('[PROFILE] Failed to connect WebSocket for status:', error);
     }
 }
 
 async function searchPlayer(): Promise<void>
 {
-    const input = getEl('search-player-input') as HTMLInputElement
-    const errorEl = getEl('search-player-error')
-    const searchAlias = input.value.trim()
+    const input = getEl('search-player-input') as HTMLInputElement;
+    const errorEl = getEl('search-player-error');
+    const searchAlias = input.value.trim();
 
-    hide(errorEl)
-    if (!searchAlias)
-    {
-        errorEl.innerText = 'Veuillez entrer un nom de joueur'
-        show(errorEl)
-        return
+    hide(errorEl);
+    if (!searchAlias) {
+        errorEl.innerText = 'Veuillez entrer un nom de joueur';
+        show(errorEl);
+        return;
     }
-    const profile = await fetchProfileData(searchAlias)
-    if (!profile)
-    {
-        errorEl.innerText = `Joueur "${searchAlias}" introuvable`
-        show(errorEl)
-        return
+    const profile = await fetchProfileData(searchAlias);
+    if (!profile) {
+        errorEl.innerText = `Joueur "${searchAlias}" introuvable`;
+        show(errorEl);
+        return;
     }
-    navigate(`profile?alias=${encodeURIComponent(searchAlias)}`)
+    navigate(`profile?alias=${encodeURIComponent(searchAlias)}`);
 }
 
 function setupSearchPlayer(): void
 {
-    const input = getEl('search-player-input') as HTMLInputElement
-    const btn = getEl('search-player-btn')
+    const input = getEl('search-player-input') as HTMLInputElement;
+    const btn = getEl('search-player-btn');
 
-    btn.addEventListener('click', searchPlayer)
+    btn.addEventListener('click', searchPlayer);
     input.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter')
-            searchPlayer()
-    })
+        if (e.key === 'Enter') searchPlayer();
+    });
 }
 
 async function initProfilePage(): Promise<void>
@@ -483,8 +614,7 @@ async function initProfilePage(): Promise<void>
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias || currentUserAlias;
 
-    if (!targetAlias)
-    {
+    if (!targetAlias) {
         console.error('[PROFILE] No alias found, redirecting to home');
         navigate('home');
         return;
@@ -493,8 +623,7 @@ async function initProfilePage(): Promise<void>
     const isOwnProfile = !urlAlias || urlAlias === currentUserAlias;
     const profileData = await fetchProfileData(targetAlias);
 
-    if (!profileData)
-    {
+    if (!profileData) {
         console.error('[PROFILE] Failed to load profile for:', targetAlias);
         const usernameEl = getEl('username');
         usernameEl.innerText = 'Utilisateur non trouvé';
@@ -502,47 +631,49 @@ async function initProfilePage(): Promise<void>
     }
 
     updateProfileUI(profileData, isOwnProfile);
+    
+    if (isOwnProfile)
+    {
+        initAvatarEdit();
+        initAliasEdit();
+    }
+    
     if (currentUserAlias)
         await setupFriendButton(targetAlias, currentUserAlias);
 }
 
-registerPageInitializer('profile', initProfilePage)
-
+registerPageInitializer('profile', initProfilePage);
 
 async function updateAlias(newAlias: string)
 {
-	const response = await fetch('/api/user/alias', {
-		method: 'PUT',
-		credentials: 'same-origin',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ newAlias })
-	});
+    const response = await fetch('/api/user/alias', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newAlias })
+    });
 
-	const data = await response.json();
+    const data = await response.json();
 
-	if (!response.ok)
-		throw new Error(data.message || 'Erreur lors du changement de l\'alias');
+    if (!response.ok)
+        throw new Error(data.message || 'Erreur lors du changement de l\'alias');
 
-	return { success: true, message: data.message, alias: newAlias };
+    return { success: true, message: data.message, alias: newAlias };
 }
 
 async function updatePassword(currentPassword: string, newPassword: string)
 {
-	const response = await fetch('/api/user/password', {
-		method: 'PUT',
-		credentials: 'same-origin',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ currentPassword, newPassword })
-	});
+    const response = await fetch('/api/user/password', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword })
+    });
 
-	const data = await response.json();
+    const data = await response.json();
 
-	if (!response.ok)
-		throw new Error(data.message || 'Erreur lors du changement de mot de passe');
+    if (!response.ok)
+        throw new Error(data.message || 'Erreur lors du changement de mot de passe');
 
-	return ({ success: true });
+    return { success: true };
 }
-
-
-
-

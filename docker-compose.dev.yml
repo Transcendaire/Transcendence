@@ -12,6 +12,7 @@ services:
     volumes:
       - ./server/src:/app/src:ro
       - ./shared/src:/shared/src:ro
+      - ./server/uploads:/app/uploads
       - dev-database:/app/data
       - /app/node_modules
 

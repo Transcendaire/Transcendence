@@ -1,20 +1,20 @@
 <div id="tournamentContainer" class="container mx-auto px-4 py-8">
     <div class="flex md:flex-row flex-col gap-6 justify-center items-center">
-            
-        <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl w-80 min-w-[370px] max-w-lg min-h-[500px] max-h-[800px] hidden md:block">
+
+        <div
+            class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl w-80 min-w-[370px] max-w-lg min-h-[500px] max-h-[800px] hidden md:block">
             <div class="flex items-center justify-between mb-6">
                 <h2 class="text-3xl font-bold text-sonpi16-orange font-quency flex items-center gap-3">
-                        <span class="text-4xl">👥</span>
-                        Joueurs en ligne
+                    <span class="text-4xl">👥</span>
+                    Joueurs en ligne
                 </h2>
-                <span  id="playerCount" 
-                        class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-full 
+                <span id="playerCount" class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-full 
                                  font-bold text-xl font-quency">
                     0
                 </span>
             </div>
-                
-            <div id="friendsList" 
+
+            <div id="friendsList"
                 class="space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
             </div>
         </div>
@@ -22,18 +22,18 @@
         <div class="bg-sonpi16-black rounded-2xl p-6 shadow-2xl min-w-[370px] max-w-lg min-h-[500px] max-h-[800px]">
             <div class="flex flex-row items-center mb-6 gap-6">
                 <h2 class="text-3xl font-bold text-sonpi16-orange font-quency flex items-center gap-3">
-                        Lobbies disponibles
+                    Lobbies disponibles
                 </h2>
-                <button id="createLobbyButton" 
-                        class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-lg 
+                <button id="createLobbyButton" class="bg-sonpi16-orange text-sonpi16-black px-4 py-2 rounded-lg 
                                    font-bold hover:bg-opacity-90 transition-all font-quency 
                                    flex items-center">
-                    <span class="text-2xl">+</span><p>Creer</p>
-        
+                    <span class="text-2xl">+</span>
+                    <p>Creer</p>
+
                 </button>
             </div>
 
-            <div id="lobbiesList" 
+            <div id="lobbiesList"
                 class="space-y-4 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-sonpi16-orange scrollbar-track-gray-700">
             </div>
         </div>
@@ -43,53 +43,49 @@
 
 <button id="backHome" class="flex flex-row justify-center items-center hover:scale-105 transition mx-auto">
     <svg class="w-10 h-10 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path  stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
     </svg>
     <span class="font-quency text-xl">Retour maison</span>
 </button>
-    <!-- lobby Creation -->
+<!-- lobby Creation -->
 
-<div id="createLobbyModal" 
+<div id="createLobbyModal"
     class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
     <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4">
         <h3 class="text-3xl font-bold text-sonpi16-orange mb-6 text-center font-quency">
             Créer un lobby
         </h3>
 
-            
+
         <form id="creationForm" class="space-y-4">
             <div>
                 <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                     Nom du lobby
                 </label>
-                <input id="tournamentName" type="text" 
-                        placeholder="SquidGame"
-                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                <input id="tournamentName" type="text" placeholder="SquidGame" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
             </div>
 
             <div>
-                <label  class="block text-sonpi16-orange font-bold mb-2 font-quency">
+                <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                     Type de partie
                 </label>
-                <select id="gameType"
-                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                <select id="gameType" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
                     <option value="tournament">Tournoi</option>
                     <option value="battleroyale">Battle Royale</option>
-                 </select>
+                </select>
             </div>
 
             <div>
                 <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                     Mode
                 </label>
-                <select id="gameMode"
-                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                <select id="gameMode" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
@@ -97,13 +93,12 @@
                     <option value="Custom">Avec PowerUps</option>
                 </select>
             </div>
-            
+
             <div class="hidden" id="powerfruitsfrequency">
                 <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                     Fréquence des fruits
                 </label>
-                <select id="fruitFrequencySelect"
-                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                <select id="fruitFrequencySelect" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
@@ -117,8 +112,7 @@
                 <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                     Nombre de vies
                 </label>
-                <select id="maxScoreSelect"
-                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                <select id="maxScoreSelect" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
@@ -127,16 +121,15 @@
                     <option value="7">7 vies</option>
                     <option value="11">11 vies</option>
                     <option value="21">21 vies</option>
-					
+
                 </select>
             </div>
-                
+
             <div>
                 <label class="block text-sonpi16-orange font-bold mb-2 font-quency">
                     Nombre maximum de joueurs
                 </label>
-                <select id="nbPlayer"
-                        class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+                <select id="nbPlayer" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                                 px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                                 focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                                 font-quency">
@@ -147,24 +140,22 @@
 
                 </select>
             </div>
-                
+
             <div class="flex gap-4 mt-6">
-                <button type="button" id="cancelCreateButton"
-                        class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-bold 
+                <button type="button" id="cancelCreateButton" class="flex-1 bg-red-600 text-white px-6 py-3 rounded-lg font-bold 
                                    hover:bg-red-700 transition-all font-quency">
                     Annuler
                 </button>
-                <button id="createLobbyButton" type="submit"
-                        class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-lg 
+                <button id="createLobbyButton" type="submit" class="flex-1 bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-lg 
                                    font-bold hover:bg-opacity-90 transition-all font-quency">
                     Créer
                 </button>
             </div>
         </form>
-    </div>  
+    </div>
 </div>
 
-    <!-- lobbyModal -->
+<!-- lobbyModal -->
 
 <div id="lobbyModal" class="hidden fixed inset-0 bg-black/50">
     <div class="flex flex-col justify-start bg-sonpi16-black rounded-3xl p-6 max-w-2xl min-h-[700px] mx-auto mt-20 ">
@@ -173,16 +164,18 @@
             <h2 id="roomName" class="text-2xl font-bold text-sonpi16-orange font-quency item text-center "></h2>
         </div>
 
-        <div id="playersList" 
-            class="overflow-y-auto grid grid-cols-2 items-start
+        <div id="playersList" class="overflow-y-auto grid grid-cols-2 items-start
                 scroll-smooth gap-4 max-w-full max-h-[550px] p-7 ">
         </div>
 
         <div class="flex flex-row justify-between mt-auto">
             <span id="modalPlayerCount" class="text-sonpi16-orange px-6 py-3 rounded-xl font-bold"></span>
-            <button id="startGame" class="hidden font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">Lancer la partie</button>
-            <button id="quitRoom" class="font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">quitter la partie</button>
-        </div>  
+            <button id="startGame"
+                class="hidden font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">Lancer
+                la partie</button>
+            <button id="quitRoom"
+                class="font-quency bg-sonpi16-orange text-sonpi16-black px-6 py-3 rounded-xl font-bold hover:opacity-80 transition-opacity">quitter
+                la partie</button>
+        </div>
     </div>
 </div>
-    

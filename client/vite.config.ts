@@ -30,6 +30,10 @@ export default defineConfig({
         target: 'ws://server:8080',
         ws: true,
         changeOrigin: true
+      },
+      '/avatars': {
+        target: 'http://server:8080',
+        changeOrigin: true
       }
     },
     hmr: {

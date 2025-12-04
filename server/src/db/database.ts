@@ -2,6 +2,8 @@ import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player, User } from "../types.js"
 import { DatabaseError, errDatabase } from "@app/shared/errors.js"
+import { DEFAULT_AVATAR_FILENAME } from '../utils/consts.js'
+import { paths } from '../config/paths.js'
 import { getDatabase } from "./databaseSingleton.js";
 import { timeStamp } from "console";
 	
@@ -43,10 +45,17 @@ export class DatabaseService {
 			password TEXT, -- this is hashed
 			alias TEXT UNIQUE NOT NULL, -- pseudo but called it alias for concordance
 			created_at INTEGER NOT NULL,
+			avatar TEXT DEFAULT 'Transcendaire.png',
 			tournament_alias TEXT,
 			games_played INTEGER DEFAULT 0,
 			games_won INTEGER DEFAULT 0,
 			online BOOLEAN DEFAULT false 
+			);
+			CREATE TABLE IF NOT EXISTS users_cookies (
+			user_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 			);
 			CREATE TABLE IF NOT EXISTS players (
 			id TEXT PRIMARY KEY,
@@ -153,13 +162,46 @@ export class DatabaseService {
 	{
 		const id = randomUUID();
 		const currDate = Date.now();
+
 		this.db.prepare(`
-			INSERT INTO users (id, login, password, alias, created_at)
-			VALUES (?, ?, ?, ?, ?)`
-		).run(id, login.trim(), hashedPassword, alias.trim(), currDate);
+			INSERT INTO users (id, login, password, alias, created_at, avatar)
+			VALUES (?, ?, ?, ?, ?, ?)`
+		).run(id, login.trim(), hashedPassword, alias.trim(), currDate, DEFAULT_AVATAR_FILENAME);
 		this.createPlayer(alias, id, currDate);
 
 		return id;
+	}
+
+
+	public generateUniqueAlias(baseAlias: string): string
+	{
+	    const MAX_ALIAS_LENGTH = 24;
+	    let alias = baseAlias.trim();
+	
+	    if (alias.length > MAX_ALIAS_LENGTH)
+	        alias = alias.substring(0, MAX_ALIAS_LENGTH).trim();
+	
+	    if (!this.getUserByAlias(alias))
+	        return alias;
+	
+	    let counter = 1;
+	    let candidateAlias = `${alias}${counter}`;
+	
+	    while (this.getUserByAlias(candidateAlias))
+	    {
+	        counter++;
+	        candidateAlias = `${alias}${counter}`;
+		
+	        if (candidateAlias.length > MAX_ALIAS_LENGTH)
+	        {
+	            const numLength = counter.toString().length;
+	            const maxBaseLength = MAX_ALIAS_LENGTH - numLength;
+	            alias = baseAlias.substring(0, maxBaseLength).trim();
+	            candidateAlias = `${alias}${counter}`;
+	        }
+	    }
+	
+	    return candidateAlias;
 	}
 
 							//******************   GET        ************************ */
@@ -177,6 +219,12 @@ export class DatabaseService {
 	public getUserByAlias(alias: string)
 	{
 		return this.db.prepare('SELECT * FROM users where alias = ?').get(alias);
+	}
+
+	public getUserAvatar(userId: string): string | undefined
+	{
+		const result = this.db.prepare('SELECT avatar FROM users WHERE id = ?').get(userId) as { avatar: string } | undefined;
+		return result?.avatar;
 	}
 
 	/**
@@ -205,36 +253,35 @@ export class DatabaseService {
 			this.db.prepare('UPDATE users SET games_played = games_played + 1 WHERE id = ?').run(userId);
 	}
 
-    /**
-     * @brief Updates user's alias
-     * @param userId User's UUID
-     * @param newAlias New alias
-     * @note No check is done on newAlias (alias' validity, because the server already did it)
-     */
-    public updateUserAlias(userId: string, newAlias: string): void
-    {
-        const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(userId);
+	/**
+	 * @brief Updates user's alias
+	 * @param userId User's UUID
+	 * @param newAlias New alias
+	 * @note No check is done on newAlias (alias' validity, because the server already did it)
+	 */
+	public updateUserAlias(userId: string, newAlias: string): void
+	{
+		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(newAlias.trim());
 
-        if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
-            throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
+		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
+			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
 
-        //*in users table
-        this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+		//*in users table
+		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
 
-        //* in players table
-        this.updatePlayerAlias(userId, newAlias);
+		//* in players table
+		this.updatePlayerAlias(userId, newAlias);
 
-        //*in tournament_players table
-        this.db.prepare('UPDATE tournament_players SET alias = ? WHERE player_id = ?').run(newAlias, userId);
+		//*in tournament_players table
+		this.db.prepare('UPDATE tournament_players SET alias = ? WHERE player_id = ?').run(newAlias, userId);
 
-
-        this.db.prepare(`
-        UPDATE matches 
-        SET alias_a = CASE WHEN player_a_id = ? THEN ? ELSE alias_a END,
-            alias_b = CASE WHEN player_b_id = ? THEN ? ELSE alias_b END
-        WHERE player_a_id = ? OR player_b_id = ?
-        `).run(userId, newAlias.trim(), userId, newAlias.trim(), userId, userId);
-    }
+		this.db.prepare(`
+			UPDATE matches 
+			SET alias_a = CASE WHEN player_a_id = ? THEN ? ELSE alias_a END,
+				alias_b = CASE WHEN player_b_id = ? THEN ? ELSE alias_b END
+			WHERE player_a_id = ? OR player_b_id = ?
+		`).run(userId, newAlias.trim(), userId, newAlias.trim(), userId, userId);
+	}
 
     /**
      * @brief Updates user's password
@@ -246,6 +293,52 @@ export class DatabaseService {
         this.db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
     }
 
+
+	public updateUserAvatar(userId: string, avatarFilename: string): void
+	{
+		this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarFilename, userId);
+	}
+
+
+								//************* COOKIES ***************/
+
+	public createOrUpdateSession(userId: string): string
+	{
+		const sessionId = randomUUID();
+		const existingSession = this.db.prepare('SELECT 1 FROM users_cookies WHERE user_id = ?').get(userId);
+		const now = Date.now();
+
+		if (existingSession)
+			this.db.prepare('UPDATE users_cookies SET session_id = ?, created_at = ? WHERE user_id = ?').run(sessionId, now, userId);
+		else
+			this.db.prepare('INSERT into users_cookies (user_id, session_id, created_at) VALUES (?, ?, ?)').run(userId, sessionId, now);
+
+		return sessionId;
+	}
+
+	public getUserBySessionId(sessionId: string): User | undefined
+	{
+		const result = this.db.prepare(`
+        	SELECT u.* 
+        	FROM users u
+        	JOIN users_cookies uc ON uc.user_id = u.id
+        	WHERE uc.session_id = ?
+    	`).get(sessionId) as User | undefined;
+
+    	return result;
+	}
+
+
+	public deleteSession(userId: string): void
+	{
+		this.db.prepare('DELETE FROM users_cookies WHERE user_id = ?').run(userId);
+	}
+	
+
+	public deleteSessionById(sessionId: string): void
+	{
+		this.db.prepare('DELETE FROM users_cookies WHERE session_id = ?').run(sessionId);
+	}
 
 								//********* FRIENDS ******************/
     /**
@@ -382,13 +475,20 @@ export class DatabaseService {
      */
 	public getFriends(userId: string): any[]
 	{
-		return this.db.prepare(`
-			SELECT u.id, u.alias, u.online, f.since
+		const friends = this.db.prepare(`
+			SELECT u.id, u.alias, u.online, f.since, u.avatar
 			FROM friends f
 			JOIN users u ON u.id = f.friend_id
 			WHERE f.user_id = ?
 			ORDER BY u.alias ASC
 			`).all(userId);
+
+		return friends.map((f: any) => ({
+			...f,
+			avatar: f.avatar 
+				? `/avatars/users/${f.avatar}` 
+				: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
+		}));
 	}
 
 	public getFriendsWithAlias(alias: string): any[]

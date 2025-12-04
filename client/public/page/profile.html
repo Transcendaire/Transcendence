@@ -38,10 +38,27 @@
           </div>
         </div>
 
-        <button id="edit-profile" class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded-xl hover:scale-105 transition font-quency hidden">
-          Éditer
+        <div class="flex flex-col gap-2">
+          <button id="edit-profile" class="bg-sonpi16-black text-sonpi16-orange px-4 py-2 rounded-xl hover:scale-105 transition font-quency hidden">
+            Éditer
+          </button>
+          <button id="friend-action-btn" class="px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold hidden">
+            Ajouter en ami
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+      <h2 class="text-xl font-bold font-quency text-sonpi16-black mb-4">Rechercher un joueur</h2>
+      <div class="flex gap-3">
+        <input type="text" id="search-player-input" placeholder="Nom exact du joueur"
+          class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sonpi16-orange font-quency">
+        <button id="search-player-btn" class="bg-sonpi16-orange text-white px-6 py-2 rounded-lg hover:scale-105 transition font-quency font-bold">
+          Rechercher
         </button>
       </div>
+      <p id="search-player-error" class="text-red-500 text-sm mt-2 hidden font-quency"></p>
     </div>
 
     <div class="bg-white rounded-xl shadow-lg p-8 mb-6">

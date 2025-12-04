@@ -435,6 +435,39 @@ export class DatabaseService {
 		return (result > 0);
 	}
 
+	/**
+	 * @brief Get friendship status between current user and target alias
+	 * @param userId Current user's ID
+	 * @param targetAlias Target user's alias
+	 * @returns 'friends' | 'pending-sent' | 'pending-received' | 'none'
+	 */
+	public getFriendshipStatus(userId: string, targetAlias: string): string
+	{
+		const target = this.getUserByAlias(targetAlias)
+		if (!target)
+			return 'none'
+
+		const isFriend = this.db.prepare(
+			'SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?'
+		).get(userId, target.id)
+		if (isFriend)
+			return 'friends'
+
+		const sentRequest = this.db.prepare(
+			'SELECT 1 FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?'
+		).get(userId, target.id)
+		if (sentRequest)
+			return 'pending-sent'
+
+		const receivedRequest = this.db.prepare(
+			'SELECT 1 FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?'
+		).get(target.id, userId)
+		if (receivedRequest)
+			return 'pending-received'
+
+		return 'none'
+	}
+
 
 							//*******   PLAYERS     **********/
 	/**

@@ -63,6 +63,135 @@ interface ProfileData {
     tournamentResults: TournamentResultEntry[];
 }
 
+type FriendStatus = 'none' | 'friends' | 'pending-sent' | 'pending-received'
+
+async function getFriendStatus(alias: string): Promise<FriendStatus>
+{
+    try
+    {
+        const res = await fetch(`/api/friends/status/${encodeURIComponent(alias)}`)
+        if (!res.ok)
+            return 'none'
+        const data = await res.json()
+        return data.status || 'none'
+    }
+    catch { return 'none' }
+}
+
+async function sendFriendRequest(alias: string): Promise<boolean>
+{
+    try
+    {
+        const res = await fetch('/api/friends/request', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alias })
+        })
+        return res.ok
+    }
+    catch { return false }
+}
+
+async function cancelFriendRequest(alias: string): Promise<boolean>
+{
+    try
+    {
+        const res = await fetch(`/api/friends/request/${encodeURIComponent(alias)}`, { method: 'DELETE' })
+        return res.ok
+    }
+    catch { return false }
+}
+
+async function acceptFriendRequest(alias: string): Promise<boolean>
+{
+    try
+    {
+        const res = await fetch('/api/friends/accept', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ alias })
+        })
+        return res.ok
+    }
+    catch { return false }
+}
+
+async function removeFriend(alias: string): Promise<boolean>
+{
+    try
+    {
+        const res = await fetch(`/api/friends/${encodeURIComponent(alias)}`, { method: 'DELETE' })
+        return res.ok
+    }
+    catch { return false }
+}
+
+function updateFriendButton(btn: HTMLElement, status: FriendStatus): void
+{
+    btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold'
+    switch (status)
+    {
+        case 'none':
+            btn.innerText = 'Ajouter en ami'
+            btn.classList.add('bg-green-600', 'text-white')
+            break
+        case 'pending-sent':
+            btn.innerText = 'Demande envoyée ✗'
+            btn.classList.add('bg-yellow-500', 'text-white')
+            break
+        case 'pending-received':
+            btn.innerText = 'Accepter la demande'
+            btn.classList.add('bg-blue-600', 'text-white')
+            break
+        case 'friends':
+            btn.innerText = 'Supprimer l\'ami'
+            btn.classList.add('bg-red-600', 'text-white')
+            break
+    }
+}
+
+async function setupFriendButton(targetAlias: string, currentAlias: string): Promise<void>
+{
+    const btn = getEl('friend-action-btn')
+    if (targetAlias === currentAlias)
+    {
+        hide(btn)
+        return
+    }
+
+    let status = await getFriendStatus(targetAlias)
+    updateFriendButton(btn, status)
+    show(btn)
+
+    btn.onclick = async () => {
+        btn.classList.add('opacity-50', 'pointer-events-none')
+        let success = false
+
+        switch (status)
+        {
+            case 'none':
+                success = await sendFriendRequest(targetAlias)
+                if (success) status = 'pending-sent'
+                break
+            case 'pending-sent':
+                success = await cancelFriendRequest(targetAlias)
+                if (success) status = 'none'
+                break
+            case 'pending-received':
+                success = await acceptFriendRequest(targetAlias)
+                if (success) status = 'friends'
+                break
+            case 'friends':
+                success = await removeFriend(targetAlias)
+                if (success) status = 'none'
+                break
+        }
+
+        updateFriendButton(btn, status)
+        btn.classList.remove('opacity-50', 'pointer-events-none')
+    }
+}
+
 function getAliasFromUrl(): string | null
 {
     const params = new URLSearchParams(window.location.search);
@@ -305,6 +434,41 @@ async function connectWebSocketForStatus(alias: string): Promise<void>
     }
 }
 
+async function searchPlayer(): Promise<void>
+{
+    const input = getEl('search-player-input') as HTMLInputElement
+    const errorEl = getEl('search-player-error')
+    const searchAlias = input.value.trim()
+
+    hide(errorEl)
+    if (!searchAlias)
+    {
+        errorEl.innerText = 'Veuillez entrer un nom de joueur'
+        show(errorEl)
+        return
+    }
+    const profile = await fetchProfileData(searchAlias)
+    if (!profile)
+    {
+        errorEl.innerText = `Joueur "${searchAlias}" introuvable`
+        show(errorEl)
+        return
+    }
+    navigate(`profile?alias=${encodeURIComponent(searchAlias)}`)
+}
+
+function setupSearchPlayer(): void
+{
+    const input = getEl('search-player-input') as HTMLInputElement
+    const btn = getEl('search-player-btn')
+
+    btn.addEventListener('click', searchPlayer)
+    input.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Enter')
+            searchPlayer()
+    })
+}
+
 async function initProfilePage(): Promise<void>
 {
     console.log('[PROFILE] Initializing profile page');
@@ -314,6 +478,7 @@ async function initProfilePage(): Promise<void>
         await connectWebSocketForStatus(currentUserAlias);
 
     getEl("backHome").addEventListener('click', () => navigate('home'));
+    setupSearchPlayer();
 
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias || currentUserAlias;
@@ -337,6 +502,8 @@ async function initProfilePage(): Promise<void>
     }
 
     updateProfileUI(profileData, isOwnProfile);
+    if (currentUserAlias)
+        await setupFriendButton(targetAlias, currentUserAlias);
 }
 
 registerPageInitializer('profile', initProfilePage)

@@ -141,6 +141,38 @@ export class DatabaseService {
 		return id;
 	}
 
+
+	public generateUniqueAlias(baseAlias: string): string
+	{
+	    const MAX_ALIAS_LENGTH = 24;
+	    let alias = baseAlias.trim();
+	
+	    if (alias.length > MAX_ALIAS_LENGTH)
+	        alias = alias.substring(0, MAX_ALIAS_LENGTH).trim();
+	
+	    if (!this.getUserByAlias(alias))
+	        return alias;
+	
+	    let counter = 1;
+	    let candidateAlias = `${alias}${counter}`;
+	
+	    while (this.getUserByAlias(candidateAlias))
+	    {
+	        counter++;
+	        candidateAlias = `${alias}${counter}`;
+		
+	        if (candidateAlias.length > MAX_ALIAS_LENGTH)
+	        {
+	            const numLength = counter.toString().length;
+	            const maxBaseLength = MAX_ALIAS_LENGTH - numLength;
+	            alias = baseAlias.substring(0, maxBaseLength).trim();
+	            candidateAlias = `${alias}${counter}`;
+	        }
+	    }
+	
+	    return candidateAlias;
+	}
+
 							//******************   GET        ************************ */
 
 	public getUserByLogin(login: string): User | undefined

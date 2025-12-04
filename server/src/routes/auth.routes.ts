@@ -3,6 +3,7 @@ import { getDatabase } from '../db/databaseSingleton.js'
 import { hashPassword, verifyPassword } from "../utils/passwords.js"
 import { checkForDuplicatesAtRegistering, validateRegistering } from "../validators/auth.validator.js";
 import { validateLoggingIn } from "../validators/auth.validator.js";
+import { validateGoogleToken } from "../validators/auth.validator.js";
 
 export async function registerAuthRoutes(server: FastifyInstance) {
 	const db = getDatabase();
@@ -95,94 +96,46 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 	server.post('/api/auth/google', async (req, res) => {
 		const { credential } = req.body as { credential?: string };
 
-		if (!credential) {
-			return res.code(400).send({
-				error: 'Token manquant',
-				success: false
-			});
+		const data = await validateGoogleToken(credential);
+
+		let user = db.getUserByLogin(data.email)
+
+		if (!user)
+		{
+			console.log('[AUTH] 🆕 Création utilisateur...');
+
+			const uniqueAlias = db.generateUniqueAlias(data.name);
+
+			const randomPassword = Math.random().toString(36).slice(-16);
+			const hashedPassword = hashPassword(randomPassword);
+
+			const userId = db.createUser(data.email, hashedPassword, uniqueAlias);
+			user = db.getUserById(userId);
+
+			console.log('[AUTH] ✅ Utilisateur créé:', user?.alias);
 		}
+		else
+			console.log('[AUTH] 👋 Utilisateur existant:', user.alias);
 
-		try {
-			console.log('[AUTH] 🔍 Vérification du token auprès de Google...');
+		const sessionId = db.createOrUpdateSession(user!.id);
 
-			const googleResponse = await fetch(
-				`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`
-			);
+		res.setCookie('session_id', sessionId, {
+			path: '/',
+			httpOnly: true,
+			secure: true,
+			sameSite: 'lax',
+			maxAge: 60 * 60 * 24 //*24 hours
+		});
 
-			if (!googleResponse.ok) {
-				console.error('[AUTH] ❌ Token rejeté par Google');
-				return res.code(401).send({
-					error: 'Token invalide',
-					success: false
-				});
-			}
+		db.setUserOnlineStatus(user!.id, true);
 
-			const payload = await googleResponse.json();
-
-			console.log('[AUTH] ✅ Token vérifié');
-
-			const expectedClientId = "782178545544-31i17kv4fli13eqj7o0l4dclqnbb3hql.apps.googleusercontent.com";
-
-			if (payload.aud !== expectedClientId) {
-				console.error('[AUTH] ❌ Token pas pour cette application');
-				return res.code(401).send({
-					error: 'Token invalide',
-					success: false
-				});
-			}
-
-			const email = payload.email;
-			const name = payload.name || email?.split('@')[0] || 'User';
-			const picture = payload.picture;
-
-			if (!email) {
-				return res.code(400).send({ error: 'Email manquant' });
-			}
-
-			let user = db.getUserByLogin(email);
-
-			if (!user) {
-				console.log('[AUTH] 🆕 Création utilisateur...');
-
-				const randomPassword = Math.random().toString(36).slice(-16);
-				const hashedPassword = hashPassword(randomPassword);
-
-				const userId = db.createUser(email, hashedPassword, name);//!fix (add 1 if alias already exists....)
-				user = db.getUserById(userId);
-
-				console.log('[AUTH] ✅ Utilisateur créé:', user?.alias);
-			} else {
-				console.log('[AUTH] 👋 Utilisateur existant:', user.alias);
-			}
-
-			const sessionId = db.createOrUpdateSession(user!.id);
-
-			res.setCookie('session_id', sessionId, {
-				path: '/',
-				httpOnly: true,
-				secure: true,
-				sameSite: 'lax',
-				maxAge: 60 * 60 * 24 //*24 hours
-			});
-
-			db.setUserOnlineStatus(user!.id, true);
-
-			return res.code(200).send({
-				success: true,
-				id: user!.id,
-				email: email,
-				alias: user!.alias,
-				picture: picture || null,
-				message: 'Connexion Google réussie'
-			});
-
-		} catch (error) {
-			console.error('[AUTH] ❌ Erreur:', error);
-			return res.code(500).send({
-				error: 'Erreur lors de la vérification',
-				success: false,
-				details: error instanceof Error ? error.message : 'Unknown error'
-			});
-		}
-	});
+		return res.code(200).send({
+            success: true,
+            id: user!.id,
+            email: data.email,
+            alias: user!.alias,
+            picture: data.picture || null,
+            message: 'Connexion Google réussie'
+        });
+	})
 }

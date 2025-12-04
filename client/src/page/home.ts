@@ -12,12 +12,6 @@ import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
-const inputParser = new inputParserClass();
-
-const handleGoogleSignIn = () => {
-    google.accounts.id.prompt();
-
-}
 
 async function initHomePage() {
     const gameModeModal = getEl("gameModeModal")
@@ -138,8 +132,6 @@ async function initsigninModal(signinModal: HTMLElement) {
     const checkSignInInput = getEl("checkSignInInput") as HTMLButtonElement;
 
     setupGlobalModalEvents(signinModal, signinButton, cancelSigninButton);
-    // signinButton.addEventListener('click', () => console.log('bouton sign in cliquer'));
-
 
     const subscribe = async () => {
 

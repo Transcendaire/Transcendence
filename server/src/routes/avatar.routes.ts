@@ -18,8 +18,12 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		if (!user)
 			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
 
+		console.log('[AVATAR] Starting upload for user:', user.id);
+
 		const filename = await validateAvatar(req, user.id);
 		
+		console.log('[AVATAR] File validated and saved:', filename);
+
 
 		const oldAvatar = db.getUserAvatar(user.id);
 		if (oldAvatar && oldAvatar !== DEFAULT_AVATAR_FILENAME)//! check
@@ -27,13 +31,13 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 			try {
 				const oldPath = path.join(paths.usersAvatars, oldAvatar);
 				await fs.unlink(oldPath)
+				console.log('[AVATAR] Deleted old avatar:', oldAvatar);
 			} catch(error) {
 				console.log('[AVATAR] Failed to delete old avatar:', error);
 			}
 		}
 		db.updateUserAvatar(user.id, filename);
-
-		// changeAvatar(user.id, filename);
+		console.log('[AVATAR] Database updated with new avatar');
 
 		return res.code(200).send({ success: true, message: 'Avatar mis à jour avec succès', avatar: `/avatars/users/${filename}` })
 	})
@@ -74,6 +78,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 			try {
 				await fs.access(oldPath);
 				await fs.unlink(oldPath);
+				console.log('[AVATAR] Deleted avatar:', oldAvatar);
 			} catch(error) {
 				console.log('[AVATAR] Failed to delete old avatar:', error);
 			}

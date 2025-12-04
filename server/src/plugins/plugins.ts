@@ -20,6 +20,12 @@ export async function registerPlugins(server: FastifyInstance)
 
 	await server.register(websocket);
 
+
+	console.log('[PLUGINS] Registering multipart with limits:', {
+        fileSize: 5 * 1024 * 1024,
+        files: 1
+    });
+
 	await server.register(fastifyMultipart, {
 		limits: {
 			fileSize: 5 * 1024 * 1024,
@@ -39,6 +45,11 @@ export async function registerPlugins(server: FastifyInstance)
 		index: false,
 		decorateReply: false
 	})
+
+	console.log('[PLUGINS] Registering avatar static route:', {
+        root: paths.avatars,
+        prefix: '/avatars/'
+    });
 
     await server.register(fastifyStatic, {
         root: paths.avatars,

@@ -24,7 +24,7 @@ export async function validateAvatar(req: FastifyRequest, userId: string): Promi
 		throw new BadRequest('Fichier trop volumineux. Le maximum autorisé est 5MB', 413);
 
 	const fileExtension = path.extname(data.filename) || '.png'; //*defaults to png if no extension
-	const filename = `${userId}-${randomUUID()}${fileExtension}`;
+	const filename = `${userId}-${randomUUID()}.png`;
 	const filepath = path.join(paths.usersAvatars, filename);
 
 	await sharp(buffer)
@@ -37,20 +37,3 @@ export async function validateAvatar(req: FastifyRequest, userId: string): Promi
 
 	return filename;
 }
-
-// export async function changeAvatar(userId: string, filename: string)
-// {
-// 	const oldAvatar = db.getUserAvatar(userId);
-// 	if (oldAvatar && oldAvatar !== DEFAULT_AVATAR_FILENAME)//! check
-// 	{
-// 		try {
-			
-// 			await fs.unlink(oldAvatar)
-// 		} catch(error) {
-// 			{}
-// 		}
-// 	}
-
-// 	db.updateUserAvatar(userId, filename);
-// }
-

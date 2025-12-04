@@ -187,16 +187,18 @@ function getStatusTextColor(status: PlayerOnlineStatus): string
     }
 }
 
-function renderOnlinePlayers(players: OnlinePlayer[]): void {
+function renderOnlinePlayers(players: OnlinePlayer[]): void
+{
     const container = document.getElementById('friendsList');
     const countEl = document.getElementById('playerCount');
-    
+
     if (!container || !countEl)
         return;
-    
-    countEl.textContent = players.length.toString();
 
-    if (players.length === 0) {
+    const onlinePlayers = players.filter(p => p.status !== 'offline');
+    countEl.textContent = onlinePlayers.length.toString();
+    if (onlinePlayers.length === 0)
+    {
         container.innerHTML = `
             <p class="text-gray-400 text-center py-8 font-quency">
                 Aucun joueur en ligne
@@ -204,28 +206,37 @@ function renderOnlinePlayers(players: OnlinePlayer[]): void {
         `;
         return;
     }
-
-    container.innerHTML = players.map(player => `
+    container.innerHTML = onlinePlayers.map(player => {
+        const showStatus = player.isFriend && player.status === 'in-game';
+        const statusHtml = showStatus
+            ? `<div class="flex items-center gap-2">
+                   <div class="w-2 h-2 rounded-full ${getStatusColor(player.status)}"></div>
+                   <span class="text-xs ${getStatusTextColor(player.status)} font-quency">
+                       ${getStatusText(player.status)}
+                   </span>
+               </div>`
+            : '';
+        const friendBadge = player.isFriend ? '<span class="text-xs text-sonpi16-orange">⭐ Ami</span>' : '';
+        const avatarSrc = player.avatar || '/avatars/defaults/Transcendaire.png';
+        return `
         <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-3 
                     border-2 ${player.isFriend ? 'border-sonpi16-orange' : 'border-transparent'} 
                     hover:bg-opacity-20 transition-all duration-300">
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 bg-sonpi16-orange rounded-full flex items-center justify-center">
-                    <span class="text-white font-quency text-lg">${player.alias[0]!.toUpperCase()}</span>
-                </div>
+                <img src="${avatarSrc}" alt="${player.alias}" 
+                     class="w-10 h-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-white transition-all"
+                     onclick="window.location.href='/profile?alias=${encodeURIComponent(player.alias)}'"
+                     onerror="this.src='/avatars/defaults/Transcendaire.png'" />
                 <div class="flex-1">
                     <p class="text-sonpi16-orange font-quency font-bold">${player.alias}</p>
                     <div class="flex items-center gap-2">
-                        <div class="w-2 h-2 rounded-full ${getStatusColor(player.status)}"></div>
-                        <span class="text-xs ${getStatusTextColor(player.status)} font-quency">
-                            ${getStatusText(player.status)}
-                        </span>
-                        ${player.isFriend ? '<span class="text-xs text-sonpi16-orange">⭐ Ami</span>' : ''}
+                        ${statusHtml}
+                        ${friendBadge}
                     </div>
                 </div>
             </div>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 }
 
 function renderLobbies(lobbies: Lobby[]): void {
@@ -440,7 +451,7 @@ function setupLobbyModal(lobby: Lobby) {
             const playerDiv = createPlayerElement(player, lobby);
             playersList.appendChild(playerDiv);
         });
-        if (!isFull)
+        if (!isFull && isOwner)
             addBot(lobby, playersList);
     }
 

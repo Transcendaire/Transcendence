@@ -46,12 +46,29 @@ export function setupDisconnectionHandlers(): void
 export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
 {
     gameState.setGameRunning(false);
-    const isWinner = winner === gameState.currentPlayerRole;
+    
+    let isWinner: boolean;
+    if (isBattleRoyale)
+    {
+        const winnerIndex = parseInt(winner.replace('player', '')) - 1;
+        isWinner = winnerIndex === gameState.playerIndex;
+    }
+    else
+        isWinner = winner === gameState.currentPlayerRole;
+    
     let message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
     if (forfeit) {
         message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
     }
-    const livesText = `Vies finales : ${lives1} - ${lives2}`;
+    const livesText = isBattleRoyale ? '' : `Vies finales : ${lives1} - ${lives2}`;
+    
+    if (!gameState.ctx || !gameState.canvas)
+    {
+        console.error('[GAME] showGameOver: ctx ou canvas null, redirection directe');
+        const destination = (isTournament || isBattleRoyale) ? 'lobby' : 'home';
+        setTimeout(() => returnToLobby(destination), 100);
+        return;
+    }
     
     gameState.ctx.save();
     gameState.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
@@ -63,11 +80,15 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
     gameState.ctx.textBaseline = 'middle';
     gameState.ctx.fillText(message, gameState.canvas.width / 2, gameState.canvas.height / 2 - 40);
     
-    gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
-    gameState.ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
-    gameState.ctx.fillText(livesText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
+    if (livesText)
+    {
+        gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
+        gameState.ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
+        gameState.ctx.fillText(livesText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
+    }
     
     gameState.ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
+    gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
     if (isTournament && !shouldDisconnect)
     {
         gameState.ctx.fillText('En attente du prochain match...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);

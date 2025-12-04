@@ -2,6 +2,7 @@ import { WebSocket } from 'ws'
 import { FriendStatus, PlayerOnlineStatus, OnlinePlayer } from '../../types.js'
 import { sendMessage } from '../../utils/websocket.js'
 import { getDatabase } from '../../db/databaseSingleton.js'
+import { DEFAULT_AVATAR_FILENAME } from '../../utils/consts.js'
 
 type GameCheckFn = (playerName: string) => boolean
 
@@ -74,11 +75,12 @@ export class FriendStatusService
 	{
 		const db = getDatabase()
 		const dbFriends = db.getFriendsWithAlias(playerName)
-		return dbFriends.map((f: { id: number; alias: string; since: string }) => ({
+		return dbFriends.map((f: { id: number; alias: string; since: string; avatar: string }) => ({
 			id: f.id,
 			alias: f.alias,
 			status: this.getPlayerStatus(f.alias),
-			since: f.since
+			since: f.since,
+			avatar: f.avatar
 		}))
 	}
 
@@ -97,10 +99,15 @@ export class FriendStatusService
 		{
 			if (name === playerName || name === 'Anonymous' || sock.readyState !== sock.OPEN)
 				continue
+			const user = db.getUserByAlias(name)
+			const avatar = user?.avatar 
+				? `/avatars/users/${user.avatar}` 
+				: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
 			players.push({
 				alias: name,
 				status: this.getPlayerStatus(name),
-				isFriend: friendAliases.has(name)
+				isFriend: friendAliases.has(name),
+				avatar
 			})
 		}
 		players.sort((a, b) => {

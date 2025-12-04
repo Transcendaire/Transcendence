@@ -2,6 +2,8 @@ import Database from "better-sqlite3"
 import { randomUUID } from "crypto"
 import { Player, User } from "../types.js"
 import { DatabaseError, errDatabase } from "@app/shared/errors.js"
+import { DEFAULT_AVATAR_FILENAME } from '../utils/consts.js'
+import { paths } from '../config/paths.js'
 import { getDatabase } from "./databaseSingleton.js";
 import { timeStamp } from "console";
 	
@@ -43,10 +45,17 @@ export class DatabaseService {
 			password TEXT, -- this is hashed
 			alias TEXT UNIQUE NOT NULL, -- pseudo but called it alias for concordance
 			created_at INTEGER NOT NULL,
+			avatar TEXT DEFAULT 'Transcendaire.png',
 			tournament_alias TEXT,
 			games_played INTEGER DEFAULT 0,
 			games_won INTEGER DEFAULT 0,
 			online BOOLEAN DEFAULT false 
+			);
+			CREATE TABLE IF NOT EXISTS users_cookies (
+			user_id TEXT NOT NULL,
+			session_id TEXT NOT NULL,
+			created_at INTEGER NOT NULL,
+			FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 			);
 			CREATE TABLE IF NOT EXISTS players (
 			id TEXT PRIMARY KEY,
@@ -103,6 +112,37 @@ export class DatabaseService {
 			  FOREIGN KEY(player_a_id) REFERENCES players(id),
 			  FOREIGN KEY(player_b_id) REFERENCES players(id)
 			);
+			CREATE TABLE IF NOT EXISTS match_history (
+			  id TEXT PRIMARY KEY,
+			  player_id TEXT NOT NULL,
+			  player_alias TEXT NOT NULL,
+			  game_type TEXT NOT NULL,
+			  opponent_info TEXT NOT NULL,
+			  player_count INTEGER NOT NULL,
+			  bot_count INTEGER DEFAULT 0,
+			  score_for INTEGER NOT NULL,
+			  score_against INTEGER NOT NULL,
+			  position INTEGER,
+			  position_with_bots INTEGER,
+			  result TEXT NOT NULL,
+			  tournament_id TEXT,
+			  created_at INTEGER NOT NULL,
+			  FOREIGN KEY(player_id) REFERENCES players(id)
+			);
+			CREATE TABLE IF NOT EXISTS tournament_results (
+			  id TEXT PRIMARY KEY,
+			  player_id TEXT NOT NULL,
+			  player_alias TEXT NOT NULL,
+			  tournament_id TEXT NOT NULL,
+			  tournament_name TEXT NOT NULL,
+			  position INTEGER NOT NULL,
+			  total_participants INTEGER NOT NULL,
+			  matches_won INTEGER NOT NULL,
+			  matches_lost INTEGER NOT NULL,
+			  created_at INTEGER NOT NULL,
+			  FOREIGN KEY(player_id) REFERENCES players(id),
+			  FOREIGN KEY(tournament_id) REFERENCES tournaments(id)
+			);
 		`);
 	}
 
@@ -122,13 +162,46 @@ export class DatabaseService {
 	{
 		const id = randomUUID();
 		const currDate = Date.now();
+
 		this.db.prepare(`
-			INSERT INTO users (id, login, password, alias, created_at)
-			VALUES (?, ?, ?, ?, ?)`
-		).run(id, login.trim(), hashedPassword, alias.trim(), currDate);
+			INSERT INTO users (id, login, password, alias, created_at, avatar)
+			VALUES (?, ?, ?, ?, ?, ?)`
+		).run(id, login.trim(), hashedPassword, alias.trim(), currDate, DEFAULT_AVATAR_FILENAME);
 		this.createPlayer(alias, id, currDate);
 
 		return id;
+	}
+
+
+	public generateUniqueAlias(baseAlias: string): string
+	{
+	    const MAX_ALIAS_LENGTH = 24;
+	    let alias = baseAlias.trim();
+	
+	    if (alias.length > MAX_ALIAS_LENGTH)
+	        alias = alias.substring(0, MAX_ALIAS_LENGTH).trim();
+	
+	    if (!this.getUserByAlias(alias))
+	        return alias;
+	
+	    let counter = 1;
+	    let candidateAlias = `${alias}${counter}`;
+	
+	    while (this.getUserByAlias(candidateAlias))
+	    {
+	        counter++;
+	        candidateAlias = `${alias}${counter}`;
+		
+	        if (candidateAlias.length > MAX_ALIAS_LENGTH)
+	        {
+	            const numLength = counter.toString().length;
+	            const maxBaseLength = MAX_ALIAS_LENGTH - numLength;
+	            alias = baseAlias.substring(0, maxBaseLength).trim();
+	            candidateAlias = `${alias}${counter}`;
+	        }
+	    }
+	
+	    return candidateAlias;
 	}
 
 							//******************   GET        ************************ */
@@ -146,6 +219,12 @@ export class DatabaseService {
 	public getUserByAlias(alias: string)
 	{
 		return this.db.prepare('SELECT * FROM users where alias = ?').get(alias);
+	}
+
+	public getUserAvatar(userId: string): string | undefined
+	{
+		const result = this.db.prepare('SELECT avatar FROM users WHERE id = ?').get(userId) as { avatar: string } | undefined;
+		return result?.avatar;
 	}
 
 	/**
@@ -182,13 +261,26 @@ export class DatabaseService {
 	 */
 	public updateUserAlias(userId: string, newAlias: string): void
 	{
-		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(userId);
+		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(newAlias.trim());
 
 		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
 			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
 
+		//*in users table
 		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
+
+		//* in players table
 		this.updatePlayerAlias(userId, newAlias);
+
+		//*in tournament_players table
+		this.db.prepare('UPDATE tournament_players SET alias = ? WHERE player_id = ?').run(newAlias, userId);
+
+		this.db.prepare(`
+			UPDATE matches 
+			SET alias_a = CASE WHEN player_a_id = ? THEN ? ELSE alias_a END,
+				alias_b = CASE WHEN player_b_id = ? THEN ? ELSE alias_b END
+			WHERE player_a_id = ? OR player_b_id = ?
+		`).run(userId, newAlias.trim(), userId, newAlias.trim(), userId, userId);
 	}
 
     /**
@@ -201,6 +293,52 @@ export class DatabaseService {
         this.db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
     }
 
+
+	public updateUserAvatar(userId: string, avatarFilename: string): void
+	{
+		this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarFilename, userId);
+	}
+
+
+								//************* COOKIES ***************/
+
+	public createOrUpdateSession(userId: string): string
+	{
+		const sessionId = randomUUID();
+		const existingSession = this.db.prepare('SELECT 1 FROM users_cookies WHERE user_id = ?').get(userId);
+		const now = Date.now();
+
+		if (existingSession)
+			this.db.prepare('UPDATE users_cookies SET session_id = ?, created_at = ? WHERE user_id = ?').run(sessionId, now, userId);
+		else
+			this.db.prepare('INSERT into users_cookies (user_id, session_id, created_at) VALUES (?, ?, ?)').run(userId, sessionId, now);
+
+		return sessionId;
+	}
+
+	public getUserBySessionId(sessionId: string): User | undefined
+	{
+		const result = this.db.prepare(`
+        	SELECT u.* 
+        	FROM users u
+        	JOIN users_cookies uc ON uc.user_id = u.id
+        	WHERE uc.session_id = ?
+    	`).get(sessionId) as User | undefined;
+
+    	return result;
+	}
+
+
+	public deleteSession(userId: string): void
+	{
+		this.db.prepare('DELETE FROM users_cookies WHERE user_id = ?').run(userId);
+	}
+	
+
+	public deleteSessionById(sessionId: string): void
+	{
+		this.db.prepare('DELETE FROM users_cookies WHERE session_id = ?').run(sessionId);
+	}
 
 								//********* FRIENDS ******************/
     /**
@@ -337,13 +475,20 @@ export class DatabaseService {
      */
 	public getFriends(userId: string): any[]
 	{
-		return this.db.prepare(`
-			SELECT u.id, u.alias, u.online, f.since
+		const friends = this.db.prepare(`
+			SELECT u.id, u.alias, u.online, f.since, u.avatar
 			FROM friends f
 			JOIN users u ON u.id = f.friend_id
 			WHERE f.user_id = ?
 			ORDER BY u.alias ASC
 			`).all(userId);
+
+		return friends.map((f: any) => ({
+			...f,
+			avatar: f.avatar 
+				? `/avatars/users/${f.avatar}` 
+				: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
+		}));
 	}
 
 	public getFriendsWithAlias(alias: string): any[]
@@ -388,6 +533,39 @@ export class DatabaseService {
 		).get(userId, friendId);
 
 		return (result > 0);
+	}
+
+	/**
+	 * @brief Get friendship status between current user and target alias
+	 * @param userId Current user's ID
+	 * @param targetAlias Target user's alias
+	 * @returns 'friends' | 'pending-sent' | 'pending-received' | 'none'
+	 */
+	public getFriendshipStatus(userId: string, targetAlias: string): string
+	{
+		const target = this.getUserByAlias(targetAlias)
+		if (!target)
+			return 'none'
+
+		const isFriend = this.db.prepare(
+			'SELECT 1 FROM friends WHERE user_id = ? AND friend_id = ?'
+		).get(userId, target.id)
+		if (isFriend)
+			return 'friends'
+
+		const sentRequest = this.db.prepare(
+			'SELECT 1 FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?'
+		).get(userId, target.id)
+		if (sentRequest)
+			return 'pending-sent'
+
+		const receivedRequest = this.db.prepare(
+			'SELECT 1 FROM friend_requests WHERE from_user_id = ? AND to_user_id = ?'
+		).get(target.id, userId)
+		if (receivedRequest)
+			return 'pending-received'
+
+		return 'none'
 	}
 
 
@@ -883,6 +1061,172 @@ export class DatabaseService {
 
 		}
 	}
+
+
+	/**
+	 * @brief Records a game result in match history for a player
+	 * @param playerAlias Player's alias
+	 * @param gameType Type of game ('1v1' or 'battle_royale')
+	 * @param opponentInfo Opponent name for 1v1, or comma-separated list for BR
+	 * @param playerCount Number of human players in the game
+	 * @param scoreFor Player's score (lives remaining or position)
+	 * @param scoreAgainst Opponent's score for 1v1
+	 * @param position Final position among human players (1 for winner)
+	 * @param result 'win' or 'loss'
+	 * @param tournamentId Optional tournament ID if part of a tournament
+	 * @param botCount Number of bots in the game (for battle_royale)
+	 * @param positionWithBots Final position among all players including bots
+	 * @returns Generated match history entry ID
+	 */
+	public recordGameResult(
+		playerAlias: string,
+		gameType: '1v1' | 'battle_royale',
+		opponentInfo: string,
+		playerCount: number,
+		scoreFor: number,
+		scoreAgainst: number,
+		position: number,
+		result: 'win' | 'loss',
+		tournamentId?: string,
+		botCount: number = 0,
+		positionWithBots?: number
+	): string
+	{
+		const player = this.getPlayer(playerAlias);
+		if (!player)
+			throw new DatabaseError(`recordGameResult: player ${playerAlias} not found`);
+
+		const id = randomUUID();
+		this.db.prepare(`
+			INSERT INTO match_history (
+				id, player_id, player_alias, game_type, opponent_info,
+				player_count, bot_count, score_for, score_against, position, position_with_bots, result,
+				tournament_id, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).run(
+			id, player.id, playerAlias, gameType, opponentInfo,
+			playerCount, botCount, scoreFor, scoreAgainst, position, positionWithBots || position, result,
+			tournamentId || null, Date.now()
+		);
+		return id;
+	}
+
+	/**
+	 * @brief Records a tournament final result for a player
+	 * @param playerAlias Player's alias
+	 * @param tournamentId Tournament UUID
+	 * @param tournamentName Tournament name
+	 * @param position Final position in tournament (1 = winner)
+	 * @param totalParticipants Total number of participants
+	 * @param matchesWon Number of matches won
+	 * @param matchesLost Number of matches lost
+	 * @returns Generated tournament result entry ID
+	 */
+	public recordTournamentResult(
+		playerAlias: string,
+		tournamentId: string,
+		tournamentName: string,
+		position: number,
+		totalParticipants: number,
+		matchesWon: number,
+		matchesLost: number
+	): string
+	{
+		const player = this.getPlayer(playerAlias);
+		if (!player)
+			throw new DatabaseError(`recordTournamentResult: player ${playerAlias} not found`);
+
+		const id = randomUUID();
+		this.db.prepare(`
+			INSERT INTO tournament_results (
+				id, player_id, player_alias, tournament_id, tournament_name,
+				position, total_participants, matches_won, matches_lost, created_at
+			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		`).run(
+			id, player.id, playerAlias, tournamentId, tournamentName,
+			position, totalParticipants, matchesWon, matchesLost, Date.now()
+		);
+		return id;
+	}
+
+	/**
+	 * @brief Retrieves match history for a player
+	 * @param playerAlias Player's alias
+	 * @param limit Maximum number of entries to return (default 50)
+	 * @returns Array of match history entries ordered by date desc
+	 */
+	public getPlayerMatchHistory(playerAlias: string, limit: number = 50): any[]
+	{
+		return this.db.prepare(`
+			SELECT * FROM match_history
+			WHERE player_alias = ?
+			ORDER BY created_at DESC
+			LIMIT ?
+		`).all(playerAlias, limit);
+	}
+
+	/**
+	 * @brief Retrieves tournament results for a player
+	 * @param playerAlias Player's alias
+	 * @param limit Maximum number of entries to return (default 20)
+	 * @returns Array of tournament results ordered by date desc
+	 */
+	public getPlayerTournamentResults(playerAlias: string, limit: number = 20): any[]
+	{
+		return this.db.prepare(`
+			SELECT * FROM tournament_results
+			WHERE player_alias = ?
+			ORDER BY created_at DESC
+			LIMIT ?
+		`).all(playerAlias, limit);
+	}
+
+	/**
+	 * @brief Retrieves aggregated stats for a player
+	 * @param playerAlias Player's alias
+	 * @returns Object with total games, wins, losses, win rate
+	 */
+	public getPlayerStats(playerAlias: string): {
+		totalGames: number;
+		wins: number;
+		losses: number;
+		winRate: number;
+		tournamentsPlayed: number;
+		tournamentsWon: number;
+	}
+	{
+		const matchStats = this.db.prepare(`
+			SELECT 
+				COUNT(*) as totalGames,
+				SUM(CASE WHEN result = 'win' THEN 1 ELSE 0 END) as wins,
+				SUM(CASE WHEN result = 'loss' THEN 1 ELSE 0 END) as losses
+			FROM match_history
+			WHERE player_alias = ?
+		`).get(playerAlias) as { totalGames: number; wins: number; losses: number };
+
+		const tournamentStats = this.db.prepare(`
+			SELECT 
+				COUNT(*) as tournamentsPlayed,
+				SUM(CASE WHEN position = 1 THEN 1 ELSE 0 END) as tournamentsWon
+			FROM tournament_results
+			WHERE player_alias = ?
+		`).get(playerAlias) as { tournamentsPlayed: number; tournamentsWon: number };
+
+		const totalGames = matchStats?.totalGames || 0;
+		const wins = matchStats?.wins || 0;
+		const losses = matchStats?.losses || 0;
+
+		return {
+			totalGames,
+			wins,
+			losses,
+			winRate: totalGames > 0 ? Math.round((wins / totalGames) * 100) : 0,
+			tournamentsPlayed: tournamentStats?.tournamentsPlayed || 0,
+			tournamentsWon: tournamentStats?.tournamentsWon || 0
+		};
+	}
 }
+
+
 
 

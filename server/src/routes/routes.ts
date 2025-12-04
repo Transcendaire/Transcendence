@@ -5,6 +5,7 @@ import { registerStaticRoutes } from './static.routes.js'
 import { registerErrorRoutes } from './error.routes.js'
 import { registerUserRoutes } from './user.routes.js'
 import { registerFriendsRoutes } from './friends.routes.js'
+import { registerAvatarRoutes } from './avatar.routes.js'
 
 export async function registerRoutes(server: FastifyInstance)
 {
@@ -19,4 +20,6 @@ export async function registerRoutes(server: FastifyInstance)
 	await registerUserRoutes(server);
 
 	await registerFriendsRoutes(server);
+
+	await registerAvatarRoutes(server);
 }

@@ -102,9 +102,6 @@ export async function initGoogle() {
         if (typeof google === 'undefined') {
             throw new Error('Objet google non disponible après 5 secondes');
         }
-
-        console.log('[GOOGLE] ✅ Objet google disponible');
-
         google.accounts.id.initialize({
             client_id: clientId,
             callback: handleCredentialResponse,
@@ -118,9 +115,8 @@ export async function initGoogle() {
     }
 }
 
-function attachCustomButton() : HTMLElement {
-
-
+function attachCustomButton() : HTMLElement 
+{
     let hiddenContainer = document.getElementById('googleSignInDivHidden');
     if (!hiddenContainer) {
         hiddenContainer = document.createElement('div');

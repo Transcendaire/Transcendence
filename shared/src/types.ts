@@ -71,12 +71,14 @@ export type FriendStatus = {
 	alias: string;
 	status: PlayerOnlineStatus;
 	since: string;
+	avatar?: string;
 }
 
 export type OnlinePlayer = {
 	alias: string;
 	status: PlayerOnlineStatus;
 	isFriend: boolean;
+	avatar?: string;
 }
 
 export type PlayerState = {

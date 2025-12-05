@@ -53,12 +53,6 @@ export async function render(route: Route)
     }
 }
 
-// export function navigate(route: Route) {
-//     console.log('Navigation vers:', route);
-//     window.history.pushState({ route }, '', `/${route}`);
-//     render(route);
-// }
-//!See with Pierre
 export async function navigate(routeWithParams: Route | string) 
 {
 	const routeString = routeWithParams as string;

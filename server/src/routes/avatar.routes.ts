@@ -65,6 +65,10 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
 
 		const avatar = db.getUserAvatar(user.id);
+		const googlePicture = db.getUserGooglePicture(user.id);
+
+		console.log('[AVATAR] GET for user:', user.alias, '| avatar:', avatar, '| googlePicture:', googlePicture);
+    
 
 		if (!avatar)
 			return res.code(404).send({ success: false, message: 'Avatar introuvable'});
@@ -75,7 +79,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		else
 			avatarPath = `/avatars/users/${avatar}`;
 
-		return res.code(200).send({ success: true, avatar: avatarPath });
+		return res.code(200).send({ success: true, avatar: avatarPath, googlePicture: googlePicture });
 	})
 
 	server.delete('/api/user/avatar', async (req, res) => {
@@ -105,6 +109,20 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		db.updateUserAvatar(user.id, DEFAULT_AVATAR_FILENAME);
 
 		return res.code(200).send({ success: true, message: 'Avatar réinitialisé', avatar: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`});
+	})
+
+	//! to remove in production
+	server.get('/api/user/google-picture', async (req, res) => {
+		const user = (req as any).user;
+
+		if (!user)
+			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
+
+		const googlePicture = db.getUserGooglePicture(user.id);
+		if (!googlePicture)
+			return res.code(404).send({ succes: false, message: 'Aucune photo Google trouvée' });
+
+		return res.code(200).send({ success: true, googlePicture: googlePicture });
 	})
 }
 

@@ -22,52 +22,52 @@ export async function registerUserRoutes(server: FastifyInstance)
 		if (currentPassword === newPassword)
 			return res.code(400).send({ message: 'Le nouveau mot de passe doit être différent de l\'ancien' });
 
-const hashedPassword = hashPassword(newPassword);
-db.updateUserPassword(authUser.id, hashedPassword);
+		const hashedPassword = hashPassword(newPassword);
+		db.updateUserPassword(authUser.id, hashedPassword);
 
-const newSessionId = db.createOrUpdateSession(authUser.id);
+		const newSessionId = db.createOrUpdateSession(authUser.id);
 
-res.setCookie('session_id', newSessionId, {
-path: '/',
-httpOnly: true,
-secure: true,
-sameSite: 'lax',
-maxAge: 60 * 60 * 24
-});
+		res.setCookie('session_id', newSessionId, {
+		path: '/',
+		httpOnly: true,
+		secure: true,
+		sameSite: 'none',
+		maxAge: 60 * 60 * 24
+		});
 
-return res.code(200).send({ success: true, message: 'Mot de passe mis à jour avec succès'});
-})
+		return res.code(200).send({ success: true, message: 'Mot de passe mis à jour avec succès'});
+	})
 
-server.put('/api/user/alias', async (req, res) => {
-const user = (req as any).user;
+	server.put('/api/user/alias', async (req, res) => {
+		const user = (req as any).user;
+		
+		if (!user || !user.id)
+		return res.code(401).send({ message: 'Veuillez vous reconnecter' });
 
-if (!user || !user.id)
-return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+		const { newAlias } = req.body as any;
+		validateNewAlias(newAlias, user.id, user.login);
 
-const { newAlias } = req.body as any;
-validateNewAlias(newAlias, user.id, user.login);
+		if (user.alias === newAlias)
+		return res.code(409).send({ message: 'Le nouvel alias doit être différent de l\'ancien' })
 
-if (user.alias === newAlias)
-return res.code(409).send({ message: 'Le nouvel alias doit être différent de l\'ancien' })
+		db.updateUserAlias(user.id, newAlias.trim());
+		return res.code(200).send({ 
+		success: true, 
+		message: 'Alias mis à jour avec succès',
+		alias: newAlias.trim()
+		});
+	})
 
-db.updateUserAlias(user.id, newAlias.trim());
-return res.code(200).send({ 
-success: true, 
-message: 'Alias mis à jour avec succès',
-alias: newAlias.trim()
-});
-});
-
-server.get('/api/user/profile/:alias', async (req, res) => {
+	server.get('/api/user/profile/:alias', async (req, res) => {
 		const { alias } = req.params as { alias: string };
 
 		if (!alias)
 			return res.code(400).send({ message: 'Alias requis' });
-
+	
 		const user = db.getUserByAlias(alias);
 		if (!user)
 			return res.code(404).send({ message: 'Utilisateur non trouvé' });
-
+	
 		const stats = db.getPlayerStats(alias);
 		const matchHistory = db.getPlayerMatchHistory(alias, 20);
 		const tournamentResults = db.getPlayerTournamentResults(alias, 10);
@@ -80,11 +80,17 @@ server.get('/api/user/profile/:alias', async (req, res) => {
 				matches: completedMatches
 			};
 		});
-
+		
+		
 		let avatarPath = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`;
 		if (user.avatar && user.avatar !== DEFAULT_AVATAR_FILENAME)
 			avatarPath = `/avatars/users/${user.avatar}`;
-
+		else 
+		{
+			const googlePicture = db.getUserGooglePicture(user.id);
+			if (googlePicture)
+				avatarPath = googlePicture;
+		}
 		return res.code(200).send({
 			alias: user.alias,
 			createdAt: user.created_at,
@@ -93,5 +99,5 @@ server.get('/api/user/profile/:alias', async (req, res) => {
 			matchHistory,
 			tournamentResults: tournamentResultsWithMatches
 		});
-	});
+	})
 }

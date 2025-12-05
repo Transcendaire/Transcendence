@@ -3,9 +3,8 @@ import { MatchmakingService } from '../services/matchmaking/matchmaking.js'
 
 const matchmaking = new MatchmakingService()
 
-export async function registerWebSocketRoutes(server: FastifyInstance) //! changd the logic to not use register
+export async function registerWebSocketRoutes(server: FastifyInstance)
 {
-	// server.register(async function (fastify) {
 		server.get('/ws', { websocket: true }, (connection, req) => {
 			const ws = connection.socket
 
@@ -24,5 +23,4 @@ export async function registerWebSocketRoutes(server: FastifyInstance) //! chang
 				matchmaking.removePlayer(ws);
 			})
 		})
-	// })
 }

@@ -71,9 +71,9 @@ export async function registerPlugins(server: FastifyInstance)
 			res.clearCookie('session_id', {
 				path: '/',
 				httpOnly: true,
-				sameSite: 'lax'
+				sameSite: 'none',
+				secure: true
 			});
-			// req.cookies.id = "";//!changed
 		}
 	})
 

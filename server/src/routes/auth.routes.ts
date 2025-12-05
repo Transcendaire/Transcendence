@@ -24,7 +24,7 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 			path: '/',
 			httpOnly: true,
 			secure: true,
-			sameSite: 'lax',
+			sameSite: 'none',
 			maxAge: 60 * 60 * 24 //*24 hours
 		});
 
@@ -49,7 +49,7 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 			path: '/',
 			httpOnly: true,
 			secure: true,
-			sameSite: 'lax',
+			sameSite: 'none',
 			maxAge: 60 * 60 * 24//* 24 hours
 		})
 
@@ -75,9 +75,9 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 		res.clearCookie('session_id', {
 			path: '/',
 			httpOnly: true,
-			sameSite: 'lax'
+			sameSite: 'none',
+			secure: true
 		});
-		// req.cookies.id = "";//!changed
 		return res.code(204).send();
 
 	})
@@ -109,13 +109,17 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 			const randomPassword = Math.random().toString(36).slice(-16);
 			const hashedPassword = hashPassword(randomPassword);
 
-			const userId = db.createUser(data.email, hashedPassword, uniqueAlias);
+			const userId = db.createUser(data.email, hashedPassword, uniqueAlias, data.picture);
 			user = db.getUserById(userId);
 
 			console.log('[AUTH] ✅ Utilisateur créé:', user?.alias);
 		}
 		else
+		{
 			console.log('[AUTH] 👋 Utilisateur existant:', user.alias);
+			if (data.picture)
+				db.updateUserGooglePicture(user.id, data.picture);
+		}
 
 		const sessionId = db.createOrUpdateSession(user!.id);
 
@@ -123,7 +127,7 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 			path: '/',
 			httpOnly: true,
 			secure: true,
-			sameSite: 'lax',
+			sameSite: 'none',
 			maxAge: 60 * 60 * 24 //*24 hours
 		});
 
@@ -138,4 +142,5 @@ export async function registerAuthRoutes(server: FastifyInstance) {
             message: 'Connexion Google réussie'
         });
 	})
+
 }

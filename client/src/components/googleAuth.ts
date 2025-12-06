@@ -1,6 +1,8 @@
 let isGoogleScriptLoaded = false;
 let isGoogleScriptLoading = false;
 
+declare const google: any;
+
 function handleCredentialResponse(response: any) {
     handleGoogleLogin(response.credential);
 }

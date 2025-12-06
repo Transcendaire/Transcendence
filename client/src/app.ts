@@ -1,4 +1,4 @@
-import './styles/main.css';
+import '../public/config/main.css';
 import '../public/config/tools.css';
 import { render, getCurrentRoute, type Route } from './router';
 

@@ -20,6 +20,8 @@ COPY server/tsconfig.json ./
 COPY server/tsconfig.build.json ./
 COPY server/src ./src
 
+RUN mkdir -p uploads/avatars/defaults uploads/avatars/users
+
 EXPOSE 8080
 EXPOSE 8081   
 

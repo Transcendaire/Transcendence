@@ -64,6 +64,23 @@ export type Lobby = {
 	createdAt: number;
 }
 
+export type PlayerOnlineStatus = 'offline' | 'online' | 'in-game';
+
+export type FriendStatus = {
+	id: number;
+	alias: string;
+	status: PlayerOnlineStatus;
+	since: string;
+	avatar?: string;
+}
+
+export type OnlinePlayer = {
+	alias: string;
+	status: PlayerOnlineStatus;
+	isFriend: boolean;
+	avatar?: string;
+}
+
 export type PlayerState = {
 	paddle: {
 		y: number;
@@ -110,6 +127,7 @@ export type GameState = {
 }
 
 export type WebSocketMessage = 
+| { type: "register"; playerName: string }
 | { type: "join"; playerName: string }
 | { type: "joinCustom"; playerName: string }
 | { type: "joinAI"; playerName: string; difficulty?: number; enablePowerUps?: boolean; lifeCount?: number }
@@ -120,6 +138,7 @@ export type WebSocketMessage =
 | { type: "gameState"; data: GameState }
 | { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; isBattleRoyale?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
 | { type: "surrender" }
+| { type: "cancelQueue" }
 | { type: "ping"; pingValue?: number }
 | { type: "pong" }
 | { type: "createCustomLobby"; playerName: string; name: string; lobbyType: 'tournament' | 'battleroyale'; maxPlayers: number; settings: CustomGameSettings }
@@ -144,6 +163,11 @@ export type WebSocketMessage =
 | { type: "alreadyInGame"; playerName: string }
 | { type: "forceDisconnect"; playerName: string }
 | { type: "disconnectedByOtherSession" }
+| { type: "requestFriendList"; playerName: string }
+| { type: "friendList"; friends: FriendStatus[] }
+| { type: "friendStatusUpdate"; friend: FriendStatus }
+| { type: "requestOnlinePlayers"; playerName: string }
+| { type: "onlinePlayersList"; players: OnlinePlayer[] }
 
 /**
  * Provide minimal DOM element type aliases in case the TypeScript project

@@ -36,6 +36,7 @@ export class Tournament {
 	private players: Map<string, TournamentPlayer> = new Map();
 	private settings: CustomGameSettings;
 	private lastBroadcastTime: number = 0;
+	private pendingCountdowns: Map<string, { match: Match; cancelled: boolean }> = new Map();
 
 	public readonly id: string =  "";
 	public readonly name: string = "";
@@ -68,6 +69,17 @@ export class Tournament {
 	}
 
 	/**
+	 * @brief Checks if a player is active (not eliminated) in the tournament
+	 * @param name Player's alias
+	 * @returns True if player exists and is not eliminated
+	 */
+	public hasActivePlayer(name: string): boolean
+	{
+		const player = this.players.get(name);
+		return player ? player.status !== 'eliminated' : false;
+	}
+
+	/**
 	 * @brief Checks if a socket belongs to a player in the tournament
 	 * @param socket WebSocket connection to check
 	 * @returns True if socket belongs to a tournament player
@@ -80,6 +92,21 @@ export class Tournament {
 				return true;
 		}
 		return false;
+	}
+
+	/**
+	 * @brief Get player alias by their socket
+	 * @param socket WebSocket connection to search for
+	 * @returns Player alias or undefined if not found
+	 */
+	public getPlayerAliasBySocket(socket: WebSocket): string | undefined
+	{
+		for (const player of this.players.values())
+		{
+			if (player.socket === socket)
+				return player.alias;
+		}
+		return undefined;
 	}
 
 	/**
@@ -170,6 +197,52 @@ export class Tournament {
 	}
 
 	/**
+	 * @brief Check if there are any human players remaining (not eliminated)
+	 * @returns True if at least one human player is still in the tournament
+	 */
+	private hasHumanPlayersRemaining(): boolean
+	{
+		for (const player of this.players.values())
+		{
+			if (!player.id.startsWith('bot-') && player.status !== 'eliminated')
+				return true;
+		}
+		return false;
+	}
+
+	/**
+	 * @brief Auto-complete tournament when only bots remain
+	 * @details Picks a random bot as champion and ends the tournament
+	 */
+	private autoCompleteBotOnlyTournament(): void
+	{
+		const remainingBots = Array.from(this.players.values())
+			.filter(p => p.id.startsWith('bot-') && p.status !== 'eliminated');
+		
+		if (remainingBots.length === 0)
+		{
+			console.log(`[TOURNAMENT] No bots remaining, ending tournament without champion`);
+			this.status = TournamentStatus.COMPLETED;
+			this.db.setTournamentStatus(TournamentStatus.COMPLETED, this.id);
+			return;
+		}
+
+		const champion = remainingBots[Math.floor(Math.random() * remainingBots.length)]!;
+		champion.status = 'champion';
+		
+		for (const player of this.players.values())
+		{
+			if (player !== champion)
+				player.status = 'eliminated';
+		}
+
+		console.log(`[TOURNAMENT] All humans eliminated, auto-completing. Champion: ${champion.alias}`);
+		this.status = TournamentStatus.COMPLETED;
+		this.db.setTournamentStatus(TournamentStatus.COMPLETED, this.id);
+		this.notifyEndOfTournament(champion.alias);
+	}
+
+	/**
 	 * @brief Removes a player from the tournament
 	 * @param name Player's alias
 	 * @throws {TournamentError} If player is not in tournament
@@ -183,6 +256,69 @@ export class Tournament {
 		this.db.removePlayerFromTournament(name, this.id, this.name);
 		this.status = TournamentStatus.CREATED;
 		this.db.setTournamentStatus(TournamentStatus.CREATED, this.id);
+	}
+
+	/**
+	 * @brief Eliminate a player from an active tournament (forfeit)
+	 * @param name Player's alias
+	 * @details Marks the player as eliminated and cancels any pending countdown.
+	 */
+	public eliminatePlayer(name: string): void
+	{
+		const player = this.players.get(name);
+
+		if (!player)
+			return;
+		player.status = 'eliminated';
+		player.socket = undefined;
+		console.log(`[TOURNAMENT] Player ${name} eliminated (forfeit)`);
+		this.cancelPendingCountdownForPlayer(name);
+		if (!this.hasHumanPlayersRemaining())
+		{
+			console.log(`[TOURNAMENT] No human players remaining after ${name} forfeit`);
+			this.autoCompleteBotOnlyTournament();
+		}
+	}
+
+	/**
+	 * @brief Cancel a pending countdown if a player disconnects during it
+	 * @param playerName The player who disconnected
+	 */
+	private cancelPendingCountdownForPlayer(playerName: string): void
+	{
+		for (const [matchId, countdown] of this.pendingCountdowns)
+		{
+			const match = countdown.match;
+
+			if (match.player1Alias === playerName || match.player2Alias === playerName)
+			{
+				countdown.cancelled = true;
+				this.pendingCountdowns.delete(matchId);
+				console.log(`[TOURNAMENT] Cancelled countdown for match ${matchId} (${playerName} disconnected)`);
+				const isPlayer1 = match.player1Alias === playerName;
+				const winnerId = isPlayer1 ? match.player2Id : match.player1Id;
+				const winnerAlias = isPlayer1 ? match.player2Alias : match.player1Alias;
+				const winner = this.players.get(winnerAlias);
+
+				if (winner)
+				{
+					if (winner.socket && winner.socket.readyState === 1)
+					{
+						sendMessage(winner.socket, {
+							type: 'gameOver',
+							winner: isPlayer1 ? 'player2' : 'player1',
+							lives1: isPlayer1 ? 0 : 5,
+							lives2: isPlayer1 ? 5 : 0,
+							isTournament: true,
+							shouldDisconnect: this.currRound === this.maxRound - 1,
+							forfeit: true
+						});
+					}
+					this.completeMatch(match, winnerId, isPlayer1 ? 0 : 5, isPlayer1 ? 5 : 0);
+				}
+				break;
+			}
+		}
 	}
 
 	/**
@@ -261,6 +397,14 @@ export class Tournament {
 			this.endTournament();
 			return;
 		}
+
+		if (!this.hasHumanPlayersRemaining())
+		{
+			console.log(`[TOURNAMENT] No human players remaining, auto-completing tournament`);
+			this.autoCompleteBotOnlyTournament();
+			return;
+		}
+
 		console.log(`[TOURNAMENT] Starting round ${this.currRound + 1}/${this.maxRound}`)
 		for (let i = 0; i < this.bracket![this.currRound]!.length; i++)
 		{
@@ -336,14 +480,20 @@ export class Tournament {
 		player1.status = 'playing';
 		player2.status = 'playing';
 		match.status = 'playing';
-		
-		this.sendCountdown(player1.socket, player2.alias, player2.socket, player1.alias, () => {
+		this.pendingCountdowns.set(match.id, { match, cancelled: false });
+		this.sendCountdown(match, player1.socket, player2.alias, player2.socket, player1.alias, () => {
+			const pending = this.pendingCountdowns.get(match.id);
+
+			if (pending?.cancelled)
+				return;
+			this.pendingCountdowns.delete(match.id);
 			this.startMatchAfterCountdown(match, player1, player2);
 		});
 	}
 
 	/**
 	 * @brief Send countdown to both players before match starts
+	 * @param match The match being started
 	 * @param socket1 First player socket
 	 * @param opponent1Name Name of first player's opponent
 	 * @param socket2 Second player socket  
@@ -351,6 +501,7 @@ export class Tournament {
 	 * @param onComplete Callback when countdown finishes
 	 */
 	private sendCountdown(
+		match: Match,
 		socket1: WebSocket,
 		opponent1Name: string,
 		socket2: WebSocket | null,
@@ -362,14 +513,14 @@ export class Tournament {
 			sendMessage(socket1, { type: 'tournamentPrepare', playerRole: 'player1', opponentName: opponent1Name });
 		if (socket2 && socket2.readyState === 1)
 			sendMessage(socket2, { type: 'tournamentPrepare', playerRole: 'player2', opponentName: opponent2Name });
-		
-		setTimeout(() => this.startCountdownSequence(socket1, opponent1Name, socket2, opponent2Name, onComplete), 500);
+		setTimeout(() => this.startCountdownSequence(match, socket1, opponent1Name, socket2, opponent2Name, onComplete), 500);
 	}
 
 	/**
 	 * @brief Start the 3-2-1 countdown sequence
 	 */
 	private startCountdownSequence(
+		match: Match,
 		socket1: WebSocket,
 		opponent1Name: string,
 		socket2: WebSocket | null,
@@ -378,13 +529,15 @@ export class Tournament {
 	): void
 	{
 		let countdown = 3;
-		
 		const sendCount = () => {
+			const pending = this.pendingCountdowns.get(match.id);
+
+			if (pending?.cancelled)
+				return;
 			if (socket1 && socket1.readyState === 1)
 				sendMessage(socket1, { type: 'tournamentCountdown', opponentName: opponent1Name, countdown });
 			if (socket2 && socket2.readyState === 1)
 				sendMessage(socket2, { type: 'tournamentCountdown', opponentName: opponent2Name, countdown });
-			
 			if (countdown > 0)
 			{
 				countdown--;
@@ -393,7 +546,6 @@ export class Tournament {
 			else
 				onComplete();
 		};
-		
 		sendCount();
 	}
 
@@ -405,6 +557,12 @@ export class Tournament {
 	 */
 	private startMatchAfterCountdown(match: Match, player1: TournamentPlayer, player2: TournamentPlayer): void
 	{
+		if (player1.status === 'eliminated' || player2.status === 'eliminated')
+		{
+			console.log(`[TOURNAMENT] Match cancelled: a player was eliminated during countdown`)
+			return
+		}
+
 		const gameRoomManager = this.matchmakingService.getGameRoomManager();
 		const isFinalMatch = this.currRound === this.maxRound - 1;
 		console.log(`[TOURNAMENT] Match is final: ${isFinalMatch} (round ${this.currRound + 1}/${this.maxRound})`);
@@ -598,8 +756,13 @@ export class Tournament {
 		humanPlayer.status = 'playing'
 		botPlayer.status = 'playing'
 		match.status = 'playing'
+		this.pendingCountdowns.set(match.id, { match, cancelled: false });
+		this.sendCountdown(match, humanPlayer.socket!, botPlayer.alias, null, '', () => {
+			const pending = this.pendingCountdowns.get(match.id);
 
-		this.sendCountdown(humanPlayer.socket!, botPlayer.alias, null, '', () => {
+			if (pending?.cancelled)
+				return;
+			this.pendingCountdowns.delete(match.id);
 			this.startAIMatchAfterCountdown(match, humanPlayer, botPlayer);
 		});
 	}
@@ -612,6 +775,12 @@ export class Tournament {
 	 */
 	private startAIMatchAfterCountdown(match: Match, humanPlayer: TournamentPlayer, botPlayer: TournamentPlayer): void
 	{
+		if (humanPlayer.status === 'eliminated')
+		{
+			console.log(`[TOURNAMENT] AI match cancelled: ${humanPlayer.alias} was eliminated during countdown`)
+			return
+		}
+
 		const gameRoomManager = this.matchmakingService.getGameRoomManager()
 		const humanIsPlayer1 = match.player1Id === humanPlayer.id
 		const isFinalMatch = this.currRound === this.maxRound - 1
@@ -680,7 +849,40 @@ export class Tournament {
 		console.log(`[TOURNAMENT] Match ${match.id} completed: ${match.player1Alias} ${livesA}-${livesB} ${match.player2Alias}`);
 		this.bracketService.updateMatchResult(match, winnerId);
 		if (!p1IsBot && !p2IsBot)
+		{
 			this.db.recordMatch(this.id, this.name, match.player1Id, match.player2Id, livesA, livesB, 'completed');
+			try
+			{
+				const p1Won = winnerId === match.player1Id;
+				this.db.recordGameResult(
+					match.player1Alias,
+					'1v1',
+					match.player2Alias,
+					2,
+					livesA,
+					livesB,
+					p1Won ? 1 : 2,
+					p1Won ? 'win' : 'loss',
+					this.id
+				);
+				this.db.recordGameResult(
+					match.player2Alias,
+					'1v1',
+					match.player1Alias,
+					2,
+					livesB,
+					livesA,
+					p1Won ? 2 : 1,
+					p1Won ? 'loss' : 'win',
+					this.id
+				);
+				console.log(`[TOURNAMENT] Match history recorded for ${match.player1Alias} vs ${match.player2Alias}`);
+			}
+			catch (error)
+			{
+				console.error('[TOURNAMENT] Failed to record match history:', error);
+			}
+		}
 		if (winner)
 			winner.status = 'waiting';
 		if (loser)
@@ -730,8 +932,126 @@ export class Tournament {
 		{
 			champion.status = 'champion';
 			console.log(`[TOURNAMENT] Tournament ${this.name} completed! Champion: ${championAlias}`);
+			this.recordTournamentResults(championAlias);
 			this.notifyEndOfTournament(championAlias);
 		}
+	}
+
+	/**
+	 * @brief Record tournament results for all human players
+	 * @param championAlias Alias of the tournament champion
+	 */
+	private recordTournamentResults(championAlias: string): void
+	{
+		const humanPlayers = Array.from(this.players.values()).filter(p => !p.id.startsWith('bot-'));
+		if (humanPlayers.length === 0)
+			return;
+
+		const totalParticipants = this.players.size;
+		const matchResults = this.calculatePlayerMatchResults();
+
+		for (const player of humanPlayers)
+		{
+			const position = this.calculatePlayerPosition(player.alias, championAlias);
+			const stats = matchResults.get(player.alias) || { won: 0, lost: 0 };
+
+			try
+			{
+				this.db.recordTournamentResult(
+					player.alias,
+					this.id,
+					this.name,
+					position,
+					totalParticipants,
+					stats.won,
+					stats.lost
+				);
+				console.log(`[TOURNAMENT] Recorded result for ${player.alias}: position ${position}, ${stats.won}W-${stats.lost}L`);
+			}
+			catch (error)
+			{
+				console.error(`[TOURNAMENT] Failed to record result for ${player.alias}:`, error);
+			}
+		}
+	}
+
+	/**
+	 * @brief Calculate wins and losses for each player from bracket
+	 * @returns Map of player alias to win/loss counts
+	 */
+	private calculatePlayerMatchResults(): Map<string, { won: number; lost: number }>
+	{
+		const results = new Map<string, { won: number; lost: number }>();
+
+		for (const round of this.bracket)
+		{
+			for (const match of round)
+			{
+				if (match.status !== 'completed' || !match.winnerId)
+					continue;
+				const p1IsBot = match.player1Id.startsWith('bot-');
+				const p2IsBot = match.player2Id.startsWith('bot-');
+				if (!p1IsBot)
+				{
+					const stats = results.get(match.player1Alias) || { won: 0, lost: 0 };
+					if (match.winnerId === match.player1Id)
+						stats.won++;
+					else
+						stats.lost++;
+					results.set(match.player1Alias, stats);
+				}
+				if (!p2IsBot && match.player2Alias !== '~TBD')
+				{
+					const stats = results.get(match.player2Alias) || { won: 0, lost: 0 };
+					if (match.winnerId === match.player2Id)
+						stats.won++;
+					else
+						stats.lost++;
+					results.set(match.player2Alias, stats);
+				}
+			}
+		}
+		return results;
+	}
+
+	/**
+	 * @brief Calculate player's final position in tournament
+	 * @param playerAlias Player's alias
+	 * @param championAlias Champion's alias
+	 * @returns Position (1 = champion, 2 = finalist, etc.)
+	 */
+	private calculatePlayerPosition(playerAlias: string, championAlias: string): number
+	{
+		if (playerAlias === championAlias)
+			return 1;
+
+		const finalMatch = this.bracket[this.maxRound - 1]?.[0];
+		if (finalMatch)
+		{
+			const finalistAlias = finalMatch.player1Alias === championAlias
+				? finalMatch.player2Alias
+				: finalMatch.player1Alias;
+			if (playerAlias === finalistAlias)
+				return 2;
+		}
+
+		for (let round = this.maxRound - 2; round >= 0; round--)
+		{
+			for (const match of this.bracket[round] || [])
+			{
+				if (match.status !== 'completed')
+					continue;
+				const loserAlias = match.winnerId === match.player1Id
+					? match.player2Alias
+					: match.player1Alias;
+				if (loserAlias === playerAlias)
+				{
+					const playersEliminatedThisRound = Math.pow(2, this.maxRound - round - 1);
+					return playersEliminatedThisRound + 1;
+				}
+			}
+		}
+		return this.maxPlayers;
 	}
 
 	private notifyEndOfTournament(championAlias: string)

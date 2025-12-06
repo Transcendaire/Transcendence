@@ -38,6 +38,19 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		return res.code(200).send({ sentRequests });
 	})
 
+	server.get('/api/friends/status/:alias', async (req, res) => {
+		const user = (req as any).user
+		if (!user || !user.id)
+			return res.code(401).send({ message: 'Veuillez vous reconnecter' })
+
+		const { alias } = req.params as any
+		if (!alias)
+			return res.code(400).send({ message: 'Alias requis' })
+
+		const status = db.getFriendshipStatus(user.id, alias)
+		return res.code(200).send({ status })
+	})
+
 	//*Send request
 	server.post('/api/friends/request', async (req, res) => {
 		const user = (req as any).user;

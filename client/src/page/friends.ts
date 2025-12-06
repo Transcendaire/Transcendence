@@ -1,11 +1,16 @@
 import { navigate, registerPageInitializer, render } from "../router";
 import { getEl, show, hide } from "../app";
+import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
+import { playerName } from "./home";
+import { getUserWithCookies } from "../components/auth";
+import type { FriendStatus, PlayerOnlineStatus } from "@shared/types";
 
 interface Friend {
-    id: string;
+    id: number;
     alias: string;
-    online: boolean;
-    since: number;
+    status: PlayerOnlineStatus;
+    since: string;
+    avatar?: string;
 }
 
 interface FriendRequest {
@@ -17,16 +22,8 @@ interface FriendRequest {
     created_at: number;
 }
 
-async function fetchFriends()
-{
-	const response = await fetch('/api/friends');
-	
-	if (!response.ok)
-		throw new Error('Erreur lors de la récupération des amis');
-	
-	const data = await response.json();
-	return data.friends || [];
-}
+let currentFriends: Friend[] = [];
+let currentPlayerName: string = "";
 
 async function fetchPendingRequests()
 {
@@ -124,6 +121,33 @@ async function deleteFriend(alias: string)
 }
 
 
+function getStatusColor(status: PlayerOnlineStatus): string
+{
+    switch (status) {
+        case 'in-game': return 'bg-orange-400';
+        case 'online': return 'bg-green-400';
+        default: return 'bg-gray-500';
+    }
+}
+
+function getStatusText(status: PlayerOnlineStatus): string
+{
+    switch (status) {
+        case 'in-game': return 'En jeu';
+        case 'online': return 'En ligne';
+        default: return 'Hors ligne';
+    }
+}
+
+function getStatusTextColor(status: PlayerOnlineStatus): string
+{
+    switch (status) {
+        case 'in-game': return 'text-orange-400';
+        case 'online': return 'text-green-400';
+        default: return 'text-gray-400';
+    }
+}
+
 function renderFriends(friends: Friend[]): void {
     const container = getEl('friendsList');
     const countEl = getEl('friendsCount');
@@ -140,21 +164,23 @@ function renderFriends(friends: Friend[]): void {
         return;
     }
 
-    container.innerHTML = friends.map(friend => `
+    container.innerHTML = friends.map(friend => {
+        const avatarSrc = friend.avatar || '/avatars/defaults/Transcendaire.png';
+        return `
         <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                     border-2 border-transparent hover:border-sonpi16-orange 
-                    transition-all duration-300">
-            <div class="flex items-center justify-between mb-3">
+                    transition-all duration-300" data-friend-alias="${friend.alias}">
+            <div class="flex items-center justify-between mb-3 cursor-pointer friend-profile-link" data-alias="${friend.alias}">
                 <div class="flex items-center gap-3">
-                    <div class="w-12 h-12 bg-sonpi16-orange rounded-full flex items-center justify-center">
-                        <span class="text-white font-quency text-xl">${friend.alias[0]!.toUpperCase()}</span>
-                    </div>
+                    <img src="${avatarSrc}" alt="${friend.alias}" 
+                         class="w-12 h-12 rounded-full object-cover hover:scale-110 transition-transform"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
                     <div>
-                        <p class="text-sonpi16-orange font-quency font-bold text-lg">${friend.alias}</p>
+                        <p class="text-sonpi16-orange font-quency font-bold text-lg hover:underline">${friend.alias}</p>
                         <div class="flex items-center gap-2">
-                            <div class="w-2 h-2 rounded-full ${friend.online ? 'bg-green-400' : 'bg-gray-500'}"></div>
-                            <span class="text-sm ${friend.online ? 'text-green-400' : 'text-gray-400'} font-quency">
-                                ${friend.online ? 'En ligne' : 'Hors ligne'}
+                            <div class="w-2 h-2 rounded-full status-dot ${getStatusColor(friend.status)}"></div>
+                            <span class="text-sm status-text ${getStatusTextColor(friend.status)} font-quency">
+                                ${getStatusText(friend.status)}
                             </span>
                         </div>
                     </div>
@@ -168,10 +194,19 @@ function renderFriends(friends: Friend[]): void {
                 Supprimer
             </button>
         </div>
-    `).join('');
+    `}).join('');
+
+    container.querySelectorAll('.friend-profile-link').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const alias = (e.currentTarget as HTMLElement).dataset.alias;
+            if (alias)
+                navigate(`profile?alias=${encodeURIComponent(alias)}`);
+        });
+    });
 
     container.querySelectorAll('.remove-friend-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const alias = (e.target as HTMLElement).dataset.alias;
             if (!alias)
 				return;
@@ -356,20 +391,68 @@ function showMessage(element: HTMLElement, message: string, type: 'success' | 'e
 async function loadAllData()
 {
     await Promise.all([
-        loadFriends(),
+        loadFriendsViaWebSocket(),
         loadPendingRequests(),
         loadSentRequests()
     ]);
 }
 
+function setupWebSocketCallbacks(): void
+{
+    wsClient.onFriendList = (friends: FriendStatus[]) => {
+        currentFriends = friends.map(f => ({
+            id: f.id,
+            alias: f.alias,
+            status: f.status,
+            since: f.since,
+            avatar: f.avatar
+        }));
+        renderFriends(currentFriends);
+    };
+
+    wsClient.onFriendStatusUpdate = (friend: FriendStatus) => {
+        const existing = currentFriends.find(f => f.alias === friend.alias);
+        if (existing) {
+            existing.status = friend.status;
+            updateFriendStatusInDOM(friend.alias, friend.status);
+        }
+    };
+}
+
+function updateFriendStatusInDOM(alias: string, status: PlayerOnlineStatus): void
+{
+    const friendEl = document.querySelector(`[data-friend-alias="${alias}"]`);
+    if (!friendEl)
+        return;
+    const dotEl = friendEl.querySelector('.status-dot');
+    const textEl = friendEl.querySelector('.status-text');
+    if (dotEl) {
+        dotEl.className = `w-2 h-2 rounded-full status-dot ${getStatusColor(status)}`;
+    }
+    if (textEl) {
+        textEl.className = `text-sm status-text ${getStatusTextColor(status)} font-quency`;
+        textEl.textContent = getStatusText(status);
+    }
+}
+
+async function loadFriendsViaWebSocket()
+{
+    if (!currentPlayerName)
+        return;
+    if (!wsClient.isConnected()) {
+        try {
+            await wsClient.connect(getWebSocketUrl());
+        } catch (error) {
+            console.error('[FRIENDS] WebSocket connection error:', error);
+            return;
+        }
+    }
+    wsClient.requestFriendList(currentPlayerName);
+}
+
 async function loadFriends() 
 {
-    try {
-        const friends = await fetchFriends();
-        renderFriends(friends);
-    } catch (error: any) {
-        console.error('[FRIENDS] Error loading friends:', error);
-    }
+    await loadFriendsViaWebSocket();
 }
 
 async function loadPendingRequests() 
@@ -432,18 +515,22 @@ function setupAddFriend(): void
 
 
 
-function initFriendsPage(): void {
+async function initFriendsPage(): Promise<void> {
     console.log('[FRIENDS] Initializing friends page');
+
+    currentPlayerName = playerName || await getUserWithCookies() || "";
+    if (!currentPlayerName) {
+        console.error('[FRIENDS] No player name found, redirecting to home');
+        navigate('home');
+        return;
+    }
 
     getEl('backHomeFromFriends').addEventListener('click', () => navigate('home'));
 
+    setupWebSocketCallbacks();
     setupAddFriend();
 
     loadAllData();
-
-    // setInterval(() => {
-    //     loadAllData();
-    // }, 5000);
 }
 
 registerPageInitializer('friends', initFriendsPage);

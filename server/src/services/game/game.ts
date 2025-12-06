@@ -44,6 +44,7 @@ export class GameService
 	private polygonData: PolygonData | null;
 	private activePlayerCount: number;
 	private _switchedToClassic: boolean;
+	private eliminationOrder: number[];
 
 	/**
 	 * @brief Constructor
@@ -83,6 +84,7 @@ export class GameService
 		this.geometry = null;
 		this.polygonData = null;
 		this._switchedToClassic = false;
+		this.eliminationOrder = [];
 		if (playerCount > 2)
 		{
 			const centerX = canvasWidth / 2;
@@ -124,6 +126,15 @@ export class GameService
 	public getPolygonData(): PolygonData | null
 	{
 		return this.polygonData;
+	}
+
+	/**
+	 * @brief Get elimination order (player indices in order of elimination)
+	 * @returns Array of player indices, first eliminated first
+	 */
+	public getEliminationOrder(): number[]
+	{
+		return this.eliminationOrder;
 	}
 
 	/**
@@ -315,6 +326,7 @@ export class GameService
 	 */
 	private handleElimination(playerIndex: number): void
 	{
+		this.eliminationOrder.push(playerIndex);
 		if (!this.geometry)
 			return;
 		const activeCount = this.getActivePlayerCount();
@@ -567,16 +579,13 @@ export class GameService
 					FruitManager.spawn(this.fruits, this.canvasWidth, this.canvasHeight, this.polygonData);
 				this.fruitSpawnTimer = 0;
 			}
-			for (const ball of this.balls.length > 0 ? this.balls : [this.ball])
+			if (this.balls.length > 0)
 			{
-				FruitManager.checkCollisions(
-					this.fruits,
-					ball,
-					this.players,
-					this.ballTouched,
-					ball.lastTouchedPlayerIndex
-				);
+				for (const ball of this.balls)
+					FruitManager.checkCollisions(this.fruits, ball, this.players, this.ballTouched, ball.lastTouchedPlayerIndex);
 			}
+			else
+				FruitManager.checkCollisions(this.fruits, this.ball, this.players, this.ballTouched, this.lastTouchedPlayerIndex);
 		}
 		if (this.isPolygonMode())
 			return this.updatePolygonCollisions(deltaTime);

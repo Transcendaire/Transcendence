@@ -1,6 +1,6 @@
 import { GameState } from "@app/shared/types.js";
 
-export { GameInput, GameState, WebSocketMessage, TournamentHTMLElements } from "@app/shared/types.js";
+export { GameInput, GameState, WebSocketMessage, TournamentHTMLElements, FriendStatus, PlayerOnlineStatus, OnlinePlayer } from "@app/shared/types.js";
 
 export type Player = {
 	id: string;

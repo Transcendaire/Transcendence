@@ -27,6 +27,7 @@ services:
       - "8080"
     volumes:
       - database-volume:/app/data
+      - avatar-uploads:/app/uploads
     networks:
       - transcendence
     environment:
@@ -48,6 +49,7 @@ services:
 volumes:
   client-build:
   database-volume:
+  avatar-uploads:
 
 networks:
   transcendence:

@@ -76,7 +76,6 @@ ps:
 dev:
 	@echo "$(GREEN)Starting development mode...$(NC)"
 	@docker compose -f docker-compose.dev.yml up --build
-	@echo "$(GREEN)Application ready at https://localhost:5173$(NC)"
 
 dev-database: 
 	@echo "$(GREEN)Setting database web app...$(NC)"

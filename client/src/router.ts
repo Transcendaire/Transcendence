@@ -1,4 +1,4 @@
-import { checkAuthentication } from "./page/auth.js";
+import { checkAuthentication } from "./components/auth.js";
 
 export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
 
@@ -53,25 +53,28 @@ export async function render(route: Route)
     }
 }
 
-export async function navigate(route: Route, params?:Record<string, string>)
+export async function navigate(route: Route, params?:string)
 {
 	const protectedRoutes = ['lobby', 'game', 'profile', 'friends'];
 	if (protectedRoutes.includes(route)) {
 		const isAuthenticated = await checkAuthentication();
 		if (!isAuthenticated)
 		{
-			route = 'home'
+			window.history.pushState({ route: 'home' }, '', '/home');
+			render('home');
 			alert('Veuillez vous reconnecter');
+			return;
 		}
 	}
     let url = `/${route}`;
     if (params) {
-        const queryString = Object.keys(params)
-            .map(key => `${key}=${encodeURIComponent(params[key])}`)
-            .join('&');
-        url += `?${queryString}`;
+        let userParams;
+        route === 'profile' ? userParams = `?alias=${encodeURIComponent(params)}` : userParams = `?${params}`
+        console.log(`url avant = ${url}`)
+        url += userParams;
+        console.log(`url = ${url}`)
     }
-    window.history.pushState({ route, params }, '', url);
+    window.history.pushState(route, '', url);
     render(route);
 }
 
@@ -91,21 +94,9 @@ export function getRouteParams(): Record<string, string> {
     return params;
 }
 
-export function navigateToProfile(userId?: string) {
-    if (userId) {
-        navigate('profile', { userId });
-    } else {
-        navigate('profile');
-    }
-}
-
-export function getProfileUserId(): string | null {
-    const params = getRouteParams();
-    return params.userId || null;
-}
-
 export function getCurrentRoute(): Route 
 {
-  const path = window.location.pathname.slice(1);
-    return(path || 'home') as Route;
+	const path = window.location.pathname.slice(1);
+	const routePart = path.split('?')[0];
+    return (routePart || 'home') as Route;
 }

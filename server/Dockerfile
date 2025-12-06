@@ -23,5 +23,9 @@ RUN npm run build:server
 
 RUN npm prune --production
 
+RUN mkdir -p uploads/avatars/defaults uploads/avatars/users
+
+COPY server/uploads/avatars/defaults/ ./uploads/avatars/defaults/
+
 EXPOSE 8080
 CMD ["node", "dist/index.js"]

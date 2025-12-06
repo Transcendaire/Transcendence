@@ -2,15 +2,24 @@ import { navigate, registerPageInitializer } from "../router"
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { playerName } from "./home";
-import type { Lobby, LobbyPlayer } from "@shared/types";
-import { checkAuthentication } from "./auth.js";
+import { getUserWithCookies } from "../components/auth";
+import type { Lobby, LobbyPlayer, OnlinePlayer, PlayerOnlineStatus } from "@shared/types";
 
 let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;
 let currentOpenLobbyId: string | null = null;
+let currentOnlinePlayers: OnlinePlayer[] = [];
+let currentPlayerName: string = "";
 
-function initLobby() {
+async function initLobby() {
     console.log('[LOBBY] Initialisation de la page lobby');
+
+    currentPlayerName = playerName || await getUserWithCookies() || "";
+    if (!currentPlayerName) {
+        console.error('[LOBBY] No player name found, redirecting to home');
+        navigate('home');
+        return;
+    }
 
     const createLobbyModal = getEl("createLobbyModal");
 
@@ -19,6 +28,7 @@ function initLobby() {
     setupWebSocketCallbacks();
     initCreationModal(createLobbyModal);
     requestLobbyList();
+    requestOnlinePlayers();
 }
 
 function setupWebSocketCallbacks(): void {
@@ -110,6 +120,22 @@ function setupWebSocketCallbacks(): void {
         wsClient.disconnect();
         navigate('home');
     };
+
+    wsClient.onOnlinePlayersList = (players: OnlinePlayer[]) => {
+        console.log('[LOBBY] Liste des joueurs en ligne:', players.length);
+        currentOnlinePlayers = players;
+        renderOnlinePlayers(players);
+    };
+
+    wsClient.onFriendStatusUpdate = (friend) => {
+        const existing = currentOnlinePlayers.find(p => p.alias === friend.alias);
+        if (existing) {
+            existing.status = friend.status;
+            renderOnlinePlayers(currentOnlinePlayers);
+        } else if (friend.status !== 'offline') {
+            requestOnlinePlayers();
+        }
+    };
 }
 
 function requestLobbyList(): void {
@@ -118,12 +144,99 @@ function requestLobbyList(): void {
         console.log('[LOBBY] WebSocket non connecté, connexion en cours...');
         wsClient.connect(getWebSocketUrl()).then(() => {
             wsClient.sendMessage({ type: 'requestLobbyList' });
+            requestOnlinePlayers();
         }).catch((error) => {
             console.error('[LOBBY] Erreur de connexion WebSocket:', error);
         });
     } else {
         wsClient.sendMessage({ type: 'requestLobbyList' });
     }
+}
+
+function requestOnlinePlayers(): void {
+    if (!currentPlayerName)
+        return;
+    if (wsClient.isConnected())
+        wsClient.requestOnlinePlayers(currentPlayerName);
+}
+
+function getStatusColor(status: PlayerOnlineStatus): string
+{
+    switch (status) {
+        case 'in-game': return 'bg-orange-400';
+        case 'online': return 'bg-green-400';
+        default: return 'bg-gray-500';
+    }
+}
+
+function getStatusText(status: PlayerOnlineStatus): string
+{
+    switch (status) {
+        case 'in-game': return 'En jeu';
+        case 'online': return 'En ligne';
+        default: return 'Hors ligne';
+    }
+}
+
+function getStatusTextColor(status: PlayerOnlineStatus): string
+{
+    switch (status) {
+        case 'in-game': return 'text-orange-400';
+        case 'online': return 'text-green-400';
+        default: return 'text-gray-400';
+    }
+}
+
+function renderOnlinePlayers(players: OnlinePlayer[]): void
+{
+    const container = document.getElementById('friendsList');
+    const countEl = document.getElementById('playerCount');
+
+    if (!container || !countEl)
+        return;
+
+    const onlinePlayers = players.filter(p => p.status !== 'offline');
+    countEl.textContent = onlinePlayers.length.toString();
+    if (onlinePlayers.length === 0)
+    {
+        container.innerHTML = `
+            <p class="text-gray-400 text-center py-8 font-quency">
+                Aucun joueur en ligne
+            </p>
+        `;
+        return;
+    }
+    container.innerHTML = onlinePlayers.map(player => {
+        const showStatus = player.isFriend && player.status === 'in-game';
+        const statusHtml = showStatus
+            ? `<div class="flex items-center gap-2">
+                   <div class="w-2 h-2 rounded-full ${getStatusColor(player.status)}"></div>
+                   <span class="text-xs ${getStatusTextColor(player.status)} font-quency">
+                       ${getStatusText(player.status)}
+                   </span>
+               </div>`
+            : '';
+        const friendBadge = player.isFriend ? '<span class="text-xs text-sonpi16-orange">⭐ Ami</span>' : '';
+        const avatarSrc = player.avatar || '/avatars/defaults/Transcendaire.png';
+        return `
+        <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-3 
+                    border-2 ${player.isFriend ? 'border-sonpi16-orange' : 'border-transparent'} 
+                    hover:bg-opacity-20 transition-all duration-300">
+            <div class="flex items-center gap-3">
+                <img src="${avatarSrc}" alt="${player.alias}" 
+                     class="w-10 h-10 rounded-full object-cover cursor-pointer hover:ring-2 hover:ring-white transition-all"
+                     onclick="window.location.href='/profile?alias=${encodeURIComponent(player.alias)}'"
+                     onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                <div class="flex-1">
+                    <p class="text-sonpi16-orange font-quency font-bold">${player.alias}</p>
+                    <div class="flex items-center gap-2">
+                        ${statusHtml}
+                        ${friendBadge}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function renderLobbies(lobbies: Lobby[]): void {
@@ -163,7 +276,7 @@ function renderLobbies(lobbies: Lobby[]): void {
 function joinLobby(lobbyId: string): void {
     console.log('[LOBBY] Tentative de rejoindre le lobby:', lobbyId);
 
-    if (!playerName || playerName.trim() === '') {
+    if (!currentPlayerName || currentPlayerName.trim() === '') {
         alert('Veuillez vous connecter avant de rejoindre un lobby');
         navigate('home');
         return;
@@ -178,7 +291,7 @@ function joinLobby(lobbyId: string): void {
 
     const joinMessage = {
         type: 'joinLobby' as const,
-        playerName: playerName,
+        playerName: currentPlayerName,
         lobbyId: lobbyId
     };
     wsClient.setPendingAction(() => wsClient.sendMessage(joinMessage));
@@ -253,7 +366,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
         const maxScoreSelect = getEl("maxScoreSelect") as HTMLSelectElement;
         const maxScore = parseInt(maxScoreSelect?.value || '5');
 
-        if (!name || name === '') name = `${gameType.value} de ${playerName}`;
+        if (!name || name === '') name = `${gameType.value.charAt(0).toUpperCase() + gameType.value.slice(1)} de ${currentPlayerName}`;
 
         if (name.length < 3) {
             alert('Le nom du lobby doit comporter au moins 3 caractères');
@@ -270,7 +383,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
             return;
         }
 
-        if (!playerName || playerName.trim() === '') {
+        if (!currentPlayerName || currentPlayerName.trim() === '') {
             alert('Veuillez vous connecter avant de créer un lobby');
             navigate('home');
             return;
@@ -297,7 +410,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
 
         const createMessage = {
             type: 'createCustomLobby' as const,
-            playerName: playerName,
+            playerName: currentPlayerName,
             name: name,
             lobbyType: lobbyType,
             maxPlayers: maxPlayers,
@@ -320,7 +433,7 @@ function setupLobbyModal(lobby: Lobby) {
     const quitButton = getEl('quitRoom') as HTMLButtonElement;
     const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
     const creator = lobby.players.find(p => p.id === lobby.creatorId);
-    const isOwner = creator?.name === playerName;
+    const isOwner = creator?.name === currentPlayerName;
     const isFull = lobby.players.length >= lobby.maxPlayers;
 
     currentOpenLobbyId = lobby.id;
@@ -338,7 +451,7 @@ function setupLobbyModal(lobby: Lobby) {
             const playerDiv = createPlayerElement(player, lobby);
             playersList.appendChild(playerDiv);
         });
-        if (!isFull)
+        if (!isFull && isOwner)
             addBot(lobby, playersList);
     }
 
@@ -369,9 +482,9 @@ function createLobbyElement(lobby: Lobby): HTMLDivElement {
                         hover:bg-opacity-20 transition-all duration-300 
                         border-2 border-transparent hover:border-sonpi16-orange`;
 
-    const type = lobby.type === 'tournament' ? 'Tournoi ' : 'Partie ';
-    const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
-    const modeIcon = lobby.settings.powerUpsEnabled ? '⚡' : '🎮';
+    const type = lobby.type === 'tournament' ? 'Tournoi ' : 'Battle Royale ';
+    const typeIcon = lobby.type === 'tournament' ? '🏆' : '👑';
+    const modeIcon = lobby.settings.powerUpsEnabled ? '⚡' : '🎯';
     const isFull = lobby.players.length >= lobby.maxPlayers;
 
     lobbyDiv.innerHTML = `
@@ -384,7 +497,7 @@ function createLobbyElement(lobby: Lobby): HTMLDivElement {
                     <div class="flex gap-4 text-sm text-sonpi16-orange opacity-80">
                         <span class="flex items-center gap-1">
                         <span class="text-lg"> ${modeIcon}</span>
-                            ${type}${lobby.settings.powerUpsEnabled ? 'Custom' : 'Normal'}</span>
+                            ${type}${lobby.settings.powerUpsEnabled ? 'avec PowerUps' : 'sans PowerUps'}</span>
                         <span class="flex items-center gap-1">
                         <span class="text-lg">👥</span>
                         <span id="player-count">
@@ -420,7 +533,7 @@ function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement
     const ownerStar = isOwner ? ' ⭐' : '';
     
     const creator = lobby.players.find(p => p.id === lobby.creatorId);
-    const amICreator = creator?.name === playerName;
+    const amICreator = creator?.name === currentPlayerName;
     const showKickButton = amICreator && !isOwner;
 
 

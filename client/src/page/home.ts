@@ -1,12 +1,11 @@
 import { registerPageInitializer, navigate } from "../router";
-import { inputParserClass } from "../components/inputParser";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
+import { initAuth, broadcastAuthEvent } from "../components/auth"
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
-const inputParser = new inputParserClass();
 
 async function initHomePage() {
     const gameModeModal = getEl("gameModeModal")
@@ -18,14 +17,20 @@ async function initHomePage() {
     const playButton = getEl("playButton") as HTMLButtonElement
     const redirect = getEl("signinRedirect") as HTMLButtonElement
 
-    console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
-
-    const alias = await getUserWithCookies();
-    console.log(`alias is ${alias}`);
-    if (alias) {
-        playerName = alias;
-        isLoggedIn = true;
-    }
+	
+	initAuth((alias?: string) => {
+		if (alias) {
+			playerName = alias;
+			isLoggedIn = true;
+			connectWebSocketForStatus();
+		} else {
+			playerName = "";
+			isLoggedIn = false;
+		}
+		updateUI();
+	});
+	
+	console.log(`playerName : ${playerName} is loggedIn ${isLoggedIn}`);
 
     await initGoogle();
 
@@ -75,24 +80,27 @@ function initLoginModal(loginModal: HTMLElement) {
         console.log(`username = ${username}`)
         console.log(`password = ${password}`)
 
-        try {
-            const response = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    login: username,
-                    password
-                })
-            });
-            const data = await response.json();
-            if (!response.ok) {
-                alert(data.error || 'Erreur lors de la connexion');
-                return;
-            }
-            playerName = data.alias;
-            isLoggedIn = true;
-            hide(loginModal)
-            updateUI();
+		try {
+			const response = await fetch('/api/auth/login', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					login: username,
+					password
+				})
+			});
+			const data = await response.json();
+			if (!response.ok)
+			{
+				alert(data.error || 'Erreur lors de la connexion');
+				return ;
+			}
+			playerName = data.alias;
+			isLoggedIn = true;
+			hide(loginModal)
+			updateUI();
+			connectWebSocketForStatus();
+			broadcastAuthEvent('login');
 
         } catch (error) {
             const message = String(error);
@@ -143,21 +151,24 @@ async function initsigninModal(signinModal: HTMLElement) {
                 })
             });
 
-            const data = await response.json();
-            if (!response.ok) {
-                alert(data.error || 'Erreur lors de l\'inscription');
-                return;
-            }
-            alert(data.message || 'Inscription réussie !');
-            playerName = alias;
-            isLoggedIn = true;
-            hide(signinModal);
-            updateUI()
-        } catch (error) {
-            const message = String(error);
-            console.error('Erreur (subscribe): ', message);
-            alert(message);
-        }
+			const data = await response.json();
+			if (!response.ok)
+			{
+				alert(data.error || 'Erreur lors de l\'inscription');
+				return ;
+			}
+			alert(data.message || 'Inscription réussie !');
+			playerName = alias;
+			isLoggedIn = true;
+			hide(signinModal);
+			updateUI()
+			connectWebSocketForStatus();
+			broadcastAuthEvent('login');
+		} catch (error) {
+			const message = String(error);
+			console.error('Erreur (subscribe): ', message);
+			alert(message);
+		}
     }
 
     checkSignInInput.onclick = subscribe;
@@ -257,24 +268,45 @@ function initWaitingModal(modal: HTMLElement) {
     const cancelWaitButton = getEl("cancelWaitButton");
 
     cancelWaitButton.addEventListener('click', () => {
-        wsClient.disconnect();
+        wsClient.cancelQueue();
         hide(modal);
     });
 }
 
 
-async function logout(): Promise<void> {
-    try {
-        const res = await fetch('/api/auth/logout', {
-            method: 'POST',
-            credentials: 'same-origin'
-        });
-    } catch (error) {
-        console.log('erreur logout(): ', error);
-    }
-    isLoggedIn = false;
-    playerName = "";
-    updateUI();
+/**
+ * @brief Connect to WebSocket to appear online to friends
+ * @details Called after login/register or when page loads with authenticated user
+ */
+async function connectWebSocketForStatus(): Promise<void>
+{
+	if (!playerName || playerName === '')
+		return
+	try {
+		await wsClient.connect(getWebSocketUrl())
+		wsClient.registerPlayer(playerName)
+		console.log(`[HOME] WebSocket connected for status: ${playerName}`)
+	} catch (error) {
+		console.log('[HOME] Failed to connect WebSocket for status:', error)
+	}
+}
+
+
+async function logout(): Promise<void>
+{
+	wsClient.disconnect()
+	try {
+		const res = await fetch('/api/auth/logout', {
+			method: 'POST',
+			credentials: 'same-origin'
+		});
+	} catch (error) {
+		console.log('erreur logout(): ', error);
+	}
+	isLoggedIn = false;
+	playerName = "";
+	updateUI();
+	broadcastAuthEvent('logout');
 }
 
 

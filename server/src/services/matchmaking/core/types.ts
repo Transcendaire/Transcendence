@@ -1,7 +1,8 @@
 import { WebSocket } from 'ws'
-import { GameService } from '../game/game.js'
-import { AIPlayer } from '../aiplayer/AIPlayer.js'
-import { BRNormalAIPlayer } from '../aiplayer/BRNormalAIPlayer.js'
+import { GameService } from '../../game/game.js'
+import { AIPlayer } from '../../aiplayer/AIPlayer.js'
+import { BRNormalAIPlayer } from '../../aiplayer/BRNormalAIPlayer.js'
+import { NormalAIPlayer } from '../../aiplayer/NormalAIPlayer.js'
 
 /**
  * @brief Player connected to matchmaking system
@@ -37,7 +38,7 @@ export interface BattleRoyalePlayer
 	input: PlayerInputState
 	prevSlots: { slot1: boolean; slot2: boolean; slot3: boolean }
 	ping: number
-	ai?: BRNormalAIPlayer
+	ai?: BRNormalAIPlayer | NormalAIPlayer
 }
 
 /**

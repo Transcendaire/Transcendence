@@ -1,8 +1,8 @@
 import { WebSocket } from 'ws'
-import { WebSocketMessage } from '../../types.js'
+import { WebSocketMessage } from '../../../types.js'
 import { Player } from './types.js'
-import { GameRoomManager } from './gameRoom.js'
-import { sendMessage } from '../../utils/websocket.js'
+import { GameRoomManager } from '../game/gameRoomManager.js'
+import { sendMessage } from '../../../utils/websocket.js'
 
 /**
  * @brief Handles quick 1v1 matchmaking with separate normal/custom queues
@@ -56,15 +56,9 @@ export class QuickMatchService
 	 * @param playerName Player's name
 	 * @param isCustom Enable custom mode
 	 * @param difficulty AI difficulty (0=easy, 1=normal, 2=hard)
-	 * @param maxScore Score needed to win
+	 * @param lifeCount Number of lives for the game
 	 */
-	public createAIMatch(
-		socket: WebSocket,
-		playerName: string,
-		isCustom: boolean,
-		difficulty: number = 1,
-		lifeCount: number = 5
-	): void
+	public createAIMatch(socket: WebSocket, playerName: string, isCustom: boolean, difficulty: number = 1, lifeCount: number = 5): void
 	{
 		const player: Player = {
 			socket,
@@ -72,9 +66,7 @@ export class QuickMatchService
 			id: Math.random().toString(36).substr(2, 9)
 		}
 		const aiName = difficulty === 0 ? 'XavierNiestre' : difficulty === 1 ? 'XavierNiel' : 'XavierMiel';
-		const gameId = this.gameRoomManager.createAIGame(
-			player, isCustom, difficulty, 'normal', lifeCount, aiName
-		)
+		const gameId = this.gameRoomManager.createAIGame(player, isCustom, difficulty, 'normal', lifeCount, aiName)
 		console.log(`[QUICK_MATCH] AI game created: ${gameId} (custom: ${isCustom}, difficulty: ${difficulty}, lifeCount: ${lifeCount})`)
 		sendMessage(player.socket, { type: 'gameStart', playerRole: 'player1', player1Name: player.name, player2Name: aiName })
 	}
@@ -89,16 +81,9 @@ export class QuickMatchService
 		const normalIndex = this.waitingNormalPlayers.findIndex(p => p.socket === socket)
 		const customIndex = this.waitingCustomPlayers.findIndex(p => p.socket === socket)
 		if (normalIndex > -1)
-		{
-			this.waitingNormalPlayers.splice(normalIndex, 1)
-			return true
-		}
+			return this.waitingNormalPlayers.splice(normalIndex, 1), true
 		if (customIndex > -1)
-		{
-			this.waitingCustomPlayers.splice(customIndex, 1)
-			return true
-		}
+			return this.waitingCustomPlayers.splice(customIndex, 1), true
 		return false
 	}
-
 }

@@ -68,18 +68,16 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		const googlePicture = db.getUserGooglePicture(user.id);
 
 		console.log('[AVATAR] GET for user:', user.alias, '| avatar:', avatar, '| googlePicture:', googlePicture);
-    
-
-		if (!avatar)
-			return res.code(404).send({ success: false, message: 'Avatar introuvable'});
 
 		let avatarPath = "";
-		if (avatar === DEFAULT_AVATAR_FILENAME)
+		if (!avatar || avatar === DEFAULT_AVATAR_FILENAME)
 			avatarPath = `/avatars/defaults/${avatar}`;
 		else
 			avatarPath = `/avatars/users/${avatar}`;
 
-		return res.code(200).send({ success: true, avatar: avatarPath, googlePicture: googlePicture });
+		const googlePicturePath = googlePicture ? `/avatars/users/${googlePicture}` : null;
+
+		return res.code(200).send({ success: true, avatar: avatarPath, googlePicture: googlePicturePath });
 	})
 
 	server.delete('/api/user/avatar', async (req, res) => {
@@ -91,7 +89,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 
 		const oldAvatar = db.getUserAvatar(user.id);
 		
-		if (!oldAvatar || oldAvatar === DEFAULT_AVATAR_FILENAME)
+		if (!oldAvatar || oldAvatar === DEFAULT_AVATAR_FILENAME || oldAvatar.startsWith('google_'))
 			return res.code(400).send({ success: false, message: 'Vous avez déjà l\'avatar par défaut' });
 
 		const oldPath = path.join(paths.usersAvatars, oldAvatar);

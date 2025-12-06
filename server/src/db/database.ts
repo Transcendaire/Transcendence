@@ -164,6 +164,8 @@ export class DatabaseService {
 		const id = randomUUID();
 		const currDate = Date.now();
 
+		if (googlePicture)
+			googlePicture.replace('temp', id);
 		this.db.prepare(`
 			INSERT INTO users (id, login, password, alias, created_at, avatar, google_picture)
 			VALUES (?, ?, ?, ?, ?, ?, ?)`
@@ -489,19 +491,31 @@ export class DatabaseService {
 	public getFriends(userId: string): any[]
 	{
 		const friends = this.db.prepare(`
-			SELECT u.id, u.alias, u.online, f.since, u.avatar
+			SELECT u.id, u.alias, u.online, f.since, u.avatar, u.google_picture
 			FROM friends f
 			JOIN users u ON u.id = f.friend_id
 			WHERE f.user_id = ?
 			ORDER BY u.alias ASC
 			`).all(userId);
 
-		return friends.map((f: any) => ({
-			...f,
-			avatar: f.avatar 
-				? `/avatars/users/${f.avatar}` 
-				: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
-		}));
+    	return friends.map((f: any) => {
+    	    let avatarPath: string;
+    	    if (f.avatar && f.avatar !== DEFAULT_AVATAR_FILENAME) {
+    	        avatarPath = `/avatars/users/${f.avatar}`;
+    	    } else if (f.google_picture) {
+    	        avatarPath = `/avatars/users/${f.google_picture}`;
+    	    } else {
+    	        avatarPath = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`;
+    	    }
+		
+    	    return {
+    	        id: f.id,
+    	        alias: f.alias,
+    	        online: f.online,
+    	        since: f.since,
+    	        avatar: avatarPath
+    	    };
+    	});
 	}
 
 	public getFriendsWithAlias(alias: string): any[]

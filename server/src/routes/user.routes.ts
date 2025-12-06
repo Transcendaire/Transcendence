@@ -82,19 +82,22 @@ export async function registerUserRoutes(server: FastifyInstance)
 		});
 		
 		
-		let avatarPath = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`;
-		if (user.avatar && user.avatar !== DEFAULT_AVATAR_FILENAME)
+		let avatarPath: string;
+		if (user.avatar !== DEFAULT_AVATAR_FILENAME)
 			avatarPath = `/avatars/users/${user.avatar}`;
-		else 
+		else if (user.google_picture)
 		{
 			const googlePicture = db.getUserGooglePicture(user.id);
 			if (googlePicture)
-				avatarPath = googlePicture;
+				avatarPath = `/avatars/users/${googlePicture}`;
 		}
+		else
+			avatarPath = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`;
+
 		return res.code(200).send({
 			alias: user.alias,
 			createdAt: user.created_at,
-			avatar: avatarPath,
+			avatar: avatarPath!,
 			stats,
 			matchHistory,
 			tournamentResults: tournamentResultsWithMatches

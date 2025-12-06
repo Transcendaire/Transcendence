@@ -4,6 +4,7 @@ import { hashPassword, verifyPassword } from "../utils/passwords.js"
 import { checkForDuplicatesAtRegistering, validateRegistering } from "../validators/auth.validator.js";
 import { validateLoggingIn } from "../validators/auth.validator.js";
 import { validateGoogleToken } from "../validators/auth.validator.js";
+import { downloadGooglePicture, deleteGooglePictureFromFileSystem } from "../utils/googlePicture.js";
 
 export async function registerAuthRoutes(server: FastifyInstance) {
 	const db = getDatabase();
@@ -99,6 +100,7 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 		const data = await validateGoogleToken(credential);
 
 		let user = db.getUserByLogin(data.email)
+		let googlePictureFilename: string | undefined;
 
 		if (!user)
 		{
@@ -108,8 +110,11 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 
 			const randomPassword = Math.random().toString(36).slice(-16);
 			const hashedPassword = hashPassword(randomPassword);
+			
+			if (data.picture)
+				googlePictureFilename = await downloadGooglePicture(data.picture, 'temp') || undefined;
 
-			const userId = db.createUser(data.email, hashedPassword, uniqueAlias, data.picture);
+			const userId = db.createUser(data.email, hashedPassword, uniqueAlias, googlePictureFilename);
 			user = db.getUserById(userId);
 
 			console.log('[AUTH] ✅ Utilisateur créé:', user?.alias);
@@ -118,7 +123,17 @@ export async function registerAuthRoutes(server: FastifyInstance) {
 		{
 			console.log('[AUTH] 👋 Utilisateur existant:', user.alias);
 			if (data.picture)
-				db.updateUserGooglePicture(user.id, data.picture);
+			{
+				const oldPicture = db.getUserGooglePicture(user.id);
+				const newFilename = await downloadGooglePicture(data.picture, user.id);
+
+				if (newFilename)
+				{
+					if (oldPicture)
+						await deleteGooglePictureFromFileSystem(oldPicture);
+					db.updateUserGooglePicture(user.id, newFilename);
+				}
+			}
 		}
 
 		const sessionId = db.createOrUpdateSession(user!.id);

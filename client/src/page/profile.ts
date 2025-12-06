@@ -670,7 +670,7 @@ async function initProfilePage(): Promise<void>
     {
         initAvatarEdit();
         initAliasEdit();
-        const hasCustomAvatar = !!(profileData.avatar && !profileData.avatar.includes('/avatars/defaults/') && !profileData.avatar.includes('googleusercontent'));
+        const hasCustomAvatar = !!(profileData.avatar && !profileData.avatar.includes('/avatars/defaults/') && !profileData.avatar.includes('/google_'));
         updateDeleteButtonVisibility(hasCustomAvatar);
     }
     

@@ -26,6 +26,7 @@ function initApp(): void {
         const route = getCurrentRoute();
         console.log('[APP] Popstate détecté (back button), navigation vers:', route);
         render(route);
+        window.location.reload();
     });
 }
 

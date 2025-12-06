@@ -1,20 +1,16 @@
 import { registerPageInitializer, navigate } from "../router";
-import { getEl } from "../app";
-import { playerName } from "./home";
-import { inputParserClass } from "../components/inputParser";
-
-const inputParser = new inputParserClass();
-
+import { getProfileUserId } from "../router";
+import { getEl, show, hide } from "../app";
 
 function initprofilepage() 
 {
     getEl("backHome").addEventListener('click', () => navigate('home'));
 
-    loadUserProfile();
-    initAliasEdit();
+    const usernameDiv = getEl("username");
+    const userId = getProfileUserId();
 }
 
-async function loadUserProfile() {
+async function loadUserProfile(usernameDiv : HTMLElement) {
     const response = await fetch('/api/auth/me', {
         credentials: 'include'
     });
@@ -23,34 +19,56 @@ async function loadUserProfile() {
 
     const user = await response.json();
 
-    getEl("username").innerText = user.alias;
+    console.log(`username = ${user.alias}`);
+
+    usernameDiv.innerText = user.alias;
 }
 
-function initAliasEdit()
-{
+function initAliasEdit(usernameDiv : HTMLElement)
+{   
+    const editAliasBtn = getEl("editAliasBtn") as HTMLButtonElement;
+    const newAliasInput = getEl("aliasInput") as HTMLInputElement;
 
+    const showEditInput = () =>{show(newAliasInput); hide(usernameDiv)}
+    const hideEditInput = () =>{hide(newAliasInput); show(usernameDiv)} 
+
+    editAliasBtn.addEventListener('click', showEditInput);
+    newAliasInput.addEventListener('click', (e) => {
+        if (e.target !== newAliasInput)
+            hideEditInput;
+    })
+
+    newAliasInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === "Escape"){
+            hide(newAliasInput);
+            show(usernameDiv);
+        }
+        if (e.key === "Enter")
+        {
+            try{updateAlias(newAliasInput.value);} 
+            catch {alert()}
+        }
+    })
 }
-
-registerPageInitializer('profile', initprofilepage)
-
 
 async function updateAlias(newAlias: string)
 {
-	const response = await fetch('/api/user/alias', {
-		method: 'PUT',
-		credentials: 'same-origin',
-		headers: { 'Content-Type': 'application/json' },
-		body: JSON.stringify({ newAlias })
-	});
+    const response = await fetch('/api/user/alias', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alias: newAlias })
+    });
 
-	const data = await response.json();
+    const data = await response.json();
 
-	if (!response.ok)
-		throw new Error(data.message || 'Erreur lors du changement de l\'alias');
+    if (!response.ok)
+        throw new Error(data.message || 'Erreur lors du changement de l\'alias');
 
-	return { success: true, message: data.message, alias: newAlias };
+    window.location.reload();
+
+    return { success: true, message: data.message, alias: newAlias };
 }
-//*current password est le mot de passe récupéré via le formulaire sur le profil, pas celui de la base de données
 async function updatePassword(currentPassword: string, newPassword: string)
 {
 	const response = await fetch('/api/user/password', {
@@ -68,4 +86,5 @@ async function updatePassword(currentPassword: string, newPassword: string)
 	return ({ success: true });
 }
 
+registerPageInitializer('profile', initprofilepage)
 

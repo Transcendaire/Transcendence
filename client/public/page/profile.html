@@ -20,7 +20,11 @@
 
       <div class="flex-1 text-center sm:text-left">
         <div class="flex flex-row group relative">
-          <h1 class="text-3xl font-bold font-quency text-sonpi16-black mb-2" id="username" contenteditable="false"></h1>
+          <h1 class="text-3xl font-bold font-quency text-sonpi16-black mb-2 sm:text-center" id="username"></h1>
+          <input id="aliasInput" type="text" maxlength="20" class="hidden text-3xl font-bold font-quency text-sonpi16-black 
+               border-2 border-sonpi16-orange rounded-lg px-3 py-1
+               focus:outline-none focus:ring-2 focus:ring-sonpi16-orange
+               transition-colors" placeholder="Votre alias">
           <button id="editAliasBtn" class="opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-2
               absolute right-0 -top-2">
             <svg width="25px" height="25px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -53,14 +53,8 @@ export async function render(route: Route)
     }
 }
 
-// export function navigate(route: Route) {
-//     console.log('Navigation vers:', route);
-//     window.history.pushState({ route }, '', `/${route}`);
-//     render(route);
-// }
-//!See with Pierre
-export async function navigate(route: Route) {
-
+export async function navigate(route: Route, params?:Record<string, string>)
+{
 	const protectedRoutes = ['lobby', 'game', 'profile', 'friends'];
 	if (protectedRoutes.includes(route)) {
 		const isAuthenticated = await checkAuthentication();
@@ -70,9 +64,44 @@ export async function navigate(route: Route) {
 			alert('Veuillez vous reconnecter');
 		}
 	}
-    console.log('Navigation vers:', route);
-    window.history.pushState({ route }, '', `/${route}`);
+    let url = `/${route}`;
+    if (params) {
+        const queryString = Object.keys(params)
+            .map(key => `${key}=${encodeURIComponent(params[key])}`)
+            .join('&');
+        url += `?${queryString}`;
+    }
+    window.history.pushState({ route, params }, '', url);
     render(route);
+}
+
+export function getRouteParams(): Record<string, string> {
+    const search = window.location.search.slice(1);
+    
+    if (!search) return {};
+    
+    const params: Record<string, string> = {};
+    search.split('&').forEach(param => {
+        const [key, value] = param.split('=');
+        if (key && value) {
+            params[key] = decodeURIComponent(value);
+        }
+    });
+    
+    return params;
+}
+
+export function navigateToProfile(userId?: string) {
+    if (userId) {
+        navigate('profile', { userId });
+    } else {
+        navigate('profile');
+    }
+}
+
+export function getProfileUserId(): string | null {
+    const params = getRouteParams();
+    return params.userId || null;
 }
 
 export function getCurrentRoute(): Route 

@@ -91,12 +91,30 @@ async function loadAvatar(): Promise<void>
         if (!response.ok)
         {
             avatarImg.src = '/avatars/defaults/Transcendaire.png';
+			avatarImg.classList.remove('hidden');
+            userInitial.classList.add('hidden');
             updateDeleteButtonVisibility(false);
             return;
         }
         const data = await response.json();
+		
+		if (data.avatar && data.avatar !== '/avatars/defaults/Transcendaire.png')
+		{
+        	avatarImg.src = data.avatar;
+ 			console.log('[PROFILE] Using custom avatar:', avatarImg.src);
+		}
+		else if (data.googlePicture)
+		{
+			avatarImg.src = data.googlePicture;
+ 			console.log('[PROFILE] Using google avatar:', avatarImg.src);
 
-        avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png';
+		}
+		else
+		{
+			avatarImg.src = '/avatars/defaults/Transcendaire.png';
+			 console.log('[PROFILE] Using default avatar:', avatarImg.src);
+		}
+
         avatarImg.classList.remove('hidden');
         userInitial.classList.add('hidden');
 
@@ -107,6 +125,8 @@ async function loadAvatar(): Promise<void>
     {
         console.error('[PROFILE] Error loading avatar:', error);
         avatarImg.src = '/avatars/defaults/Transcendaire.png';
+		avatarImg.classList.remove('hidden');
+        userInitial.classList.add('hidden');
         updateDeleteButtonVisibility(false);
     }
 }
@@ -538,9 +558,16 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
     tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString();
     tournamentsWonEl.innerText = data.stats.tournamentsWon.toString();
 
+    avatarImg.onerror = () => {
+        console.warn('[PROFILE] Failed to load avatar (likely rate limited), using default');
+        avatarImg.src = '/avatars/defaults/Transcendaire.png';
+        avatarImg.onerror = null;
+    };
+
     avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png';
     avatarImg.classList.remove('hidden');
     userInitialEl.classList.add('hidden');
+
 
     if (isOwnProfile)
     {
@@ -608,7 +635,14 @@ async function initProfilePage(): Promise<void>
     if (currentUserAlias)
         await connectWebSocketForStatus(currentUserAlias);
 
-    getEl("backHome").addEventListener('click', () => navigate('home'));
+	const backBtn = getEl("backHome");
+	backBtn.addEventListener('click', () => {
+		if (isOwnProfile)
+			navigate('home');
+		else
+			navigate('profile');
+	});
+
     setupSearchPlayer();
 
     const urlAlias = getAliasFromUrl();
@@ -631,11 +665,13 @@ async function initProfilePage(): Promise<void>
     }
 
     updateProfileUI(profileData, isOwnProfile);
-    
+
     if (isOwnProfile)
     {
         initAvatarEdit();
         initAliasEdit();
+        const hasCustomAvatar = !!(profileData.avatar && !profileData.avatar.includes('/avatars/defaults/') && !profileData.avatar.includes('/google_'));
+        updateDeleteButtonVisibility(hasCustomAvatar);
     }
     
     if (currentUserAlias)

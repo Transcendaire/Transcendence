@@ -105,7 +105,7 @@ export async function validateGoogleToken(credential: string | undefined)
     }
 
     const payload = await googleResponse.json();
-
+	console.log('[AUTH] Google payload picture:', payload.picture);
     console.log('[AUTH] ✅ Token vérifié');
 
     if (payload.aud !== EXPECTED_CLIENT_ID)

@@ -100,9 +100,14 @@ export class FriendStatusService
 			if (name === playerName || name === 'Anonymous' || sock.readyState !== sock.OPEN)
 				continue
 			const user = db.getUserByAlias(name)
-			const avatar = user?.avatar 
-				? `/avatars/users/${user.avatar}` 
-				: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
+			
+			let avatar: string;
+			if (user?.avatar && user.avatar !== DEFAULT_AVATAR_FILENAME)
+				avatar = `/avatars/users/${user.avatar}`
+			else if (user?.google_picture)
+				avatar = `/avatars/users/${user.google_picture}`
+			else
+				avatar = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`;
 			players.push({
 				alias: name,
 				status: this.getPlayerStatus(name),

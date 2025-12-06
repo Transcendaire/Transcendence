@@ -65,17 +65,19 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
 
 		const avatar = db.getUserAvatar(user.id);
+		const googlePicture = db.getUserGooglePicture(user.id);
 
-		if (!avatar)
-			return res.code(404).send({ success: false, message: 'Avatar introuvable'});
+		console.log('[AVATAR] GET for user:', user.alias, '| avatar:', avatar, '| googlePicture:', googlePicture);
 
 		let avatarPath = "";
-		if (avatar === DEFAULT_AVATAR_FILENAME)
+		if (!avatar || avatar === DEFAULT_AVATAR_FILENAME)
 			avatarPath = `/avatars/defaults/${avatar}`;
 		else
 			avatarPath = `/avatars/users/${avatar}`;
 
-		return res.code(200).send({ success: true, avatar: avatarPath });
+		const googlePicturePath = googlePicture ? `/avatars/users/${googlePicture}` : null;
+
+		return res.code(200).send({ success: true, avatar: avatarPath, googlePicture: googlePicturePath });
 	})
 
 	server.delete('/api/user/avatar', async (req, res) => {
@@ -87,7 +89,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 
 		const oldAvatar = db.getUserAvatar(user.id);
 		
-		if (!oldAvatar || oldAvatar === DEFAULT_AVATAR_FILENAME)
+		if (!oldAvatar || oldAvatar === DEFAULT_AVATAR_FILENAME || oldAvatar.startsWith('google_'))
 			return res.code(400).send({ success: false, message: 'Vous avez déjà l\'avatar par défaut' });
 
 		const oldPath = path.join(paths.usersAvatars, oldAvatar);
@@ -105,6 +107,20 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		db.updateUserAvatar(user.id, DEFAULT_AVATAR_FILENAME);
 
 		return res.code(200).send({ success: true, message: 'Avatar réinitialisé', avatar: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`});
+	})
+
+	//! to remove in production
+	server.get('/api/user/google-picture', async (req, res) => {
+		const user = (req as any).user;
+
+		if (!user)
+			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
+
+		const googlePicture = db.getUserGooglePicture(user.id);
+		if (!googlePicture)
+			return res.code(404).send({ succes: false, message: 'Aucune photo Google trouvée' });
+
+		return res.code(200).send({ success: true, googlePicture: googlePicture });
 	})
 }
 

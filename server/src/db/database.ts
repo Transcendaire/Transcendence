@@ -46,6 +46,7 @@ export class DatabaseService {
 			alias TEXT UNIQUE NOT NULL, -- pseudo but called it alias for concordance
 			created_at INTEGER NOT NULL,
 			avatar TEXT DEFAULT 'Transcendaire.png',
+			google_picture TEXT,
 			tournament_alias TEXT,
 			games_played INTEGER DEFAULT 0,
 			games_won INTEGER DEFAULT 0,
@@ -158,15 +159,17 @@ export class DatabaseService {
 	 * @returns Generated UUID for the created user
 	 * @note No parsing is done here because the server does it before calling this method.
 	 */
-	public createUser(login: string, hashedPassword: string, alias: string): string 
+	public createUser(login: string, hashedPassword: string, alias: string, googlePicture?: string): string 
 	{
 		const id = randomUUID();
 		const currDate = Date.now();
 
+		if (googlePicture)
+			googlePicture.replace('temp', id);
 		this.db.prepare(`
-			INSERT INTO users (id, login, password, alias, created_at, avatar)
-			VALUES (?, ?, ?, ?, ?, ?)`
-		).run(id, login.trim(), hashedPassword, alias.trim(), currDate, DEFAULT_AVATAR_FILENAME);
+			INSERT INTO users (id, login, password, alias, created_at, avatar, google_picture)
+			VALUES (?, ?, ?, ?, ?, ?, ?)`
+		).run(id, login.trim(), hashedPassword, alias.trim(), currDate, DEFAULT_AVATAR_FILENAME, googlePicture || null);
 		this.createPlayer(alias, id, currDate);
 
 		return id;
@@ -227,6 +230,13 @@ export class DatabaseService {
 		return result?.avatar;
 	}
 
+	public getUserGooglePicture(userId: string): string | null
+	{
+		const result = this.db.prepare('SELECT google_picture FROM users WHERE id = ?').get(userId) as { google_picture: string | null } | undefined;
+
+		return result?.google_picture || null;
+	}
+
 	/**
 	 * @brief Sets user online status
 	 * @param userId User's UUID
@@ -234,7 +244,7 @@ export class DatabaseService {
 	 */
 	public setUserOnlineStatus(userId: string, online: boolean) : void
 	{
-		this.db.prepare('UPDATE users SET online = ? WHERE id = ?').run(online ? 1 : 0, userId);//! check if it works with a boolean
+		this.db.prepare('UPDATE users SET online = ? WHERE id = ?').run(online ? 1 : 0, userId);
 	}
 
 
@@ -297,6 +307,11 @@ export class DatabaseService {
 	public updateUserAvatar(userId: string, avatarFilename: string): void
 	{
 		this.db.prepare('UPDATE users SET avatar = ? WHERE id = ?').run(avatarFilename, userId);
+	}
+
+	public updateUserGooglePicture(userId: string, pictureUrl: string): void
+	{
+		this.db.prepare('UPDATE users SET google_picture = ? WHERE id = ?').run(pictureUrl, userId);
 	}
 
 
@@ -476,19 +491,31 @@ export class DatabaseService {
 	public getFriends(userId: string): any[]
 	{
 		const friends = this.db.prepare(`
-			SELECT u.id, u.alias, u.online, f.since, u.avatar
+			SELECT u.id, u.alias, u.online, f.since, u.avatar, u.google_picture
 			FROM friends f
 			JOIN users u ON u.id = f.friend_id
 			WHERE f.user_id = ?
 			ORDER BY u.alias ASC
 			`).all(userId);
 
-		return friends.map((f: any) => ({
-			...f,
-			avatar: f.avatar 
-				? `/avatars/users/${f.avatar}` 
-				: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
-		}));
+    	return friends.map((f: any) => {
+    	    let avatarPath: string;
+    	    if (f.avatar && f.avatar !== DEFAULT_AVATAR_FILENAME) {
+    	        avatarPath = `/avatars/users/${f.avatar}`;
+    	    } else if (f.google_picture) {
+    	        avatarPath = `/avatars/users/${f.google_picture}`;
+    	    } else {
+    	        avatarPath = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`;
+    	    }
+		
+    	    return {
+    	        id: f.id,
+    	        alias: f.alias,
+    	        online: f.online,
+    	        since: f.since,
+    	        avatar: avatarPath
+    	    };
+    	});
 	}
 
 	public getFriendsWithAlias(alias: string): any[]
@@ -926,7 +953,7 @@ export class DatabaseService {
 			throw new DatabaseError(`Impossible d'ajouter ${alias}: le tournoi ${tournamentName} est déjà plein`);
 
 		let player = this.getPlayer(alias);
-		if (!player) //!
+		if (!player)//! check with C if okay to remove this check (users should be aready authenticated. Maybe issues with the bots)
 		{
 			const id = this.createPlayer(alias, randomUUID(), Date.now());
 			player = this.getPlayerBy('id', id);

@@ -1,14 +1,8 @@
-// import { registerPageInitializer, navigate } from "../router.js";
-// import { inputParserClass } from "../components/inputParser.js";
-// import { wsClient } from "../components/WebSocketClient.js";
-// import { getEl , show, hide, setupGlobalModalEvents } from "../app.js";
-import { checkAuthentication, getUserWithCookies, broadcastAuthEvent, initAuth } from "./auth.js";
-
 import { registerPageInitializer, navigate } from "../router";
-import { inputParserClass } from "../components/inputParser";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
+import { initAuth, broadcastAuthEvent } from "../components/auth"
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
@@ -46,11 +40,11 @@ async function initHomePage() {
 
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
     getEl("profileButton").addEventListener('click', () => navigate("profile"));
-	getEl("friendsButton").addEventListener('click', () => navigate("friends"));
     getEl("logoutButton").addEventListener('click', logout)
 
-    playButton.addEventListener('click', async () => {
-        if (await checkAuthentication())
+
+    playButton.addEventListener('click', () => {
+        if (isLoggedIn)
             show(gameModeModal)
         else
             show(loginModal)
@@ -214,12 +208,6 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 
     const join1v1 = async () => {
         try {
-			if (await checkAuthentication() === false)
-			{
-				alert('Veuillez vous reconnecter');
-				navigate('home');
-				return ;
-			}
             await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinGame(playerName))
             wsClient.joinGame(playerName)
@@ -230,12 +218,6 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
 
     const joinCustom = async () => {
         try {
-			if (await checkAuthentication() === false)
-			{
-				alert('Veuillez vous reconnecter');
-				navigate('home');
-				return ;
-			}
             await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinCustomGame(playerName))
             wsClient.joinCustomGame(playerName)
@@ -264,12 +246,6 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
 
     getEl("launchAIGameButton").addEventListener('click', async () => {
         try {
-			if (await checkAuthentication() === false)
-			{
-				navigate('home');
-				alert('Veuillez vous reconnecter');
-				return ;
-			}
             const selectedDifficulty = parseInt(difficulty());
             const selectedPowerUps = powerUps() === 'true';
             const selectedMaxScore = parseInt(maxScore());
@@ -361,23 +337,10 @@ function createToggleGroup(buttonIds: string[], initialIndex: number = 0): () =>
     return () => buttons[selectedIndex]?.dataset?.value ?? String(selectedIndex);
 }
 
-async function checkAuthenticationAndUpdateUI()
-{
-	console.log('[CHECK AUTHENTICATION AND UPDATE UI]')
-	if (await checkAuthentication())
-		return true;
-	playerName = "";
-	isLoggedIn = false;
-	// navigate('home');
-	updateUI();
-	return false;
-}
-
 function updateUI(): void {
     const loginButton = getEl("loginButton");
     const logoutButton = getEl("logoutButton");
     const profileButton = getEl("profileButton");
-	const friendsButton = getEl('friendsButton');
     const signinButton = getEl("signinButton");
 
     if (isLoggedIn) {
@@ -385,13 +348,11 @@ function updateUI(): void {
         hide(signinButton);
         show(logoutButton);
         show(profileButton);
-		show(friendsButton);
         console.log('[HOME] UI: Connecté');
     } else {
         show(loginButton);
         show(signinButton);
         hide(profileButton);
-		hide(friendsButton);
         hide(logoutButton);
         console.log('[HOME] UI: Non connecté');
     }
@@ -458,4 +419,19 @@ function setupWebsocket(waitingModal: HTMLElement) {
     };
 }
 
+async function getUserWithCookies(): Promise<string | undefined> {
+    try {
+
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+
+        if (res.ok)
+            return data.alias;
+        else
+            return undefined;
+    } catch (error) {
+        console.log('getUserWithCookies(): erreur : ', error);
+    }
+    return undefined;
+}
 registerPageInitializer('home', initHomePage);

@@ -1,8 +1,79 @@
-import { registerPageInitializer, navigate } from "../router";
 import { getEl, show, hide } from "../app";
-import { playerName } from "./home";
-import { getUserWithCookies } from "./auth";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
+import { registerPageInitializer, navigate } from "../router";
+
+async function initProfilePage(): Promise<void> {
+    console.log('[PROFILE] Initializing profile page');
+    const usernameDiv = getEl("username");
+
+    getEl("backHome").addEventListener('click', () => navigate('home'));
+    setupSearchPlayer();
+
+    const urlAlias = getAliasFromUrl();
+    const targetAlias = urlAlias;
+    console.log(`url ta mere : ${urlAlias}`)
+    let ownerAlias = await loadUserProfile();
+    let isOwnProfile = false;
+
+    if (!targetAlias) {
+        usernameDiv.innerText = ownerAlias;
+        initAvatarEdit();
+        initAliasEdit(usernameDiv);
+        isOwnProfile = true;
+    }
+
+    const profileData = await fetchProfileData(targetAlias || ownerAlias);
+    if (!profileData) {
+        console.error('[PROFILE] Failed to load profile for:', targetAlias);
+        const usernameEl = getEl('username');
+        usernameEl.innerText = 'Utilisateur non trouvé';
+        return;
+    }
+    updateProfileUI(profileData, isOwnProfile);
+
+
+    if (!isOwnProfile && targetAlias)
+        await setupFriendButton(targetAlias, ownerAlias);
+}
+
+async function loadUserProfile(): Promise<string> {
+    const response = await fetch('/api/auth/me', {
+        credentials: 'include'
+    });
+
+    if (!response.ok) return "";
+
+    const user = await response.json();
+
+    console.log(`username = ${user.alias}`);
+
+    return user.alias;
+}
+
+function initAliasEdit(usernameDiv: HTMLElement) {
+    const editAliasBtn = getEl("editAliasBtn") as HTMLButtonElement;
+    const newAliasInput = getEl("aliasInput") as HTMLInputElement;
+
+    const showEditInput = () => { show(newAliasInput); hide(usernameDiv) }
+    const hideEditInput = () => { hide(newAliasInput); show(usernameDiv) }
+
+    editAliasBtn.addEventListener('click', showEditInput);
+    newAliasInput.addEventListener('click', (e) => {
+        if (e.target !== newAliasInput)
+            hideEditInput;
+    })
+
+    newAliasInput.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === "Escape") {
+            hide(newAliasInput);
+            show(usernameDiv);
+        }
+        if (e.key === "Enter") {
+            try { updateAlias(newAliasInput.value); }
+            catch { alert() }
+        }
+    })
+}
 
 interface MatchHistoryEntry {
     id: string;
@@ -68,11 +139,9 @@ type FriendStatus = 'none' | 'friends' | 'pending-sent' | 'pending-received'
 
 // ============ Avatar Functions ============
 
-function updateDeleteButtonVisibility(hasCustomAvatar: boolean): void
-{
+function updateDeleteButtonVisibility(hasCustomAvatar: boolean): void {
     const deleteBtn = document.getElementById('deleteAvatarBtn');
-    if (deleteBtn)
-    {
+    if (deleteBtn) {
         if (hasCustomAvatar)
             deleteBtn.classList.remove('hidden');
         else
@@ -80,16 +149,12 @@ function updateDeleteButtonVisibility(hasCustomAvatar: boolean): void
     }
 }
 
-async function loadAvatar(): Promise<void>
-{
+async function loadAvatar(): Promise<void> {
     const avatarImg = getEl('userAvatar') as HTMLImageElement;
-    const userInitial = getEl('userInitial');
 
-    try
-    {
+    try {
         const response = await fetch('/api/user/avatar', { credentials: 'include' });
-        if (!response.ok)
-        {
+        if (!response.ok) {
             avatarImg.src = '/avatars/defaults/Transcendaire.png';
 			avatarImg.classList.remove('hidden');
             userInitial.classList.add('hidden');
@@ -116,13 +181,11 @@ async function loadAvatar(): Promise<void>
 		}
 
         avatarImg.classList.remove('hidden');
-        userInitial.classList.add('hidden');
 
         const hasCustomAvatar = !data.avatar.includes('/avatars/defaults/');
         updateDeleteButtonVisibility(hasCustomAvatar);
     }
-    catch (error)
-    {
+    catch (error) {
         console.error('[PROFILE] Error loading avatar:', error);
         avatarImg.src = '/avatars/defaults/Transcendaire.png';
 		avatarImg.classList.remove('hidden');
@@ -131,8 +194,7 @@ async function loadAvatar(): Promise<void>
     }
 }
 
-async function uploadAvatar(file: File): Promise<void>
-{
+async function uploadAvatar(file: File): Promise<void> {
     try {
         const formData = new FormData();
         formData.append('file', file);
@@ -155,8 +217,7 @@ async function uploadAvatar(file: File): Promise<void>
     }
 }
 
-async function deleteAvatar(): Promise<void>
-{
+async function deleteAvatar(): Promise<void> {
     try {
         const response = await fetch('/api/user/avatar', {
             method: 'DELETE',
@@ -175,8 +236,7 @@ async function deleteAvatar(): Promise<void>
     }
 }
 
-function initAvatarEdit(): void
-{
+function initAvatarEdit(): void {
     const editBtn = getEl('editAvatarBtn');
     const deleteBtn = getEl('deleteAvatarBtn');
     const fileInput = getEl('avatarFileInput') as HTMLInputElement;
@@ -215,13 +275,7 @@ function initAvatarEdit(): void
     });
 }
 
-function initAliasEdit(): void
-{
-    // TODO: Implement alias edit functionality
-}
-
-function showToast(message: string, type: 'success' | 'error'): void
-{
+function showToast(message: string, type: 'success' | 'error'): void {
     const existingToast = document.getElementById('toast');
     if (existingToast) existingToast.remove();
 
@@ -242,8 +296,7 @@ function showToast(message: string, type: 'success' | 'error'): void
 
 // ============ Friend Functions ============
 
-async function getFriendStatus(alias: string): Promise<FriendStatus>
-{
+async function getFriendStatus(alias: string): Promise<FriendStatus> {
     try {
         const res = await fetch(`/api/friends/status/${encodeURIComponent(alias)}`);
         if (!res.ok) return 'none';
@@ -252,8 +305,7 @@ async function getFriendStatus(alias: string): Promise<FriendStatus>
     } catch { return 'none'; }
 }
 
-async function sendFriendRequest(alias: string): Promise<boolean>
-{
+async function sendFriendRequest(alias: string): Promise<boolean> {
     try {
         const res = await fetch('/api/friends/request', {
             method: 'POST',
@@ -264,16 +316,14 @@ async function sendFriendRequest(alias: string): Promise<boolean>
     } catch { return false; }
 }
 
-async function cancelFriendRequest(alias: string): Promise<boolean>
-{
+async function cancelFriendRequest(alias: string): Promise<boolean> {
     try {
         const res = await fetch(`/api/friends/request/${encodeURIComponent(alias)}`, { method: 'DELETE' });
         return res.ok;
     } catch { return false; }
 }
 
-async function acceptFriendRequest(alias: string): Promise<boolean>
-{
+async function acceptFriendRequest(alias: string): Promise<boolean> {
     try {
         const res = await fetch('/api/friends/accept', {
             method: 'POST',
@@ -284,16 +334,14 @@ async function acceptFriendRequest(alias: string): Promise<boolean>
     } catch { return false; }
 }
 
-async function removeFriend(alias: string): Promise<boolean>
-{
+async function removeFriend(alias: string): Promise<boolean> {
     try {
         const res = await fetch(`/api/friends/${encodeURIComponent(alias)}`, { method: 'DELETE' });
         return res.ok;
     } catch { return false; }
 }
 
-function updateFriendButton(btn: HTMLElement, status: FriendStatus): void
-{
+function updateFriendButton(btn: HTMLElement, status: FriendStatus): void {
     btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
     switch (status) {
         case 'none':
@@ -315,8 +363,7 @@ function updateFriendButton(btn: HTMLElement, status: FriendStatus): void
     }
 }
 
-async function setupFriendButton(targetAlias: string, currentAlias: string): Promise<void>
-{
+async function setupFriendButton(targetAlias: string, currentAlias: string): Promise<void> {
     const btn = getEl('friend-action-btn');
     if (targetAlias === currentAlias) {
         hide(btn);
@@ -357,14 +404,12 @@ async function setupFriendButton(targetAlias: string, currentAlias: string): Pro
 
 // ============ Profile Data Functions ============
 
-function getAliasFromUrl(): string | null
-{
+function getAliasFromUrl(): string | null {
     const params = new URLSearchParams(window.location.search);
     return params.get('alias');
 }
 
-async function fetchProfileData(alias: string): Promise<ProfileData | null>
-{
+async function fetchProfileData(alias: string): Promise<ProfileData | null> {
     try {
         const response = await fetch(`/api/user/profile/${encodeURIComponent(alias)}`);
         if (!response.ok) {
@@ -378,8 +423,7 @@ async function fetchProfileData(alias: string): Promise<ProfileData | null>
     }
 }
 
-function formatDate(timestamp: number): string
-{
+function formatDate(timestamp: number): string {
     const date = new Date(timestamp);
     return date.toLocaleDateString('fr-FR', {
         day: 'numeric',
@@ -388,26 +432,24 @@ function formatDate(timestamp: number): string
     });
 }
 
-function formatRelativeTime(timestamp: number): string
-{
+function formatRelativeTime(timestamp: number): string {
     const now = Date.now();
     const diffMs = now - timestamp;
     const diffMins = Math.floor(diffMs / 60000);
 
     if (diffMins < 1) return 'À l\'instant';
     if (diffMins < 60) return `Il y a ${diffMins}m`;
-    
+
     const diffHours = Math.floor(diffMins / 60);
     if (diffHours < 24) return `Il y a ${diffHours}h`;
-    
+
     const diffDays = Math.floor(diffHours / 24);
     if (diffDays < 7) return `Il y a ${diffDays}j`;
-    
+
     return formatDate(timestamp);
 }
 
-function getPositionBadge(position: number): string
-{
+function getPositionBadge(position: number): string {
     switch (position) {
         case 1: return '<span class="text-yellow-500 font-bold">🥇 1er</span>';
         case 2: return '<span class="text-gray-400 font-bold">🥈 2ème</span>';
@@ -416,10 +458,9 @@ function getPositionBadge(position: number): string
     }
 }
 
-function renderMatchHistory(matches: MatchHistoryEntry[]): void
-{
+function renderMatchHistory(matches: MatchHistoryEntry[]): void {
     const container = getEl('match-history-list');
-    
+
     if (matches.length === 0) {
         container.innerHTML = `<p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>`;
         return;
@@ -432,7 +473,7 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void
         const resultText = isWin ? 'Victoire' : 'Défaite';
         const resultColor = isWin ? 'text-green-600' : 'text-red-600';
         const totalPlayers = match.player_count + (match.bot_count || 0);
-        
+
         let gameTypeLabel = '';
         if (isBR)
             gameTypeLabel = `<span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Battle Royale (${totalPlayers})</span>`;
@@ -477,10 +518,9 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void
     }).join('');
 }
 
-function renderTournamentResults(results: TournamentResultEntry[]): void
-{
+function renderTournamentResults(results: TournamentResultEntry[]): void {
     const container = getEl('tournament-results-list');
-    
+
     if (results.length === 0) {
         container.innerHTML = `<p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>`;
         return;
@@ -534,8 +574,7 @@ function renderTournamentResults(results: TournamentResultEntry[]): void
     }).join('');
 }
 
-function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
-{
+function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void {
     const usernameEl = getEl('username');
     const userInitialEl = getEl('userInitial');
     const joinDateEl = getEl('join-date');
@@ -568,9 +607,7 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
     avatarImg.classList.remove('hidden');
     userInitialEl.classList.add('hidden');
 
-
-    if (isOwnProfile)
-    {
+    if (isOwnProfile) {
         const avatarOverlay = getEl('avatar-edit-overlay');
         const editAliasBtn = getEl('editAliasBtn');
         avatarOverlay.classList.remove('hidden');
@@ -583,8 +620,7 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void
     renderTournamentResults(data.tournamentResults);
 }
 
-async function connectWebSocketForStatus(alias: string): Promise<void>
-{
+async function connectWebSocketForStatus(alias: string): Promise<void> {
     if (!alias) return;
     try {
         await wsClient.connect(getWebSocketUrl());
@@ -595,11 +631,11 @@ async function connectWebSocketForStatus(alias: string): Promise<void>
     }
 }
 
-async function searchPlayer(): Promise<void>
-{
+async function searchPlayer(): Promise<void> {
     const input = getEl('search-player-input') as HTMLInputElement;
     const errorEl = getEl('search-player-error');
     const searchAlias = input.value.trim();
+    console.log( `Ta gueule sale merde ${searchAlias}`)
 
     hide(errorEl);
     if (!searchAlias) {
@@ -613,11 +649,10 @@ async function searchPlayer(): Promise<void>
         show(errorEl);
         return;
     }
-    navigate(`profile?alias=${encodeURIComponent(searchAlias)}`);
+    navigate('profile', searchAlias);
 }
 
-function setupSearchPlayer(): void
-{
+function setupSearchPlayer(): void {
     const input = getEl('search-player-input') as HTMLInputElement;
     const btn = getEl('search-player-btn');
 
@@ -627,61 +662,7 @@ function setupSearchPlayer(): void
     });
 }
 
-async function initProfilePage(): Promise<void>
-{
-    console.log('[PROFILE] Initializing profile page');
-
-    const currentUserAlias = playerName || await getUserWithCookies() || "";
-    if (currentUserAlias)
-        await connectWebSocketForStatus(currentUserAlias);
-
-	const backBtn = getEl("backHome");
-	backBtn.addEventListener('click', () => {
-		if (isOwnProfile)
-			navigate('home');
-		else
-			navigate('profile');
-	});
-
-    setupSearchPlayer();
-
-    const urlAlias = getAliasFromUrl();
-    const targetAlias = urlAlias || currentUserAlias;
-
-    if (!targetAlias) {
-        console.error('[PROFILE] No alias found, redirecting to home');
-        navigate('home');
-        return;
-    }
-
-    const isOwnProfile = !urlAlias || urlAlias === currentUserAlias;
-    const profileData = await fetchProfileData(targetAlias);
-
-    if (!profileData) {
-        console.error('[PROFILE] Failed to load profile for:', targetAlias);
-        const usernameEl = getEl('username');
-        usernameEl.innerText = 'Utilisateur non trouvé';
-        return;
-    }
-
-    updateProfileUI(profileData, isOwnProfile);
-
-    if (isOwnProfile)
-    {
-        initAvatarEdit();
-        initAliasEdit();
-        const hasCustomAvatar = !!(profileData.avatar && !profileData.avatar.includes('/avatars/defaults/') && !profileData.avatar.includes('/google_'));
-        updateDeleteButtonVisibility(hasCustomAvatar);
-    }
-    
-    if (currentUserAlias)
-        await setupFriendButton(targetAlias, currentUserAlias);
-}
-
-registerPageInitializer('profile', initProfilePage);
-
-async function updateAlias(newAlias: string)
-{
+async function updateAlias(newAlias: string) {
     const response = await fetch('/api/user/alias', {
         method: 'PUT',
         credentials: 'same-origin',
@@ -694,11 +675,11 @@ async function updateAlias(newAlias: string)
     if (!response.ok)
         throw new Error(data.message || 'Erreur lors du changement de l\'alias');
 
+    window.location.reload();
+
     return { success: true, message: data.message, alias: newAlias };
 }
-
-async function updatePassword(currentPassword: string, newPassword: string)
-{
+async function updatePassword(currentPassword: string, newPassword: string) {
     const response = await fetch('/api/user/password', {
         method: 'PUT',
         credentials: 'same-origin',
@@ -713,3 +694,6 @@ async function updatePassword(currentPassword: string, newPassword: string)
 
     return { success: true };
 }
+
+registerPageInitializer('profile', initProfilePage)
+

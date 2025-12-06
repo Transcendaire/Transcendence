@@ -2,7 +2,7 @@ import { navigate, registerPageInitializer } from "../router"
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { playerName } from "./home";
-import { getUserWithCookies } from "./auth";
+import { getUserWithCookies } from "../components/auth";
 import type { Lobby, LobbyPlayer, OnlinePlayer, PlayerOnlineStatus } from "@shared/types";
 
 let currentLobbies: Lobby[] = [];

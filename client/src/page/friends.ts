@@ -2,7 +2,7 @@ import { navigate, registerPageInitializer, render } from "../router";
 import { getEl, show, hide } from "../app";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { playerName } from "./home";
-import { getUserWithCookies } from "./auth";
+import { getUserWithCookies } from "../components/auth";
 import type { FriendStatus, PlayerOnlineStatus } from "@shared/types";
 
 interface Friend {

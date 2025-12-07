@@ -40,6 +40,7 @@ async function initHomePage() {
 
     getEl("cancelGameModeButton").addEventListener('click', () => hide(gameModeModal));
     getEl("profileButton").addEventListener('click', () => navigate("profile"));
+    getEl("friendsButton").addEventListener('click', () => navigate("friends"));
     getEl("logoutButton").addEventListener('click', logout)
 
 
@@ -341,6 +342,7 @@ function updateUI(): void {
     const loginButton = getEl("loginButton");
     const logoutButton = getEl("logoutButton");
     const profileButton = getEl("profileButton");
+    const friendsButton = getEl("friendsButton");
     const signinButton = getEl("signinButton");
 
     if (isLoggedIn) {
@@ -348,11 +350,13 @@ function updateUI(): void {
         hide(signinButton);
         show(logoutButton);
         show(profileButton);
+        show(friendsButton);
         console.log('[HOME] UI: Connecté');
     } else {
         show(loginButton);
         show(signinButton);
         hide(profileButton);
+        hide(friendsButton);
         hide(logoutButton);
         console.log('[HOME] UI: Non connecté');
     }

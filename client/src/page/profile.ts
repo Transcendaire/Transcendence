@@ -11,7 +11,6 @@ async function initProfilePage(): Promise<void> {
 
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias;
-    console.log(`url ta mere : ${urlAlias}`)
     let ownerAlias = await loadUserProfile();
     let isOwnProfile = false;
 
@@ -23,6 +22,7 @@ async function initProfilePage(): Promise<void> {
     }
 
     const profileData = await fetchProfileData(targetAlias || ownerAlias);
+
     if (!profileData) {
         console.error('[PROFILE] Failed to load profile for:', targetAlias);
         const usernameEl = getEl('username');
@@ -30,8 +30,7 @@ async function initProfilePage(): Promise<void> {
         return;
     }
     updateProfileUI(profileData, isOwnProfile);
-
-
+    await connectWebSocketForStatus(ownerAlias);
     if (!isOwnProfile && targetAlias)
         await setupFriendButton(targetAlias, ownerAlias);
 }
@@ -620,36 +619,51 @@ function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void {
     renderTournamentResults(data.tournamentResults);
 }
 
-async function connectWebSocketForStatus(alias: string): Promise<void> {
-    if (!alias) return;
-    try {
-        await wsClient.connect(getWebSocketUrl());
-        wsClient.registerPlayer(alias);
-        console.log(`[PROFILE] WebSocket connected for status: ${alias}`);
-    } catch (error) {
-        console.log('[PROFILE] Failed to connect WebSocket for status:', error);
-    }
+/**
+ * @brief Connect to WebSocket to appear online to friends
+ * @param alias Player's alias to register
+ */
+async function connectWebSocketForStatus(alias: string): Promise<void>
+{
+	if (!alias)
+		return
+	try
+	{
+		await wsClient.connect(getWebSocketUrl())
+		wsClient.registerPlayer(alias)
+		console.log(`[PROFILE] WebSocket connected for status: ${alias}`)
+	}
+	catch (error)
+	{
+		console.log('[PROFILE] Failed to connect WebSocket for status:', error)
+	}
 }
 
-async function searchPlayer(): Promise<void> {
-    const input = getEl('search-player-input') as HTMLInputElement;
-    const errorEl = getEl('search-player-error');
-    const searchAlias = input.value.trim();
-    console.log( `Ta gueule sale merde ${searchAlias}`)
+/**
+ * @brief Search for a player by alias and navigate to their profile
+ */
+async function searchPlayer(): Promise<void>
+{
+	const input = getEl('search-player-input') as HTMLInputElement
+	const errorEl = getEl('search-player-error')
+	const searchAlias = input.value.trim()
 
-    hide(errorEl);
-    if (!searchAlias) {
-        errorEl.innerText = 'Veuillez entrer un nom de joueur';
-        show(errorEl);
-        return;
-    }
-    const profile = await fetchProfileData(searchAlias);
-    if (!profile) {
-        errorEl.innerText = `Joueur "${searchAlias}" introuvable`;
-        show(errorEl);
-        return;
-    }
-    navigate('profile', searchAlias);
+	hide(errorEl)
+	if (!searchAlias)
+	{
+		errorEl.innerText = 'Veuillez entrer un nom de joueur'
+		show(errorEl)
+		return
+	}
+	const profile = await fetchProfileData(searchAlias)
+
+	if (!profile)
+	{
+		errorEl.innerText = `Joueur "${searchAlias}" introuvable`
+		show(errorEl)
+		return
+	}
+	navigate('profile', searchAlias)
 }
 
 function setupSearchPlayer(): void {

@@ -264,33 +264,53 @@ export class DatabaseService {
 	}
 
 	/**
-	 * @brief Updates user's alias
+	 * @brief Updates user's alias in all relevant tables
 	 * @param userId User's UUID
 	 * @param newAlias New alias
-	 * @note No check is done on newAlias (alias' validity, because the server already did it)
+	 * @note Updates users, players, tournament_players, matches, match_history
+	 * and tournament_results tables to maintain data consistency
 	 */
 	public updateUserAlias(userId: string, newAlias: string): void
 	{
-		const aliasAlreadyTaken = this.db.prepare('SELECT id FROM users WHERE alias = ?').get(newAlias.trim());
+		const user = this.getUserById(userId);
+		const oldAlias = user?.alias;
+		const trimmedAlias = newAlias.trim();
+		const aliasAlreadyTaken = this.db.prepare(
+			'SELECT id FROM users WHERE alias = ?'
+		).get(trimmedAlias);
 
 		if (aliasAlreadyTaken && aliasAlreadyTaken.id != userId)
-			throw new DatabaseError('Le pseudo choisi est déjà pris', errDatabase.ALIAS_ALREADY_TAKEN);
-
-		//*in users table
-		this.db.prepare('UPDATE users SET alias = ? WHERE id = ?').run(newAlias, userId);
-
-		//* in players table
-		this.updatePlayerAlias(userId, newAlias);
-
-		//*in tournament_players table
-		this.db.prepare('UPDATE tournament_players SET alias = ? WHERE player_id = ?').run(newAlias, userId);
-
+			throw new DatabaseError(
+				'Le pseudo choisi est déjà pris',
+				errDatabase.ALIAS_ALREADY_TAKEN
+			);
+		this.db.prepare(
+			'UPDATE users SET alias = ? WHERE id = ?'
+		).run(trimmedAlias, userId);
+		this.updatePlayerAlias(userId, trimmedAlias);
+		this.db.prepare(
+			'UPDATE tournament_players SET alias = ? WHERE player_id = ?'
+		).run(trimmedAlias, userId);
 		this.db.prepare(`
 			UPDATE matches 
 			SET alias_a = CASE WHEN player_a_id = ? THEN ? ELSE alias_a END,
 				alias_b = CASE WHEN player_b_id = ? THEN ? ELSE alias_b END
 			WHERE player_a_id = ? OR player_b_id = ?
-		`).run(userId, newAlias.trim(), userId, newAlias.trim(), userId, userId);
+		`).run(userId, trimmedAlias, userId, trimmedAlias, userId, userId);
+		this.db.prepare(
+			'UPDATE match_history SET player_alias = ? WHERE player_id = ?'
+		).run(trimmedAlias, userId);
+		this.db.prepare(
+			'UPDATE tournament_results SET player_alias = ? WHERE player_id = ?'
+		).run(trimmedAlias, userId);
+		if (oldAlias)
+		{
+			this.db.prepare(`
+				UPDATE match_history 
+				SET opponent_info = REPLACE(opponent_info, ?, ?)
+				WHERE opponent_info LIKE ?
+			`).run(oldAlias, trimmedAlias, '%' + oldAlias + '%');
+		}
 	}
 
     /**

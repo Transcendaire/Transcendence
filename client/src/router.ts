@@ -1,4 +1,4 @@
-import { checkAuthentication } from "./page/auth.js";
+import { checkAuthentication } from "./components/auth.js";
 
 export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
 
@@ -53,13 +53,8 @@ export async function render(route: Route)
     }
 }
 
-export async function navigate(routeWithParams: Route | string) 
+export async function navigate(route: Route, params?:string)
 {
-	const routeString = routeWithParams as string;
-	const [routePart, queryPart] = routeString.split('?');
-	const route = (routePart || 'home') as Route;
-	const queryString = queryPart ? `?${queryPart}` : '';
-
 	const protectedRoutes = ['lobby', 'game', 'profile', 'friends'];
 	if (protectedRoutes.includes(route)) {
 		const isAuthenticated = await checkAuthentication();
@@ -71,9 +66,32 @@ export async function navigate(routeWithParams: Route | string)
 			return;
 		}
 	}
-    console.log('Navigation vers:', route, queryString);
-    window.history.pushState({ route }, '', `/${route}${queryString}`);
+    let url = `/${route}`;
+    if (params) {
+        let userParams;
+        route === 'profile' ? userParams = `?alias=${encodeURIComponent(params)}` : userParams = `?${params}`
+        console.log(`url avant = ${url}`)
+        url += userParams;
+        console.log(`url = ${url}`)
+    }
+    window.history.pushState(route, '', url);
     render(route);
+}
+
+export function getRouteParams(): Record<string, string> {
+    const search = window.location.search.slice(1);
+    
+    if (!search) return {};
+    
+    const params: Record<string, string> = {};
+    search.split('&').forEach(param => {
+        const [key, value] = param.split('=');
+        if (key && value) {
+            params[key] = decodeURIComponent(value);
+        }
+    });
+    
+    return params;
 }
 
 export function getCurrentRoute(): Route 

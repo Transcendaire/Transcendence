@@ -4,6 +4,14 @@ import { registerPageInitializer, navigate } from "../router";
 
 async function initProfilePage(): Promise<void> {
     console.log('[PROFILE] Initializing profile page');
+
+    let ownerAlias = await loadUserProfile();
+    if (!ownerAlias) {
+        console.error('[PROFILE] User not authenticated, redirecting to home');
+        navigate('home');
+        return;
+    }
+
     const usernameDiv = getEl("username");
 
     getEl("backHome").addEventListener('click', () => navigate('home'));
@@ -11,7 +19,6 @@ async function initProfilePage(): Promise<void> {
 
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias;
-    let ownerAlias = await loadUserProfile();
     let isOwnProfile = false;
 
     if (!targetAlias) {
@@ -27,6 +34,13 @@ async function initProfilePage(): Promise<void> {
         console.error('[PROFILE] Failed to load profile for:', targetAlias);
         const usernameEl = getEl('username');
         usernameEl.innerText = 'Utilisateur non trouvé';
+
+		const avatarImg = getEl('userAvatar') as HTMLImageElement;
+    	const userInitialEl = getEl('userInitial');
+    	avatarImg.src = '/avatars/defaults/Transcendaire.png';
+    	avatarImg.classList.remove('hidden');
+    	userInitialEl.classList.add('hidden');
+
         return;
     }
     updateProfileUI(profileData, isOwnProfile);

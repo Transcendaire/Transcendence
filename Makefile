@@ -56,6 +56,7 @@ clean-all:
 	@echo "$(RED)Cleaning ALL resources including database...$(NC)"
 	@docker compose down -v --rmi all
 	@rm -rf client/public/dist server/dist server/nodes_module
+	@rm -rf server/uploads/avatars/users/*
 	@echo "$(GREEN)Full clean complete$(NC)"
 
 re:

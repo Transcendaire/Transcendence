@@ -100,5 +100,3 @@ export enum errDatabase {
 	ALIAS_ALREADY_TAKEN = 'ALIAS_ALREADY_TAKEN',
 	PLAYER_NOT_FOUND = 'PLAYER_NOT_FOUND'
 }
-
-//TODO adapts erros numbers for each thrown error

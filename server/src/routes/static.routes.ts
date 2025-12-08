@@ -17,7 +17,7 @@ export async function registerStaticRoutes(server: FastifyInstance)
         }
     })
     
-    server.setNotFoundHandler( (request, reply) => {
+    server.setNotFoundHandler( async (request, reply) => {
         console.log(`NotFound handler for: ${request.url}`)
         
         if (request.url.startsWith('/api/')) {
@@ -32,11 +32,18 @@ export async function registerStaticRoutes(server: FastifyInstance)
             return reply.code(404).send('Fichier introuvable')
         }
         
-        return fs.promises.readFile(paths.index, 'utf8')
-            .then(content => reply.type('text/html').send(content))
-            .catch(err => {
+        const validRoutes = ['/', '/home', '/lobby', '/game', '/profile', '/friends'];
+        const pathname = new URL(request.url, `https://${request.headers.host}`).pathname;
+        
+        if (validRoutes.includes(pathname)) {
+            try {
+                const content = await fs.promises.readFile(paths.index, 'utf8')
+                return reply.type('text/html').send(content)
+            } catch (err) {
                 console.error('❌ Error reading index.html:', err)
                 return reply.code(500).send('Erreur interne du serveur')
-            })
+            }
+        }
+
     })
 }

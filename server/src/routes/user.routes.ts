@@ -59,6 +59,12 @@ export async function registerUserRoutes(server: FastifyInstance)
 	})
 
 	server.get('/api/user/profile/:alias', async (req, res) => {
+		const connectedUser = (req as any).user;
+		
+		if (!connectedUser || !connectedUser.id)
+			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+
+
 		const { alias } = req.params as { alias: string };
 
 		if (!alias)
@@ -66,7 +72,7 @@ export async function registerUserRoutes(server: FastifyInstance)
 	
 		const user = db.getUserByAlias(alias);
 		if (!user)
-			return res.code(404).send({ message: 'Utilisateur non trouvé' });
+			return res.code(404).send({ message: 'Utilisateur non trouvé', avatar: `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}` });
 	
 		const stats = db.getPlayerStats(alias);
 		const matchHistory = db.getPlayerMatchHistory(alias, 20);

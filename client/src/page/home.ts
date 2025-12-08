@@ -3,7 +3,7 @@ import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
 import { initAuth, broadcastAuthEvent } from "../components/auth"
-import { sanitizeInput } from "../utils/sanitize"
+import { sanitizeInput } from "../utils/utils"
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";

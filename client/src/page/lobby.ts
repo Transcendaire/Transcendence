@@ -4,7 +4,7 @@ import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { playerName } from "./home";
 import { getUserWithCookies } from "../components/auth";
 import type { Lobby, LobbyPlayer, OnlinePlayer, PlayerOnlineStatus } from "@shared/types";
-import { sanitizeInput } from "../utils/sanitize";
+import { sanitizeInput } from "../utils/utils";
 
 
 let currentLobbies: Lobby[] = [];

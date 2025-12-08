@@ -1,10 +1,10 @@
-import { navigate, registerPageInitializer, render } from "../router";
+import { registerPageInitializer, navigate } from "../router";
 import { getEl, show, hide } from "../app";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { playerName } from "./home";
 import { getUserWithCookies } from "../components/auth";
 import type { FriendStatus, PlayerOnlineStatus } from "@shared/types";
-import { escapeHtml, sanitizeInput } from "../utils/sanitize";
+import { escapeHtml, sanitizeInput, getStatusStyling } from "../utils/utils";
 
 interface Friend {
     id: number;
@@ -125,29 +125,17 @@ async function deleteFriend(alias: string)
 
 function getStatusColor(status: PlayerOnlineStatus): string
 {
-    switch (status) {
-        case 'in-game': return 'bg-orange-400';
-        case 'online': return 'bg-green-400';
-        default: return 'bg-gray-500';
-    }
+	return getStatusStyling(status).color
 }
 
 function getStatusText(status: PlayerOnlineStatus): string
 {
-    switch (status) {
-        case 'in-game': return 'En jeu';
-        case 'online': return 'En ligne';
-        default: return 'Hors ligne';
-    }
+	return getStatusStyling(status).text
 }
 
 function getStatusTextColor(status: PlayerOnlineStatus): string
 {
-    switch (status) {
-        case 'in-game': return 'text-orange-400';
-        case 'online': return 'text-green-400';
-        default: return 'text-gray-400';
-    }
+	return getStatusStyling(status).textColor
 }
 
 function renderFriends(friends: Friend[]): void {

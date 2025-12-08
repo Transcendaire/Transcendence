@@ -1,7 +1,7 @@
 import { getEl, show, hide } from "../app";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { registerPageInitializer, navigate } from "../router";
-import { sanitizeInput, escapeHtml } from "../utils/sanitize";
+import { sanitizeInput, escapeHtml, getStatusStyling } from "../utils/utils";
 
 async function initProfilePage(): Promise<void> {
     console.log('[PROFILE] Initializing profile page');
@@ -18,6 +18,9 @@ async function initProfilePage(): Promise<void> {
     getEl("backHome").addEventListener('click', () => navigate('home'));
     setupSearchPlayer();
     setupProfileNavigation();
+
+    await connectWebSocketIfNeeded(ownerAlias);
+    setupFriendStatusCallback();
 
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias;
@@ -45,8 +48,7 @@ async function initProfilePage(): Promise<void> {
 
         return;
     }
-    updateProfileUI(profileData, isOwnProfile);
-    await connectWebSocketForStatus(ownerAlias);
+    updateProfileUI(profileData, isOwnProfile, targetAlias || ownerAlias, ownerAlias);
     if (!isOwnProfile && targetAlias)
         await setupFriendButton(targetAlias, ownerAlias);
 }
@@ -625,60 +627,84 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
     }).join('');
 }
 
-function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void {
-    const usernameEl = getEl('username');
-    const userInitialEl = getEl('userInitial');
-    const joinDateEl = getEl('join-date');
-    const totalGamesEl = getEl('total-games');
-    const winsEl = getEl('wins');
-    const lossesEl = getEl('losses');
-    const winRateEl = getEl('win-rate');
-    const tournamentsPlayedEl = getEl('tournaments-played');
-    const tournamentsWonEl = getEl('tournaments-won');
-    const avatarImg = getEl('userAvatar') as HTMLImageElement;
+function updateProfileUI(data: ProfileData, isOwnProfile: boolean, targetAlias: string, ownerAlias: string): void
+{
+	const usernameEl = getEl('username')
+	const userInitialEl = getEl('userInitial')
+	const joinDateEl = getEl('join-date')
+	const totalGamesEl = getEl('total-games')
+	const winsEl = getEl('wins')
+	const lossesEl = getEl('losses')
+	const winRateEl = getEl('win-rate')
+	const tournamentsPlayedEl = getEl('tournaments-played')
+	const tournamentsWonEl = getEl('tournaments-won')
+	const avatarImg = getEl('userAvatar') as HTMLImageElement
 
-    usernameEl.innerText = data.alias;
-    userInitialEl.innerText = data.alias.charAt(0).toUpperCase();
-    joinDateEl.innerText = formatDate(data.createdAt);
+	usernameEl.innerText = data.alias
+	userInitialEl.innerText = data.alias.charAt(0).toUpperCase()
+	joinDateEl.innerText = formatDate(data.createdAt)
+	getPlayerStatus(targetAlias, ownerAlias).then(({ isFriend, status }) =>
+	{
+		const statusContainer = document.getElementById('player-status-container')
+		const aliasContainer = usernameEl.parentElement
+		const styling = getStatusStyling(status)
+		const statusEl = document.createElement('div')
 
-    totalGamesEl.innerText = data.stats.totalGames.toString();
-    winsEl.innerText = data.stats.wins.toString();
-    lossesEl.innerText = data.stats.losses.toString();
-    winRateEl.innerText = `${data.stats.winRate}%`;
-    tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString();
-    tournamentsWonEl.innerText = data.stats.tournamentsWon.toString();
+		if (statusContainer)
+			statusContainer.remove()
+		if (!isFriend)
+			return
+		statusEl.id = 'player-status-container'
+		statusEl.className = 'flex items-center gap-2 mt-2'
+		statusEl.innerHTML = `
+			<div class="w-3 h-3 rounded-full ${styling.color}"></div>
+			<span class="text-sm text-gray-400 font-quency">${styling.text}</span>
+		`
+		if (aliasContainer)
+			aliasContainer.appendChild(statusEl)
+	})
+	totalGamesEl.innerText = data.stats.totalGames.toString()
+	winsEl.innerText = data.stats.wins.toString()
+	lossesEl.innerText = data.stats.losses.toString()
+	winRateEl.innerText = `${data.stats.winRate}%`
+	tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString()
+	tournamentsWonEl.innerText = data.stats.tournamentsWon.toString()
+	avatarImg.onerror = () =>
+	{
+		console.warn('[PROFILE] Failed to load avatar (likely rate limited), using default')
+		avatarImg.src = '/avatars/defaults/Transcendaire.png'
+		avatarImg.onerror = null
+	}
+	avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png'
+	avatarImg.classList.remove('hidden')
+	userInitialEl.classList.add('hidden')
+	if (isOwnProfile)
+	{
+		const avatarOverlay = getEl('avatar-edit-overlay')
+		const editAliasBtn = getEl('editAliasBtn')
+		const hasCustomAvatar = !!data.avatar && !data.avatar.includes('/avatars/defaults/')
 
-    avatarImg.onerror = () => {
-        console.warn('[PROFILE] Failed to load avatar (likely rate limited), using default');
-        avatarImg.src = '/avatars/defaults/Transcendaire.png';
-        avatarImg.onerror = null;
-    };
-
-    avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png';
-    avatarImg.classList.remove('hidden');
-    userInitialEl.classList.add('hidden');
-
-    if (isOwnProfile) {
-        const avatarOverlay = getEl('avatar-edit-overlay');
-        const editAliasBtn = getEl('editAliasBtn');
-        avatarOverlay.classList.remove('hidden');
-        editAliasBtn.classList.remove('hidden');
-        const hasCustomAvatar = !!data.avatar && !data.avatar.includes('/avatars/defaults/');
-        updateDeleteButtonVisibility(hasCustomAvatar);
-    }
-
-    renderMatchHistory(data.matchHistory);
-    renderTournamentResults(data.tournamentResults);
+		avatarOverlay.classList.remove('hidden')
+		editAliasBtn.classList.remove('hidden')
+		updateDeleteButtonVisibility(hasCustomAvatar)
+	}
+	renderMatchHistory(data.matchHistory)
+	renderTournamentResults(data.tournamentResults)
 }
 
 /**
- * @brief Connect to WebSocket to appear online to friends
- * @param alias Player's alias to register
+ * @brief Connect to WebSocket only if not already connected
  */
-async function connectWebSocketForStatus(alias: string): Promise<void>
+async function connectWebSocketIfNeeded(alias: string): Promise<void>
 {
 	if (!alias)
 		return
+	if (wsClient.isConnected())
+	{
+		console.log('[PROFILE] WebSocket already connected, reusing connection')
+		wsClient.registerPlayer(alias)
+		return
+	}
 	try
 	{
 		await wsClient.connect(getWebSocketUrl())
@@ -689,6 +715,62 @@ async function connectWebSocketForStatus(alias: string): Promise<void>
 	{
 		console.log('[PROFILE] Failed to connect WebSocket for status:', error)
 	}
+}
+
+/**
+ * @brief Setup WebSocket callback for friend status updates
+ */
+function setupFriendStatusCallback(): void
+{
+	wsClient.onFriendStatusUpdate = (friend) =>
+	{
+		const statusContainer = document.getElementById('player-status-container')
+		const urlAlias = getAliasFromUrl()
+		const targetAlias = urlAlias || ''
+		const styling = getStatusStyling(friend.status)
+		const dot = statusContainer?.querySelector('div')
+		const text = statusContainer?.querySelector('span')
+
+		if (!statusContainer)
+			return
+		if (friend.alias !== targetAlias)
+			return
+		if (dot && text)
+		{
+			dot.className = `w-3 h-3 rounded-full ${styling.color}`
+			text.textContent = styling.text
+		}
+	}
+}
+
+/**
+ * @brief Get friend status for display via WebSocket
+ */
+/**
+ * @brief Get friend status for display via WebSocket
+ */
+async function getPlayerStatus(targetAlias: string, ownerAlias: string): Promise<{ isFriend: boolean; status: string }>
+{
+	if (targetAlias === ownerAlias)
+		return { isFriend: true, status: 'online' }
+	return new Promise((resolve) =>
+	{
+		wsClient.onFriendList = (friends) =>
+		{
+			const friend = friends.find((f) => f.alias === targetAlias)
+
+			if (!friend)
+			{
+				resolve({ isFriend: false, status: 'unknown' })
+				return
+			}
+			resolve({ isFriend: true, status: friend.status || 'offline' })
+		}
+		if (wsClient.isConnected())
+			wsClient.requestFriendList(ownerAlias)
+		else
+			resolve({ isFriend: false, status: 'unknown' })
+	})
 }
 
 /**
@@ -728,7 +810,14 @@ function setupSearchPlayer(): void {
     });
 }
 
+let profileNavigationSetup = false;
+
 function setupProfileNavigation(): void {
+    if (profileNavigationSetup) {
+        return;
+    }
+    profileNavigationSetup = true;
+    
     window.addEventListener('navigate-to-profile', ((e: CustomEvent) => {
         const alias = e.detail;
         if (alias) {

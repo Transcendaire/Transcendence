@@ -365,6 +365,18 @@ export class Tournament {
 		return this.players.size;
 	}
 
+	/**
+	 * @brief Get number of active players not eliminated
+	 */
+	public getActivePlayerCount(): number
+	{
+		let count = 0;
+		for (const player of this.players.values())
+			if (player.status !== 'eliminated')
+				count++;
+		return count;
+	}
+
 	public getStatus(): string
 	{
 		return this.status;
@@ -581,7 +593,11 @@ export class Tournament {
 				{
 					this.completeMatch(match, winnerId, score1, score2);
 				},
-				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers()
+				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers(),
+				getTournamentInfo: () => ({
+					remainingPlayers: this.getActivePlayerCount(),
+					totalPlayers: this.players.size
+				})
 			}
 		);
 		console.log(`[TOURNAMENT] Game ${gameId} started with powerUps: ${this.settings.powerUpsEnabled}`);

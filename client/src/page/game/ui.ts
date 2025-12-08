@@ -107,28 +107,40 @@ export function setupDisconnectionHandlers(): void
     })
 }
 
-export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
+export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean, tournamentRemainingPlayers?: number, tournamentTotalPlayers?: number): void
 {
-    setNavigationLock(false);
-    gameState.setGameRunning(false);
-    
-    let isWinner: boolean;
-    if (isBattleRoyale)
-    {
-        const winnerIndex = parseInt(winner.replace('player', '')) - 1;
-        isWinner = winnerIndex === gameState.playerIndex;
-    }
-    else
-        isWinner = winner === gameState.currentPlayerRole;
-    
-    let message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
-    if (forfeit)
-        message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
-    const livesText = isBattleRoyale ? '' : `Vies finales : ${lives1} - ${lives2}`;
-    
-    if (!gameState.ctx || !gameState.canvas)
-    {
-        console.error('[GAME] showGameOver: ctx ou canvas null, redirection directe');
+	setNavigationLock(false);
+	gameState.setGameRunning(false);
+	
+	let isWinner: boolean;
+	if (isBattleRoyale)
+	{
+		const winnerIndex = parseInt(winner.replace('player', '')) - 1;
+		isWinner = winnerIndex === gameState.playerIndex;
+	}
+	else
+		isWinner = winner === gameState.currentPlayerRole;
+	
+	let message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
+	if (forfeit)
+		message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
+	const livesText = isBattleRoyale ? '' : `Vies finales : ${lives1} - ${lives2}`;
+	
+	let positionText = '';
+	if (isTournament && tournamentRemainingPlayers !== undefined && tournamentTotalPlayers !== undefined)
+	{
+		if (isWinner && shouldDisconnect)
+			positionText = `Vous avez gagné le tournoi ! (1/${tournamentTotalPlayers})`;
+		else if (!isWinner)
+		{
+			const estimatedPosition = tournamentRemainingPlayers;
+			positionText = `Position: ${estimatedPosition}/${tournamentTotalPlayers}`;
+		}
+	}
+	
+	if (!gameState.ctx || !gameState.canvas)
+	{
+		console.error('[GAME] showGameOver: ctx ou canvas null, redirection directe');
         const destination = (isTournament || isBattleRoyale) ? 'lobby' : 'home';
         setTimeout(() => returnToLobby(destination), 100);
         return;
@@ -138,42 +150,51 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
     gameState.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
     gameState.ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
     
-    gameState.ctx.fillStyle = isWinner ? COLORS.SONPI16_ORANGE : '#ff0000';
-    gameState.ctx.font = '48px ' + FONTS.QUENCY_PIXEL;
-    gameState.ctx.textAlign = 'center';
-    gameState.ctx.textBaseline = 'middle';
-    gameState.ctx.fillText(message, gameState.canvas.width / 2, gameState.canvas.height / 2 - 40);
-    
-    if (livesText)
-    {
-        gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
-        gameState.ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
-        gameState.ctx.fillText(livesText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
-    }
-    
-    gameState.ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
-    gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
-    if (isTournament && !shouldDisconnect)
-    {
-        gameState.ctx.fillText('En attente du prochain match...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
-        gameState.setPlayer1(null);
-        gameState.setPlayer2(null);
-        gameState.setBall(null);
-        gameState.setCloneBalls([]);
-        gameState.setBalls([]);
-        gameState.setFruits([]);
-        gameState.setIsWaitingForTournamentMatch(true);
-        gameState.setGameRunning(true);
-    }
-    else
-    {
-        const destination = (isTournament || isBattleRoyale) ? 'lobby' : 'home';
-        gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, gameState.canvas.height / 2 + 80);
-        setTimeout(() => {
-            returnToLobby(destination);
-        }, 3000);
-    }
-    gameState.ctx.restore();
+	gameState.ctx.fillStyle = isWinner ? COLORS.SONPI16_GOLD : COLORS.SONPI16_BLUE;
+	gameState.ctx.font = '48px ' + FONTS.QUENCY_PIXEL;
+	gameState.ctx.textAlign = 'center';
+	gameState.ctx.textBaseline = 'middle';
+	gameState.ctx.fillText(message, gameState.canvas.width / 2, gameState.canvas.height / 2 - 40);
+	
+	if (livesText)
+	{
+		gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
+		gameState.ctx.font = '32px ' + FONTS.QUENCY_PIXEL;
+		gameState.ctx.fillText(livesText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 20);
+	}
+	
+	if (positionText)
+	{
+		gameState.ctx.fillStyle = COLORS.SONPI16_GOLD;
+		gameState.ctx.font = '28px ' + FONTS.QUENCY_PIXEL;
+		gameState.ctx.fillText(positionText, gameState.canvas.width / 2, gameState.canvas.height / 2 + 100);
+	}
+	
+	gameState.ctx.font = '24px ' + FONTS.QUENCY_PIXEL;
+	gameState.ctx.fillStyle = COLORS.SONPI16_ORANGE;
+	if (isTournament && !shouldDisconnect)
+	{
+		const messageY = positionText ? gameState.canvas.height / 2 + 140 : gameState.canvas.height / 2 + 80;
+		gameState.ctx.fillText('En attente du prochain match...', gameState.canvas.width / 2, messageY);
+		gameState.setPlayer1(null);
+		gameState.setPlayer2(null);
+		gameState.setBall(null);
+		gameState.setCloneBalls([]);
+		gameState.setBalls([]);
+		gameState.setFruits([]);
+		gameState.setIsWaitingForTournamentMatch(true);
+		gameState.setGameRunning(true);
+	}
+	else
+	{
+		const destination = (isTournament || isBattleRoyale) ? 'lobby' : 'home';
+		const messageY = positionText ? gameState.canvas.height / 2 + 140 : gameState.canvas.height / 2 + 80;
+		gameState.ctx.fillText('Retour au lobby dans 3 secondes...', gameState.canvas.width / 2, messageY);
+		setTimeout(() => {
+			returnToLobby(destination);
+		}, 3000);
+	}
+	gameState.ctx.restore();
 }
 
 export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void

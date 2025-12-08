@@ -77,5 +77,6 @@ export interface GameRoom
 		isFinalMatch: boolean
 		onComplete: (winnerId: string, score1: number, score2: number) => void
 		onUpdate?: () => void
+		getTournamentInfo?: () => { remainingPlayers: number; totalPlayers: number }
 	}
 }

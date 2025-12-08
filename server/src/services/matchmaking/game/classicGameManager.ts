@@ -211,17 +211,34 @@ export class ClassicGameManager
 		lives1: number, lives2: number, isTournament: boolean, isFinalMatch: boolean
 	): void
 	{
+		let tournamentRemainingPlayers: number | undefined
+		let tournamentTotalPlayers: number | undefined
+
+		if (isTournament && room.tournamentMatch)
+		{
+			const tournamentInfo = room.tournamentMatch.getTournamentInfo?.()
+			if (tournamentInfo)
+			{
+				tournamentRemainingPlayers = tournamentInfo.remainingPlayers
+				tournamentTotalPlayers = tournamentInfo.totalPlayers
+			}
+		}
+
 		const p1Options: GameOverOptions = {
 			winner, lives1, lives2, isTournament,
-			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
+			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1',
+			tournamentRemainingPlayers,
+			tournamentTotalPlayers
 		}
 		const p2Options: GameOverOptions = {
 			winner, lives1, lives2, isTournament,
-			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
+			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2',
+			tournamentRemainingPlayers,
+			tournamentTotalPlayers
 		}
 		sendGameOver(room.player1.socket, p1Options)
 		if (room.player2.id !== 'AI')
-			sendGameOver(room.player2.socket, p2Options)
+				sendGameOver(room.player2.socket, p2Options)
 	}
 
 	/**

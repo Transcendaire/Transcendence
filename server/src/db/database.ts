@@ -747,7 +747,6 @@ export class DatabaseService {
 		return this.db.prepare("SELECT * FROM players").all() as Player[];
 	}
 
-	//ToDo change this function so tha it can work with all tables and variables?
 	/**
 	 * @brief Gets specific column data from all players
 	 * @param type Column name to retrieve
@@ -929,7 +928,6 @@ export class DatabaseService {
 	}
 
 
-	//ToDo add a filler if players are even (with AI players);
 	/**
 	 * @brief Creates a new tournament in the database
 	 * @param name Unique name for the tournament
@@ -973,12 +971,11 @@ export class DatabaseService {
 			throw new DatabaseError(`Impossible d'ajouter ${alias}: le tournoi ${tournamentName} est déjà plein`);
 
 		let player = this.getPlayer(alias);
-		if (!player)//! check with C if okay to remove this check (users should be aready authenticated. Maybe issues with the bots)
+		if (!player)
 		{
 			const id = this.createPlayer(alias, randomUUID(), Date.now());
 			player = this.getPlayerBy('id', id);
 		}
-			// throw new DatabaseError('Impossible d\'ajouter le joueur au tournoi : le joueur n\'existe pas', errDatabase.PLAYER_NOT_FOUND);
 
 		const playerAlreadyInTournament = this.db.prepare("SELECT 1 FROM tournament_players WHERE tournament_id = ? AND player_id = ?"
 		).get(tournamentId, player!.id);

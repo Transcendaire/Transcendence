@@ -1,5 +1,4 @@
 import { createApp } from './app.js'
-//! CAREFUL see with C and P about the port
 (async () => {
 	try {
 		const server = await createApp();

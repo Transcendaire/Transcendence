@@ -35,5 +35,5 @@ export async function validateAvatar(req: FastifyRequest, userId: string): Promi
 	.png({ quality: 90 })
 	.toFile(filepath);
 
-	return filename;
+		return filename;
 }

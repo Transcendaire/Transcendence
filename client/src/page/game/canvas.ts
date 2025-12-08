@@ -40,16 +40,10 @@ export function render(): void
 	gameState.ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
 
 	if (gameState.tournamentCountdown)
-	{
-		renderTournamentCountdown();
-		return;
-	}
+		return renderTournamentCountdown();
 
 	if (gameState.isWaitingForTournamentMatch)
-	{
-		renderWaitingForMatch();
-		return;
-	}
+		return renderWaitingForMatch();
 
 	if (gameState.isBattleRoyale)
 	{

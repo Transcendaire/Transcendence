@@ -1,5 +1,6 @@
 import { wsClient } from "../../components/WebSocketClient";
 import { navigate } from "../../router";
+import { setNavigationLock } from "../../app";
 import { COLORS, FONTS } from "../../components/consts";
 import * as gameState from './gameState';
 
@@ -20,31 +21,95 @@ export function setupDisconnectionHandlers(): void
         }
     };
 
-    const handleSurrender = () => {
-        if (confirm('Voulez-vous vraiment abandonner la partie ?')) {
-            console.log('[GAME] Abandon de la partie');
-            if (wsClient.isConnected())
-                wsClient.surrender()
+    const handleSurrender = () =>
+    {
+        const modal = document.getElementById("surrenderModal")
+        if (modal)
+            modal.classList.remove("hidden")
+    }
+
+    const confirmSurrender = () =>
+    {
+        console.log('[GAME] Abandon de la partie')
+        if (wsClient.isConnected())
+        {
+            console.log('[GAME] Envoi du message surrender')
+            wsClient.surrender()
         }
-    };
+        else
+        {
+            console.log('[GAME] WebSocket non connecté, impossible d\'abandonner')
+            setNavigationLock(false)
+            window.history.replaceState({ route: 'home', path: '/home' }, '', '/home')
+            import('../../router').then(({ render }) => {
+                render('home');
+            });
+        }
+        
+        const modal = document.getElementById("surrenderModal")
+        if (modal)
+            modal.classList.add("hidden")
+    }
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const cancelSurrender = () =>
+    {
+        console.log('[GAME] Abandon annulé')
+        const modal = document.getElementById("surrenderModal")
+        if (modal)
+            modal.classList.add("hidden")
+    }
+
+    const updateSurrenderButtonVisibility = () =>
+    {
+        const surrenderButton = document.getElementById('surrenderButton')
+        if (!surrenderButton)
+            return
+        if (gameState.isInTournament)
+            surrenderButton.classList.add('hidden')
+        else
+            surrenderButton.classList.remove('hidden')
+    }
+
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
     
-    const surrenderButton = document.getElementById('surrenderButton');
-    if (surrenderButton)
-        surrenderButton.addEventListener('click', handleSurrender);
+    const surrenderButton = document.getElementById('surrenderButton')
+    const confirmButton = document.getElementById('confirmSurrender')
+    const cancelButton = document.getElementById('cancelSurrender')
 
-    gameState.addCleanupHandler(() => {
-        window.removeEventListener('beforeunload', handleBeforeUnload);
-        document.removeEventListener('visibilitychange', handleVisibilityChange);
+    console.log('[GAME] surrenderButton trouvé?', !!surrenderButton)
+    
+    if (surrenderButton)
+    {
+        console.log('[GAME] Attachement du listener click sur surrenderButton')
+        surrenderButton.addEventListener('click', handleSurrender)
+    }
+
+    if (confirmButton)
+        confirmButton.addEventListener('click', confirmSurrender)
+
+    if (cancelButton)
+        cancelButton.addEventListener('click', cancelSurrender)
+
+    const visibilityInterval = setInterval(updateSurrenderButtonVisibility, 100)
+
+    gameState.addCleanupHandler(() =>
+    {
+        clearInterval(visibilityInterval)
+        window.removeEventListener('beforeunload', handleBeforeUnload)
+        document.removeEventListener('visibilitychange', handleVisibilityChange)
         if (surrenderButton)
-            surrenderButton.removeEventListener('click', handleSurrender);
-    });
+            surrenderButton.removeEventListener('click', handleSurrender)
+        if (confirmButton)
+            confirmButton.removeEventListener('click', confirmSurrender)
+        if (cancelButton)
+            cancelButton.removeEventListener('click', cancelSurrender)
+    })
 }
 
 export function showGameOver(winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean): void
 {
+    setNavigationLock(false);
     gameState.setGameRunning(false);
     
     let isWinner: boolean;
@@ -57,9 +122,8 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
         isWinner = winner === gameState.currentPlayerRole;
     
     let message = isWinner ? 'Vous avez gagné !' : 'Vous avez perdu !';
-    if (forfeit) {
+    if (forfeit)
         message = isWinner ? 'Victoire par abandon !' : 'Vous avez abandonné';
-    }
     const livesText = isBattleRoyale ? '' : `Vies finales : ${lives1} - ${lives2}`;
     
     if (!gameState.ctx || !gameState.canvas)
@@ -114,12 +178,14 @@ export function showGameOver(winner: 'player1' | 'player2', lives1: number, live
 
 export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
 {
-    if (gameState.isReturningToLobby) {
+    if (gameState.isReturningToLobby)
+    {
         console.log('[GAME] Retour au lobby déjà en cours, ignoré');
         return;
     }
     
     console.log(`[GAME] Retour vers ${destination}, déconnexion WebSocket...`);
+    setNavigationLock(false);
     gameState.setIsReturningToLobby(true);
     gameState.setGameRunning(false);
     gameState.setCurrentPlayerRole(null);
@@ -145,7 +211,12 @@ export function returnToLobby(destination: 'home' | 'lobby' = 'home'): void
     
     wsClient.disconnect();
     gameState.clearCleanupHandlers();
-    navigate(destination);
+    
+    const url = `/${destination}`;
+    window.history.replaceState({ route: destination, path: url }, '', url);
+    import('../../router').then(({ render }) => {
+        render(destination);
+    });
     
     setTimeout(() => {
         gameState.setIsReturningToLobby(false);

@@ -50,6 +50,7 @@ export type LobbyPlayer = {
 	name: string;
 	isBot: boolean;
 	isReady: boolean;
+	avatar?: string;
 }
 
 export type Lobby = {

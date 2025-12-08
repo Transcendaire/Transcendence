@@ -421,7 +421,8 @@ export class DatabaseService {
     public getPendingFriendRequests(userId: string): any[]
 	{
         return this.db.prepare(`
-            SELECT r.id, r.from_user_id, u.alias as from_alias, r.created_at
+            SELECT r.id, r.from_user_id, u.alias as from_alias, r.created_at,
+                   u.google_picture, u.avatar
             FROM friend_requests r
             JOIN users u ON u.id = r.from_user_id
             WHERE r.to_user_id = ?
@@ -437,7 +438,8 @@ export class DatabaseService {
     public getSentFriendRequests(userId: string): any[]
 	{
         return this.db.prepare(`
-            SELECT r.id, r.to_user_id, u.alias as to_alias, r.created_at
+            SELECT r.id, r.to_user_id, u.alias as to_alias, r.created_at,
+                   u.google_picture, u.avatar
             FROM friend_requests r
             JOIN users u ON u.id = r.to_user_id
             WHERE r.from_user_id = ?
@@ -963,8 +965,6 @@ export class DatabaseService {
 	 */
 	public addPlayerToTournament(alias: string, tournamentId: string, tournamentName: string): void
 	{
-		checkAliasValidity(alias);
-
 		const tournament = this.getTournament(tournamentId);
 		if (!tournament)
 			throw new DatabaseError(`Le tournoi ${tournamentName} n'existe pas`);

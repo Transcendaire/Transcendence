@@ -18,12 +18,13 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
     gameState.setPolygonData(null);
     gameState.setAllPlayers([]);
 
-    wsClient.onGameStart = (playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string) => {
-        console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole);
+    wsClient.onGameStart = (playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string, isTournament?: boolean) => {
+        console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole, 'Tournament:', isTournament);
         console.log('[GAME] Canvas disponible?', !!gameState.canvas, 'ctx disponible?', !!gameState.ctx);
         gameState.setCurrentPlayerRole(playerRole);
         gameState.setTournamentCountdown(null);
         gameState.setIsWaitingForTournamentMatch(false);
+        gameState.setIsInTournament(!!isTournament);
     };
     console.log('[GAME] Callback onGameStart configuré');
     

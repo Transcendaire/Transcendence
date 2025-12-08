@@ -282,7 +282,7 @@ function showToast(message: string, type: 'success' | 'error'): void {
     toast.id = 'toast';
     toast.className = `fixed top-4 right-4 px-6 py-4 rounded-xl shadow-2xl font-quency font-bold text-white z-50 
                        transform transition-all duration-300 ease-in-out
-                       ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+                       ${type === 'success' ? 'bg-sonpi16-gold' : 'bg-sonpi16-blue'}`;
     toast.textContent = message;
     document.body.appendChild(toast);
 
@@ -344,21 +344,21 @@ function updateFriendButton(btn: HTMLElement, status: FriendStatus): void {
     btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
     switch (status) {
         case 'none':
-            btn.innerText = 'Ajouter en ami';
-            btn.classList.add('bg-green-600', 'text-white');
-            break;
+            btn.innerText = 'Ajouter en ami'
+            btn.classList.add('bg-sonpi16-gold', 'text-white')
+            break
         case 'pending-sent':
-            btn.innerText = 'Demande envoyée ✗';
-            btn.classList.add('bg-yellow-500', 'text-white');
-            break;
+            btn.innerText = 'Demande envoyée ✗'
+            btn.classList.add('bg-sonpi16-orange', 'text-white')
+            break
         case 'pending-received':
-            btn.innerText = 'Accepter la demande';
-            btn.classList.add('bg-blue-600', 'text-white');
-            break;
+            btn.innerText = 'Accepter la demande'
+            btn.classList.add('bg-sonpi16-gold', 'text-white')
+            break
         case 'friends':
-            btn.innerText = 'Supprimer l\'ami';
-            btn.classList.add('bg-red-600', 'text-white');
-            break;
+            btn.innerText = 'Supprimer l\'ami'
+            btn.classList.add('bg-sonpi16-blue', 'text-white')
+            break
     }
 }
 
@@ -468,9 +468,9 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
     container.innerHTML = matches.map(match => {
         const isWin = match.result === 'win';
         const isBR = match.game_type === 'battle_royale';
-        const bgColor = isWin ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+        const bgColor = isWin ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200';
         const resultText = isWin ? 'Victoire' : 'Défaite';
-        const resultColor = isWin ? 'text-green-600' : 'text-red-600';
+        const resultColor = isWin ? 'text-sonpi16-gold' : 'text-sonpi16-blue';
         const totalPlayers = match.player_count + (match.bot_count || 0);
 
         let gameTypeLabel = '';
@@ -497,11 +497,11 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
         return `
             <div class="flex items-center justify-between p-4 rounded-lg border ${bgColor}">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 ${isWin ? 'bg-green-500' : 'bg-red-500'} rounded-full flex items-center justify-center">
+                    <div class="w-10 h-10 ${isWin ? 'bg-sonpi16-gold' : 'bg-sonpi16-blue'} rounded-full flex items-center justify-center">
                         <span class="text-white font-bold">${isWin ? '✓' : '✗'}</span>
                     </div>
                     <div>
-                        <p class="font-quency font-bold text-sonpi16-black">vs ${match.opponent_info}${botSuffix}</p>
+                        <p class="font-quency font-bold text-sonpi16-black">${match.opponent_info}${botSuffix}</p>
                         <div class="flex items-center gap-2">
                             ${gameTypeLabel}
                             <span class="text-xs text-gray-500">${formatRelativeTime(match.created_at)}</span>
@@ -533,9 +533,9 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
                 const isWinnerA = m.score_a > m.score_b;
                 return `
                     <div class="flex justify-between items-center py-2 px-3 bg-white rounded border">
-                        <span class="font-quency ${isWinnerA ? 'font-bold text-green-600' : 'text-gray-600'}">${m.alias_a}</span>
+                        <span class="font-quency ${isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${m.alias_a}</span>
                         <span class="text-sm font-bold">${m.score_a} - ${m.score_b}</span>
-                        <span class="font-quency ${!isWinnerA ? 'font-bold text-green-600' : 'text-gray-600'}">${m.alias_b}</span>
+                        <span class="font-quency ${!isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${m.alias_b}</span>
                     </div>
                 `;
             }).join('')

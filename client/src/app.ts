@@ -8,25 +8,69 @@ import './page/game/index';
 import './page/lobby';
 import './page/friends';
 
+let preventNavigation = false;
+let lastPath = '/';
+
+export function setNavigationLock(locked: boolean): void
+{
+	preventNavigation = locked;
+	console.log('[APP] Navigation lock:', locked);
+}
+
+export function updateLastPath(path: string): void
+{
+	lastPath = path;
+}
+
+export function getLastPath(): string
+{
+	return lastPath;
+}
 
 console.log('[APP] Application chargée');
 
-function initApp(): void {
-    console.log('[APP] Initialisation de l\'application');
+function initApp(): void
+{
+    const initialRoute = getCurrentRoute()
+    console.log('[APP] Init - route initiale:', initialRoute)
+    lastPath = window.location.pathname
+    render(initialRoute)
     
-    const initialRoute = getCurrentRoute();
-    console.log('[APP] Route initiale:', initialRoute);
-    render(initialRoute);
-    
-    window.addEventListener('popstate', (event) => {
-        if (event.state && event.state.route !== undefined) {
-            console.log('[APP] Ignoring programmatic navigation');
-            return;
+    window.addEventListener('popstate', async (event) =>
+    {
+        const currentPath = window.location.pathname
+        const comingFromGame = lastPath === '/game'
+        const goingToGame = currentPath === '/game'
+        
+        console.log('[APP] POPSTATE déclenché!')
+        console.log('[APP] - lastPath:', lastPath)
+        console.log('[APP] - currentPath:', currentPath)
+        console.log('[APP] - comingFromGame:', comingFromGame)
+        console.log('[APP] - preventNavigation:', preventNavigation)
+        
+        if (preventNavigation && comingFromGame && !goingToGame)
+        {
+            console.log('[APP] 🚫 BLOCAGE DE LA NAVIGATION!')
+            event.preventDefault()
+            event.stopImmediatePropagation()
+            window.history.pushState({ path: '/game' }, '', '/game')
+            lastPath = '/game'
+            
+            setTimeout(() =>
+            {
+                const modal = document.getElementById("surrenderModal")
+                console.log('[APP] Modal trouvé?', !!modal)
+                if (modal)
+                    modal.classList.remove("hidden")
+            }, 50)
+            return
         }
-        const route = getCurrentRoute();
-        console.log('[APP] Popstate détecté (back button), navigation vers:', route);
-        render(route);
-    });
+        
+        console.log('[APP] ✅ Navigation autorisée vers:', currentPath)
+        lastPath = currentPath
+        const route = getCurrentRoute()
+        render(route)
+    })
 }
 
 export function setupGlobalModalEvents(modal: HTMLElement, showButton: HTMLButtonElement, cancelButton: HTMLButtonElement)

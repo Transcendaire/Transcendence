@@ -1,4 +1,5 @@
 import { checkAuthentication } from "./components/auth.js";
+import { updateLastPath } from "./app";
 
 export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
 
@@ -51,6 +52,8 @@ export async function render(route: Route)
     } else {
         console.warn(`[ROUTER] Aucun initializer trouvé pour "${route}"`);
     }
+    
+    updateLastPath(window.location.pathname);
 }
 
 export async function navigate(route: Route, params?:string)
@@ -60,7 +63,7 @@ export async function navigate(route: Route, params?:string)
 		const isAuthenticated = await checkAuthentication();
 		if (!isAuthenticated)
 		{
-			window.history.pushState({ route: 'home' }, '', '/home');
+			window.history.pushState({ route: 'home', path: '/home' }, '', '/home');
 			render('home');
 			alert('Veuillez vous reconnecter');
 			return;
@@ -74,7 +77,7 @@ export async function navigate(route: Route, params?:string)
         url += userParams;
         console.log(`url = ${url}`)
     }
-    window.history.pushState(route, '', url);
+    window.history.pushState({ route, path: url }, '', url);
     render(route);
 }
 

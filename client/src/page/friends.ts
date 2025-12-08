@@ -20,6 +20,7 @@ interface FriendRequest {
     to_user_id?: string;
     to_alias?: string;
     created_at: number;
+    avatar?: string;
 }
 
 let currentFriends: Friend[] = [];
@@ -189,7 +190,7 @@ function renderFriends(friends: Friend[]): void {
             
             <button 
                 data-alias="${friend.alias}"
-                class="remove-friend-btn w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded 
+                class="remove-friend-btn w-full bg-sonpi16-blue hover:bg-blue-600 text-white px-3 py-2 rounded 
                        font-quency text-sm transition-all hover:scale-105 active:scale-95">
                 Supprimer
             </button>
@@ -240,12 +241,16 @@ function renderPendingRequests(requests: FriendRequest[]): void {
         return;
     }
 
-    container.innerHTML = requests.map(request => `
+    container.innerHTML = requests.map(request => {
+        const avatarSrc = request.avatar || '/avatars/defaults/Transcendaire.png'
+        return `
         <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                     border-2 border-sonpi16-orange">
             <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">👤</span>
+                <div class="flex items-center gap-3">
+                    <img src="${avatarSrc}" alt="${request.from_alias}" 
+                         class="w-10 h-10 rounded-full object-cover"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
                     <span class="text-sonpi16-orange font-quency font-bold">${request.from_alias}</span>
                 </div>
                 <span class="text-xs text-gray-400 font-quency">
@@ -256,19 +261,19 @@ function renderPendingRequests(requests: FriendRequest[]): void {
             <div class="flex gap-2">
                 <button 
                     data-alias="${request.from_alias}"
-                    class="accept-request-btn flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded 
+                    class="accept-request-btn flex-1 bg-sonpi16-gold hover:bg-yellow-600 text-white px-3 py-2 rounded 
                            font-quency text-sm transition-all hover:scale-105 active:scale-95">
                     ✓ Accepter
                 </button>
                 <button 
                     data-alias="${request.from_alias}"
-                    class="reject-request-btn flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded 
+                    class="reject-request-btn flex-1 bg-sonpi16-blue hover:bg-blue-600 text-white px-3 py-2 rounded 
                            font-quency text-sm transition-all hover:scale-105 active:scale-95">
                     ✗ Refuser
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
     container.querySelectorAll('.accept-request-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
@@ -317,12 +322,16 @@ function renderSentRequests(requests: FriendRequest[]): void {
         return;
     }
 
-    container.innerHTML = requests.map(request => `
+    container.innerHTML = requests.map(request => {
+        const avatarSrc = request.avatar || '/avatars/defaults/Transcendaire.png'
+        return `
         <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                     border-2 border-transparent hover:border-sonpi16-orange transition-all">
             <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">📤</span>
+                <div class="flex items-center gap-3">
+                    <img src="${avatarSrc}" alt="${request.to_alias}" 
+                         class="w-10 h-10 rounded-full object-cover"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
                     <span class="text-sonpi16-orange font-quency font-bold">${request.to_alias}</span>
                 </div>
                 <span class="text-xs text-gray-400 font-quency">
@@ -332,12 +341,12 @@ function renderSentRequests(requests: FriendRequest[]): void {
             
             <button 
                 data-alias="${request.to_alias}"
-                class="cancel-request-btn w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded 
+                class="cancel-request-btn w-full bg-sonpi16-blue hover:bg-blue-600 text-white px-3 py-2 rounded 
                        font-quency text-sm transition-all hover:scale-105 active:scale-95">
                 Annuler
             </button>
         </div>
-    `).join('');
+    `}).join('');
 
 
     container.querySelectorAll('.cancel-request-btn').forEach(btn => {

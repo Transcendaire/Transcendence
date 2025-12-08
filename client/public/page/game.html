@@ -40,8 +40,33 @@
         </div>
     </div>
 
-    <button id="surrenderButton" class="bg-sonpi16-orange hover:bg-orange-600 text-white font-bold py-2 px-4 rounded"
+    <button id="surrenderButton" class="bg-sonpi16-blue hover:bg-blue-600 text-white font-bold py-2 px-4 rounded"
         style="font-family: QuencyPixel-Regular;">
         Abandon
     </button>
+</div>
+
+<!-- Modal de confirmation d'abandon -->
+<div id="surrenderModal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 border-4 border-sonpi16-orange">
+        <h3 class="text-3xl font-bold text-sonpi16-orange mb-6 text-center font-quency">
+            Abandonner la partie ?
+        </h3>
+        <p class="text-sonpi16-orange text-center mb-8 font-quency">
+            Voulez-vous vraiment abandonner ?<br>
+            Cela comptera comme une défaite.
+        </p>
+        <div class="flex gap-4">
+            <button id="confirmSurrender" 
+                    class="flex-1 bg-sonpi16-blue hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-lg 
+                           transition-all duration-300 hover:scale-105 font-quency">
+                Oui, abandonner
+            </button>
+            <button id="cancelSurrender" 
+                    class="flex-1 bg-sonpi16-orange hover:bg-orange-600 text-white font-bold py-3 px-6 rounded-lg 
+                           transition-all duration-300 hover:scale-105 font-quency">
+                Non, continuer
+            </button>
+        </div>
+    </div>
 </div>

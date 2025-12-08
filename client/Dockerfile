@@ -20,4 +20,6 @@ RUN npm run build
 RUN mkdir -p /output && \
     cp -r /app/dist/* /output/
 
+
+	
 CMD ["echo", "Client build complete"]

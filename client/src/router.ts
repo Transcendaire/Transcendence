@@ -28,7 +28,13 @@ export async function render(route: Route)
         console.error('Element #app introuvable !');
         return;
     }
-    
+
+	if (!ROUTES[route]) {
+		console.error(`Route invalide: ${route}`);
+		window.location.href = '/404.html';
+		return;
+	}
+
     console.log('Fetch de:', ROUTES[route]);
     const res = await fetch(ROUTES[route], { cache: 'no-cache' });
     console.log('Réponse fetch:', res.status, res.ok);

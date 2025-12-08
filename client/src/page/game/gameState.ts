@@ -24,6 +24,7 @@ export let playerIndex = 0;
 export let allPlayers: PlayerState[] = [];
 
 export let tournamentCountdown: { opponentName: string; countdown: number } | null = null;
+export let isInTournament: boolean = false;
 export let tournamentSiblingMatch: { player1Name: string; player2Name: string; lives1: number; lives2: number } | null = null;
 export let tournamentOtherMatches: Array<{ player1Name: string; player2Name: string; lives1: number; lives2: number }> = [];
 export let isWaitingForTournamentMatch = false;
@@ -108,6 +109,10 @@ export function setAllPlayers(p: PlayerState[]): void {
 
 export function setTournamentCountdown(data: { opponentName: string; countdown: number } | null): void {
     tournamentCountdown = data;
+}
+
+export function setIsInTournament(value: boolean): void {
+    isInTournament = value;
 }
 
 export function setTournamentSiblingMatch(match: { player1Name: string; player2Name: string; lives1: number; lives2: number } | null): void {

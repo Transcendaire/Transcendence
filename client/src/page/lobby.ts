@@ -4,6 +4,8 @@ import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { playerName } from "./home";
 import { getUserWithCookies } from "../components/auth";
 import type { Lobby, LobbyPlayer, OnlinePlayer, PlayerOnlineStatus } from "@shared/types";
+import { sanitizeInput } from "../utils/utils";
+
 
 let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;
@@ -354,7 +356,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
     form?.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        let name = tournamentName.value.trim();
+        let name = sanitizeInput(tournamentName.value)
 
         const gameType = getEl("gameType") as HTMLSelectElement;
         const gameMode = getEl("gameMode") as HTMLSelectElement;
@@ -373,7 +375,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
             return;
         }
 
-        if (!/^[a-zA-Z0-9_-\s]+$/.test(name)) {
+        if (!/^[a-zA-Z0-9À-ÿ_\-\s]+$/.test(name)) {
             alert('Caractères invalides dans le nom du lobby');
             return;
         }
@@ -424,55 +426,75 @@ function initCreationModal(createLobbyModal: HTMLElement) {
     });
 }
 
-function setupLobbyModal(lobby: Lobby) {
-    const lobbyModal = getEl("lobbyModal");
-    const modalTitle = getEl('roomName') as HTMLHeadingElement;
-    const playersList = getEl('playersList') as HTMLDivElement;
-    const playerCount = getEl('modalPlayerCount') as HTMLSpanElement;
-    const startButton = getEl('startGame') as HTMLButtonElement;
-    const quitButton = getEl('quitRoom') as HTMLButtonElement;
-    const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️';
-    const creator = lobby.players.find(p => p.id === lobby.creatorId);
-    const isOwner = creator?.name === currentPlayerName;
-    const isFull = lobby.players.length >= lobby.maxPlayers;
+/**
+ * Setup and display the lobby modal with player list and controls
+ *
+ * @param lobby Lobby data containing players, settings, and status
+ */
+function setupLobbyModal(lobby: Lobby)
+{
+    const lobbyModal = getEl("lobbyModal")
+    const modalTitle = getEl('roomName') as HTMLHeadingElement
+    const playersList = getEl('playersList') as HTMLDivElement
+    const playerCount = getEl('modalPlayerCount') as HTMLSpanElement
+    const startButton = getEl('startGame') as HTMLButtonElement
+    const quitButton = getEl('quitRoom') as HTMLButtonElement
+    const typeIcon = lobby.type === 'tournament' ? '🏆' : '⚔️'
+    const creator = lobby.players.find(p => p.id === lobby.creatorId)
+    const isOwner = creator?.name === currentPlayerName
+    const isFull = lobby.players.length >= lobby.maxPlayers
 
-    currentOpenLobbyId = lobby.id;
-
-    if (!lobby.players.length) deleteLobby(lobby.id);
-
-    if (modalTitle) modalTitle.textContent = `${typeIcon} ${lobby.name}`;
-
-    if (playerCount) playerCount.textContent = `${lobby.players.length}/${lobby.maxPlayers} joueurs`;
-
-    if (playersList) {
-        playersList.innerHTML = '';
-
-        lobby.players.forEach(player => {
-            const playerDiv = createPlayerElement(player, lobby);
-            playersList.appendChild(playerDiv);
-        });
+    currentOpenLobbyId = lobby.id
+    if (!lobby.players.length)
+        deleteLobby(lobby.id)
+    if (modalTitle)
+        modalTitle.textContent = `${typeIcon} ${lobby.name}`
+    if (playerCount)
+        playerCount.textContent = `${lobby.players.length}/${lobby.maxPlayers} joueurs`
+    if (playersList)
+    {
+        playersList.innerHTML = ''
+        lobby.players.forEach(player =>
+        {
+            const playerDiv = createPlayerElement(player, lobby)
+            playersList.appendChild(playerDiv)
+        })
         if (!isFull && isOwner)
-            addBot(lobby, playersList);
+            addBot(lobby, playersList)
     }
-
-    if (isOwner && lobby.players.length >= 2) {
-        show(startButton);
-        startButton.onclick = () => startLobby(lobby.id);
-    } else {
-        hide(startButton);
-        startButton.onclick = null;
+    if (isOwner)
+    {
+        if (lobby.players.length >= 2)
+        {
+            startButton.disabled = false
+            startButton.classList.remove('opacity-50', 'cursor-not-allowed')
+            startButton.classList.add('hover:opacity-80')
+        }
+        else
+        {
+            startButton.disabled = true
+            startButton.classList.add('opacity-50', 'cursor-not-allowed')
+            startButton.classList.remove('hover:opacity-80')
+        }
+        startButton.onclick = () => startLobby(lobby.id)
     }
-
-    quitButton.onclick = () => {
+    else
+    {
+        startButton.disabled = true
+        startButton.classList.add('opacity-50', 'cursor-not-allowed')
+        startButton.classList.remove('hover:opacity-80')
+        startButton.onclick = null
+    }
+    quitButton.onclick = () =>
+    {
         wsClient.sendMessage({
             type: 'leaveLobby',
             lobbyId: lobby.id
-        });
-        currentOpenLobbyId = null;
-        hide(lobbyModal);
-    };
-
-    show(lobbyModal);
+        })
+        currentOpenLobbyId = null
+        hide(lobbyModal)
+    }
+    show(lobbyModal)
 }
 
 function createLobbyElement(lobby: Lobby): HTMLDivElement {
@@ -520,25 +542,34 @@ function createLobbyElement(lobby: Lobby): HTMLDivElement {
     return lobbyDiv;
 }
 
+/**
+ * @brief Create HTML element for lobby player display
+ * @param player Player data including name, id, avatar
+ * @param lobby Current lobby data for owner/kick logic
+ * @returns Formatted player div with avatar and controls
+ */
 function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement 
 {
-    const playerDiv = document.createElement('div');
+    const playerDiv = document.createElement('div')
 
-    playerDiv.id = player.id;
+    playerDiv.id = player.id
     playerDiv.className = `flex flex-row gap-12 items-center 
                             border-sonpi16-black rounded-xl 
                             bg-sonpi16-orange bg-opacity-30 w-full`
 
-    const isOwner = player.id === lobby.creatorId;
-    const ownerStar = isOwner ? ' ⭐' : '';
+    const isOwner = player.id === lobby.creatorId
+    const ownerStar = isOwner ? ' ⭐' : ''
     
-    const creator = lobby.players.find(p => p.id === lobby.creatorId);
-    const amICreator = creator?.name === currentPlayerName;
-    const showKickButton = amICreator && !isOwner;
+    const creator = lobby.players.find(p => p.id === lobby.creatorId)
+    const amICreator = creator?.name === currentPlayerName
+    const showKickButton = amICreator && player.isBot
+    const avatarSrc = player.avatar || '/avatars/defaults/Transcendaire.png'
 
 
     playerDiv.innerHTML = `
-            <img src="./assets/Transcendaire.png" alt="avatar" class="w-16 h-16 rounded-full object-cover">
+            <img src="${avatarSrc}" alt="avatar" 
+                 class="w-16 h-16 rounded-full object-cover"
+                 onerror="this.src='/avatars/defaults/Transcendaire.png'">
             <span id="${player.id}" class="font-quency text-sonpi16-orange text-2lg">${player.name}${ownerStar}</span>
             ${showKickButton ? 
             `<button data-player-id="${player.id}" 
@@ -549,28 +580,32 @@ function createPlayerElement(player: LobbyPlayer, lobby: Lobby): HTMLDivElement
                 ✕
              </button>` 
             : ''
-            }`;
+            }`
 
-    const kickBtn = playerDiv.querySelector('.kickButton') as HTMLButtonElement | null;
-    if (kickBtn) {
-        kickBtn.addEventListener('click', () => {
-            if (!wsClient.isConnected()) {
-                alert('Connexion perdue, reconnexion en cours...');
-                requestLobbyList();
-                return;
+    const kickBtn = playerDiv.querySelector('.kickButton') as HTMLButtonElement | null
+    if (kickBtn)
+    {
+        kickBtn.addEventListener('click', () =>
+        {
+            if (!wsClient.isConnected())
+            {
+                alert('Connexion perdue, reconnexion en cours...')
+                requestLobbyList()
+                return
             }
-            const targetPlayerId = kickBtn.getAttribute('data-player-id');
-            if (targetPlayerId) {
+            const targetPlayerId = kickBtn.getAttribute('data-player-id')
+            if (targetPlayerId)
+            {
                 wsClient.sendMessage({
                     type: 'removeBot',
                     lobbyId: lobby.id,
                     botId: targetPlayerId
-                });
+                })
             }
-        });
+        })
     }
     
-    return playerDiv;
+    return playerDiv
 }
 
 function addBot(lobby: Lobby, playersList: HTMLDivElement) {

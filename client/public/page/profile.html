@@ -1,6 +1,6 @@
 <div class="max-w-4xl mx-auto w-full mt-12">
 
-  <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
+  <div class="bg-sonpi16-black rounded-xl shadow-lg p-8 mb-6 relative">
 
     <div class="flex flex-col sm:flex-row items-center sm:items-start gap-6">
       <!-- Avatar -->
@@ -41,8 +41,8 @@
       <div class="flex-1 text-center sm:text-left">
         <div class="flex items-center justify-center sm:justify-start gap-2 mb-2">
           <div class="relative inline-block group">
-            <h1 class="text-3xl font-bold font-quency text-sonpi16-black" id="username"></h1>
-            <input id="aliasInput" type="text" maxlength="20" class="hidden text-3xl font-bold font-quency text-sonpi16-black 
+            <h1 class="text-3xl font-bold font-quency text-sonpi16-orange" id="username"></h1>
+            <input id="aliasInput" type="text" maxlength="20" class="hidden text-3xl font-bold font-quency text-sonpi16-orange bg-sonpi16-black 
         border-2 border-sonpi16-orange rounded-lg px-3 py-1 w-64
         focus:outline-none focus:ring-2 focus:ring-sonpi16-orange
         transition-colors" placeholder="nouvel Alias">
@@ -59,44 +59,43 @@
           </div>
         </div>
 
-        <p class="text-gray-600 mb-4">Membre depuis le <span id="join-date">10 octobre 2025</span></p>
+        <p class="text-gray-400 mb-4">Membre depuis le <span id="join-date">10 octobre 2025</span></p>
 
         <div class="flex gap-6 justify-center sm:justify-start">
           <div>
             <p class="text-2xl font-bold text-sonpi16-orange" id="total-games">0</p>
-            <p class="text-sm text-gray-600">Parties</p>
+            <p class="text-sm text-gray-400">Parties</p>
           </div>
           <div>
-            <p class="text-2xl font-bold text-green-600" id="wins">0</p>
-            <p class="text-sm text-gray-600">Victoires</p>
+            <p class="text-2xl font-bold text-sonpi16-gold" id="wins">0</p>
+            <p class="text-sm text-gray-400">Victoires</p>
           </div>
           <div>
-            <p class="text-2xl font-bold text-red-600" id="losses">0</p>
-            <p class="text-sm text-gray-600">Défaites</p>
+            <p class="text-2xl font-bold text-sonpi16-blue" id="losses">0</p>
+            <p class="text-sm text-gray-400">Défaites</p>
           </div>
         </div>
       </div>
-
-      <div class="flex flex-col gap-2">
-        <button id="backHome" class="flex items-center text-sonpi16-black hover:scale-105 transition">
-          <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-          </svg>
-          <span class="font-quency text-xl">Retour</span>
-        </button>
-        <button id="friend-action-btn"
-          class="px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold hidden">
-          Ajouter en ami
-        </button>
-      </div>
     </div>
+
+    <button id="backHome" class="absolute top-6 right-6 flex items-center text-white hover:text-sonpi16-orange hover:scale-105 transition">
+      <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+      </svg>
+      <span class="font-quency text-xl">Retour maison</span>
+    </button>
+
+    <button id="friend-action-btn"
+      class="absolute bottom-6 right-6 px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold hidden">
+      Ajouter en ami
+    </button>
   </div>
 
-  <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-    <h2 class="text-xl font-bold font-quency text-sonpi16-black mb-4">Rechercher un joueur</h2>
+  <div class="bg-sonpi16-black rounded-xl shadow-lg p-6 mb-6">
+    <h2 class="text-xl font-bold font-quency text-sonpi16-orange mb-4">Rechercher un joueur</h2>
     <div class="flex gap-3">
       <input type="text" id="search-player-input" placeholder="Nom exact du joueur"
-        class="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sonpi16-orange font-quency">
+        class="flex-1 px-4 py-2 bg-sonpi16-orange bg-opacity-20 text-white border border-sonpi16-orange rounded-lg focus:outline-none focus:ring-2 focus:ring-sonpi16-orange font-quency placeholder-gray-400">
       <button id="search-player-btn"
         class="bg-sonpi16-orange text-white px-6 py-2 rounded-lg hover:scale-105 transition font-quency font-bold">
         Rechercher
@@ -105,40 +104,42 @@
     <p id="search-player-error" class="text-red-500 text-sm mt-2 hidden font-quency"></p>
   </div>
 
-  <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
-    <h2 class="text-2xl font-bold font-quency text-sonpi16-black mb-6">Statistiques</h2>
+  <div class="bg-sonpi16-black rounded-xl shadow-lg p-8 mb-6">
+    <h2 class="text-2xl font-bold font-quency text-sonpi16-orange mb-6">Statistiques</h2>
 
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-6">
-      <div class="text-center p-4 bg-gray-50 rounded-lg">
-        <p class="text-gray-600 mb-2">Ratio victoires</p>
-        <p class="text-3xl font-bold text-sonpi16-orange" id="win-rate">0%</p>
+      <div class="text-center p-4 bg-sonpi16-orange bg-opacity-10 rounded-lg">
+        <p class="text-gray-400 mb-2">Ratio victoires</p>
+        <p class="text-3xl font-bold text-white" id="win-rate">0%</p>
       </div>
 
-      <div class="text-center p-4 bg-gray-50 rounded-lg">
-        <p class="text-gray-600 mb-2">Tournois joués</p>
-        <p class="text-3xl font-bold text-blue-600" id="tournaments-played">0</p>
+      <div class="text-center p-4 bg-sonpi16-orange bg-opacity-10 rounded-lg">
+        <p class="text-gray-400 mb-2">Tournois joués</p>
+        <p class="text-3xl font-bold text-sonpi16-orange" id="tournaments-played">0</p>
       </div>
 
-      <div class="text-center p-4 bg-gray-50 rounded-lg">
-        <p class="text-gray-600 mb-2">Tournois gagnés</p>
-        <p class="text-3xl font-bold text-yellow-500" id="tournaments-won">0</p>
+      <div class="text-center p-4 bg-sonpi16-orange bg-opacity-10 rounded-lg">
+        <p class="text-gray-400 mb-2">Tournois gagnés</p>
+        <p class="text-3xl font-bold text-sonpi16-gold" id="tournaments-won">0</p>
       </div>
     </div>
   </div>
 
-  <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
-    <h2 class="text-2xl font-bold font-quency text-sonpi16-black mb-6">Historique des matchs</h2>
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+    <div class="bg-sonpi16-black rounded-xl shadow-lg p-8">
+      <h2 class="text-2xl font-bold font-quency text-sonpi16-orange mb-6">Historique des matchs</h2>
 
-    <div id="match-history-list" class="space-y-3 max-h-96 overflow-y-auto">
-      <p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>
+      <div id="match-history-list" class="space-y-3 max-h-96 overflow-y-auto">
+        <p class="text-gray-400 text-center py-8 font-quency">Aucun match joué</p>
+      </div>
     </div>
-  </div>
 
-  <div class="bg-white rounded-xl shadow-lg p-8 mb-6">
-    <h2 class="text-2xl font-bold font-quency text-sonpi16-black mb-6">Résultats de tournois</h2>
+    <div class="bg-sonpi16-black rounded-xl shadow-lg p-8">
+      <h2 class="text-2xl font-bold font-quency text-sonpi16-orange mb-6">Résultats de tournois</h2>
 
-    <div id="tournament-results-list" class="space-y-3 max-h-96 overflow-y-auto">
-      <p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>
+      <div id="tournament-results-list" class="space-y-3 max-h-96 overflow-y-auto">
+        <p class="text-gray-400 text-center py-8 font-quency">Aucun tournoi joué</p>
+      </div>
     </div>
   </div>
 
@@ -154,8 +155,8 @@
       </p>
 
       <div class="flex gap-4">
-        <button id="confirmDeleteAvatar" class="flex-1 bg-red-600 text-white px-4 py-3 rounded-xl font-bold font-quency
-                 hover:bg-red-700 transition-all duration-300 hover:scale-105">
+        <button id="confirmDeleteAvatar" class="flex-1 bg-sonpi16-orange text-white px-4 py-3 rounded-xl font-bold font-quency
+                 hover:bg-orange-600 transition-all duration-300 hover:scale-105">
           Supprimer
         </button>
         <button id="cancelDeleteAvatar" class="flex-1 bg-gray-600 text-white px-4 py-3 rounded-xl font-bold font-quency

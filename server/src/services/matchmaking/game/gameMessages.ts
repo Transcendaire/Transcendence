@@ -11,6 +11,8 @@ export interface GameOverOptions
 	isBattleRoyale?: boolean
 	shouldDisconnect?: boolean
 	forfeit?: boolean
+	tournamentRemainingPlayers?: number
+	tournamentTotalPlayers?: number
 }
 
 /**
@@ -30,7 +32,9 @@ export function sendGameOver(socket: WebSocket | null, options: GameOverOptions)
 		isTournament: options.isTournament ?? false,
 		isBattleRoyale: options.isBattleRoyale ?? false,
 		shouldDisconnect: options.shouldDisconnect ?? true,
-		...(options.forfeit && { forfeit: true })
+		...(options.forfeit && { forfeit: true }),
+		...(options.tournamentRemainingPlayers !== undefined && { tournamentRemainingPlayers: options.tournamentRemainingPlayers }),
+		...(options.tournamentTotalPlayers !== undefined && { tournamentTotalPlayers: options.tournamentTotalPlayers })
 	})
 }
 

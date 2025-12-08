@@ -19,23 +19,55 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 	})
 
 	server.get('/api/friends/requests/pending', async (req, res) => {
-		const user = (req as any).user;
+		const user = (req as any).user
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous reconnecter' })
 
-		const pendingRequests = db.getPendingFriendRequests(user.id);
-		return res.code(200).send({ pendingRequests });
+		try
+		{
+			const pendingRequests = db.getPendingFriendRequests(user.id).map(request =>
+			{
+				let avatar = '/avatars/defaults/Transcendaire.png'
+				if (request.google_picture)
+					avatar = `/avatars/users/${request.google_picture}`
+				else if (request.avatar)
+					avatar = `/avatars/users/${request.avatar}`
+				return { ...request, avatar }
+			})
+			return res.code(200).send({ pendingRequests })
+		}
+		catch (error)
+		{
+			console.error('[FRIENDS] Error in pending requests:', error)
+			return res.code(500).send({ message: 'Erreur serveur' })
+		}
 	})
 
 	server.get('/api/friends/requests/sent', async (req, res) => {
-		const user = (req as any).user;
+		const user = (req as any).user
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous reconnecter' })
 
-		const sentRequests = db.getSentFriendRequests(user.id);
-		return res.code(200).send({ sentRequests });
+		try
+		{
+			const sentRequests = db.getSentFriendRequests(user.id).map(request =>
+			{
+				let avatar = '/avatars/defaults/Transcendaire.png'
+				if (request.google_picture)
+					avatar = `/avatars/users/${request.google_picture}`
+				else if (request.avatar)
+					avatar = `/avatars/users/${request.avatar}`
+				return { ...request, avatar }
+			})
+			return res.code(200).send({ sentRequests })
+		}
+		catch (error)
+		{
+			console.error('[FRIENDS] Error in sent requests:', error)
+			return res.code(500).send({ message: 'Erreur serveur' })
+		}
 	})
 
 	server.get('/api/friends/status/:alias', async (req, res) => {

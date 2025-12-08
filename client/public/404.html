@@ -6,21 +6,23 @@
     <title>404 - Page non trouvée</title>
     <link rel="icon" type="image/png" href="/assets/Transcendaire.png">
     <link href="/config/main.css" rel="stylesheet" />
+    <link href="/config/tools.css" rel="stylesheet" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/config/config-tailwind.js"></script>
 </head>
-<body class="min-h-screen bg-sonpi16-orange flex items-center justify-center">
+<body class="min-h-screen bg-sonpi16-blue flex items-center justify-center" style="font-family: QuencyPixel-Regular;">
     <div class="text-center px-4">
-        <h1 class="text-9xl font-bold text-sonpi16-black font-quency mb-4">404</h1>
-        <h2 class="text-3xl font-bold text-sonpi16-black font-quency mb-6">Page non trouvée</h2>
-        <p class="text-xl text-sonpi16-black font-quency mb-8">La page que vous cherchez n'existe pas.</p>
+        <h1 class="text-9xl font-bold text-white mb-4" style="font-family: QuencyPixel-Regular;">404</h1>
+        <h2 class="text-3xl font-bold text-white mb-6" style="font-family: QuencyPixel-Regular;">Page non trouvée</h2>
+        <p class="text-xl text-white mb-8" style="font-family: QuencyPixel-Regular;">La page que vous cherchez n'existe pas.</p>
         
         <div class="flex gap-4 justify-center">
-            <a href="/" class="bg-sonpi16-black text-sonpi16-orange px-6 py-3 rounded-xl font-bold font-quency 
-                       hover:scale-105 transition-transform">
-                Retour à l'accueil
+            <a href="/" class="bg-white text-sonpi16-blue px-6 py-3 rounded-xl font-bold
+                       hover:scale-105 transition-transform" style="font-family: QuencyPixel-Regular;">
+                Retour maison
             </a>
         </div>
     </div>
+    <script type="module" src="/src/page/404.ts"></script>
 </body>
 </html>

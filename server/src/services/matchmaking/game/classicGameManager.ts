@@ -1,6 +1,6 @@
 import { WebSocket } from 'ws'
 import { GameState, PlayerOnlineStatus } from '../../../types.js'
-import { Player, GameRoom } from '../core/types.js'
+import { Player, GameRoom, TournamentMatchConfig } from '../core/types.js'
 import { GameService, PlayerInput } from '../../game/game.js'
 import { Player as GamePlayer } from '@app/shared/models/Player.js'
 import { CloneBall } from '@app/shared/models/CloneBall.js'
@@ -34,13 +34,7 @@ export class ClassicGameManager
 	public createGame(
 		player1: Player, player2: Player, isCustom: boolean,
 		fruitFrequency: 'low' | 'normal' | 'high' = 'normal', lifeCount: number = 5,
-		tournamentMatch?: {
-			tournamentId: string
-			matchId: string
-			isFinalMatch: boolean
-			onComplete: (winnerId: string, lives1: number, lives2: number) => void
-			onUpdate?: () => void
-		}
+		tournamentMatch?: TournamentMatchConfig
 	): string
 	{
 		const gameId = Math.random().toString(36).substr(2, 9)
@@ -211,17 +205,34 @@ export class ClassicGameManager
 		lives1: number, lives2: number, isTournament: boolean, isFinalMatch: boolean
 	): void
 	{
+		let tournamentRemainingPlayers: number | undefined
+		let tournamentTotalPlayers: number | undefined
+
+		if (isTournament && room.tournamentMatch)
+		{
+			const tournamentInfo = room.tournamentMatch.getTournamentInfo?.()
+			if (tournamentInfo)
+			{
+				tournamentRemainingPlayers = tournamentInfo.remainingPlayers
+				tournamentTotalPlayers = tournamentInfo.totalPlayers
+			}
+		}
+
 		const p1Options: GameOverOptions = {
 			winner, lives1, lives2, isTournament,
-			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1'
+			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player1',
+			...(tournamentRemainingPlayers !== undefined && { tournamentRemainingPlayers }),
+			...(tournamentTotalPlayers !== undefined && { tournamentTotalPlayers })
 		}
 		const p2Options: GameOverOptions = {
 			winner, lives1, lives2, isTournament,
-			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2'
+			shouldDisconnect: isFinalMatch || !isTournament || winner !== 'player2',
+			...(tournamentRemainingPlayers !== undefined && { tournamentRemainingPlayers }),
+			...(tournamentTotalPlayers !== undefined && { tournamentTotalPlayers })
 		}
 		sendGameOver(room.player1.socket, p1Options)
 		if (room.player2.id !== 'AI')
-			sendGameOver(room.player2.socket, p2Options)
+				sendGameOver(room.player2.socket, p2Options)
 	}
 
 	/**

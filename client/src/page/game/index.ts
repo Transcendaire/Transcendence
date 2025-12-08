@@ -4,6 +4,7 @@ import { wsClient } from "../../components/WebSocketClient";
 import { inputParserClass } from "../../components/inputParser"
 import { paddleSize, paddleOffset} from "@shared/consts";
 import { registerPageInitializer , navigate } from "../../router";
+import { setNavigationLock } from "../../app";
 import * as gameState from './gameState';
 import { setupGameEventListeners, sendInputToServer } from './input';
 import { render } from './canvas';
@@ -24,6 +25,7 @@ function initGame(): void
     console.log('[GAME] État actuel - gameRunning:', gameState.gameRunning, 'currentPlayerRole:', gameState.currentPlayerRole);
     console.log('[GAME] WebSocket connecté?', wsClient.isConnected());
     
+    setNavigationLock(true)
     cleanupPreviousHandlers();
     document.body.classList.remove('bg-sonpi16-orange');
     document.body.classList.add('bg-sonpi16-black');
@@ -54,7 +56,13 @@ function initGame(): void
             sessionStorage.removeItem('playerRole');
         }
         else
-            navigate("home");
+        {
+            setNavigationLock(false)
+            window.history.replaceState({ route: 'home', path: '/home' }, '', '/home')
+            import('../../router').then(({ render }) => {
+                render('home');
+            });
+        }
 
         if (storedOpponent) {
             console.log('[GAME] Opponent stocké:', storedOpponent, '- Affichage du countdown');

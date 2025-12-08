@@ -34,11 +34,12 @@ export function generateBotId(): string
  * @param name Player display name
  * @param isBot Whether player is a bot
  * @param isReady Whether player is ready
+ * @param avatar Optional avatar path
  * @returns LobbyPlayer object
  */
-export function createLobbyPlayer(id: string, name: string, isBot: boolean, isReady: boolean): LobbyPlayer
+export function createLobbyPlayer(id: string, name: string, isBot: boolean, isReady: boolean, avatar?: string): LobbyPlayer
 {
-	return { id, name, isBot, isReady }
+	return avatar ? { id, name, isBot, isReady, avatar } : { id, name, isBot, isReady }
 }
 
 /**

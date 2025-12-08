@@ -54,6 +54,19 @@ export interface BattleRoyaleRoom
 }
 
 /**
+ * @brief Tournament match configuration
+ */
+export interface TournamentMatchConfig
+{
+	tournamentId: string
+	matchId: string
+	isFinalMatch: boolean
+	onComplete: (winnerId: string, score1: number, score2: number) => void
+	onUpdate?: () => void
+	getTournamentInfo?: () => { remainingPlayers: number; totalPlayers: number }
+}
+
+/**
  * @brief Active game room with running game loop
  */
 export interface GameRoom
@@ -71,11 +84,5 @@ export interface GameRoom
 	player2Ping: number
 	ai?: AIPlayer
 	isCustom: boolean
-	tournamentMatch?: {
-		tournamentId: string
-		matchId: string
-		isFinalMatch: boolean
-		onComplete: (winnerId: string, score1: number, score2: number) => void
-		onUpdate?: () => void
-	}
+	tournamentMatch?: TournamentMatchConfig
 }

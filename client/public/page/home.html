@@ -16,18 +16,20 @@
         <p class="text-2xl pb-1 font-bold">S'inscrire</p>
       </button>
 
-      <div>
-        <button id="profileButton"
-          class="hidden border-sonpi16-black rounded-xl bg-sonpi16-black w-fit text-sonpi16-orange border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 ">
-          <p class="text-2xl pb-1 font-bold font-quency">Profile</p>
-        </button>
+      <div class="flex flex-col items-center md:items-start">
+        <div class="flex gap-2">
+          <button id="profileButton"
+            class="hidden border-sonpi16-black rounded-xl bg-sonpi16-black w-fit text-sonpi16-orange border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 ">
+            <p class="text-2xl pb-1 font-bold font-quency">Profile</p>
+          </button>
+          <button id="friendsButton" class="hidden border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 hover:bg-sonpi16-black hover:text-sonpi16-orange ">
+            <p class="text-2xl pb-1 font-bold font-quency">Amis</p>
+          </button>
+        </div>
         <button id="logoutButton"
-          class="hidden mx-2 border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 hover:bg-sonpi16-black hover:text-sonpi16-orange ">
+          class="hidden border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 hover:bg-sonpi16-black hover:text-sonpi16-orange ">
           <p class="text-2xl pb-1 font-bold font-quency">Logout</p>
         </button>
-		<button id="friendsButton" class="hidden mx-2 border-sonpi16-black rounded-xl bg-sonpi16-orange w-fit text-sonpi16-black border-2 px-3 pt-0.5 mt-3 transition duration-300 hover:scale-110 hover:bg-sonpi16-black hover:text-sonpi16-orange ">
-    	  <p class="text-2xl pb-1 font-bold font-quency">Amis</p>
-		</button>
       </div>
     </div>
   </div>
@@ -247,7 +249,7 @@
                           px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                           focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                         font-quency" />
-      <input id="passwordCheck" type="text" placeholder="mot de passe" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+      <input id="passwordCheck" type="password" placeholder="mot de passe" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                         px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
                         focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                         font-quency" />
@@ -269,6 +271,17 @@
         ×
       </button>
 
+      <button id="googleSigninButton" class="mt-2 flex flex-row border-2 border-sonpi16-orange 
+               w-full py-2 rounded-md justify-center items-center 
+               bg-sonpi16-orange bg-opacity-20
+               hover:bg-opacity-30 hover:border-sonpi16-orange hover:scale-105
+               focus:ring-4 focus:ring-sonpi16-orange focus:ring-opacity-50
+               transition-all duration-300 ease-in-out
+               active:scale-95">
+        <img class="inline h-10 px-3" src="./assets/g.webp" alt="glogo">
+        <p class="text-sonpi16-orange text-2xl font-bold">Google Connect</p>
+      </button>
+
       <p class="font-quency border-t-2 my-3 py-1 w-4/5 mx-auto"></p>
 
       <input id="newUser" type="text" placeholder="Nom d'utilisateur" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
@@ -279,12 +292,12 @@
                           px-4 py-3 rounded-lg border-2 border-sonpi16-orange 
                           focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                         font-quency" />
-      <input id="createPassword" type="text" placeholder="mot de passe" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+      <input id="createPassword" type="password" placeholder="mot de passe" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                         px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
                         focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                         font-quency" />
 
-      <input id="passwordConfirmation" type="text" placeholder="confirmez le mot de passe" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
+      <input id="passwordConfirmation" type="password" placeholder="confirmez le mot de passe" class="w-full bg-sonpi16-orange bg-opacity-20 text-sonpi16-orange 
                         px-4 py-3 rounded-lg border-2 border-sonpi16-orange mt-3
                         focus:outline-none focus:ring-2 focus:ring-sonpi16-orange 
                         font-quency" />
@@ -300,11 +313,11 @@
     <div class="bg-sonpi16-black rounded-2xl p-8 shadow-2xl max-w-md w-full mx-4 
                     text-center">
       <h3 class="text-3xl font-bold text-sonpi16-orange mb-4 font-quency animate-pulse">
-        Recherche d'aversaire...
+        Recherche d'adversaire...
       </h3>
 
-      <button id="cancelWaitButton" class="bg-red-600 text-white px-8 py-3 rounded-lg font-bold 
-                     hover:bg-red-700 transition-all duration-300 hover:shadow-lg 
+      <button id="cancelWaitButton" class="bg-sonpi16-blue text-white px-8 py-3 rounded-lg font-bold 
+                     hover:scale-105 transition-all duration-300 hover:shadow-lg 
                      active:scale-95 font-quency">
         ANNULER
       </button>

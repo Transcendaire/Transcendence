@@ -18,12 +18,13 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
     gameState.setPolygonData(null);
     gameState.setAllPlayers([]);
 
-    wsClient.onGameStart = (playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string) => {
-        console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole);
+    wsClient.onGameStart = (playerRole: 'player1' | 'player2', player1Name?: string, player2Name?: string, isTournament?: boolean) => {
+        console.log('[GAME] ✅ onGameStart reçu! Role:', playerRole, 'Tournament:', isTournament);
         console.log('[GAME] Canvas disponible?', !!gameState.canvas, 'ctx disponible?', !!gameState.ctx);
         gameState.setCurrentPlayerRole(playerRole);
         gameState.setTournamentCountdown(null);
         gameState.setIsWaitingForTournamentMatch(false);
+        gameState.setIsInTournament(!!isTournament);
     };
     console.log('[GAME] Callback onGameStart configuré');
     
@@ -40,11 +41,9 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
         alert(error);
     };
     
-    wsClient.onGameOver = (winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean) => {
-        showGameOver(winner, lives1, lives2, isTournament, isBattleRoyale, shouldDisconnect, forfeit);
-    };
-    
-    wsClient.onTournamentCountdown = (opponentName: string, countdown: number) => {
+	wsClient.onGameOver = (winner: 'player1' | 'player2', lives1: number, lives2: number, isTournament?: boolean, isBattleRoyale?: boolean, shouldDisconnect?: boolean, forfeit?: boolean, tournamentRemainingPlayers?: number, tournamentTotalPlayers?: number) => {
+		showGameOver(winner, lives1, lives2, isTournament, isBattleRoyale, shouldDisconnect, forfeit, tournamentRemainingPlayers, tournamentTotalPlayers);
+	};    wsClient.onTournamentCountdown = (opponentName: string, countdown: number) => {
         gameState.setTournamentCountdown({ opponentName, countdown });
     };
     
@@ -69,10 +68,7 @@ export function setupWebSocketCallbacks(gameLoop: (time: number) => void): void
 function updateGameState(serverGameState: GameState): void
 {
 	if (serverGameState.isBattleRoyale)
-	{
-		updateBattleRoyaleState(serverGameState);
-		return;
-	}
+		return updateBattleRoyaleState(serverGameState);
 	updateClassicGameState(serverGameState);
 }
 
@@ -146,10 +142,8 @@ function updateClassicGameState(serverGameState: GameState): void
 {
     if (!gameState.player1 || !gameState.player2 || !gameState.ball)
     {
-        if (!gameState.currentPlayerRole || !savedGameLoop) {
-            console.warn('[GAME] updateGameState mais pas de rôle ou gameLoop défini, ignoré');
-            return;
-        }
+        if (!gameState.currentPlayerRole || !savedGameLoop)
+            return console.warn('[GAME] updateGameState mais pas de rôle ou gameLoop défini, ignoré');
         const p1 = serverGameState.players[0];
         const p2 = serverGameState.players[1];
         if (!p1 || !p2) return;

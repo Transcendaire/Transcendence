@@ -421,7 +421,8 @@ export class DatabaseService {
     public getPendingFriendRequests(userId: string): any[]
 	{
         return this.db.prepare(`
-            SELECT r.id, r.from_user_id, u.alias as from_alias, r.created_at
+            SELECT r.id, r.from_user_id, u.alias as from_alias, r.created_at,
+                   u.google_picture, u.avatar
             FROM friend_requests r
             JOIN users u ON u.id = r.from_user_id
             WHERE r.to_user_id = ?
@@ -437,7 +438,8 @@ export class DatabaseService {
     public getSentFriendRequests(userId: string): any[]
 	{
         return this.db.prepare(`
-            SELECT r.id, r.to_user_id, u.alias as to_alias, r.created_at
+            SELECT r.id, r.to_user_id, u.alias as to_alias, r.created_at,
+                   u.google_picture, u.avatar
             FROM friend_requests r
             JOIN users u ON u.id = r.to_user_id
             WHERE r.from_user_id = ?
@@ -792,17 +794,43 @@ export class DatabaseService {
 			throw new DatabaseError("getMatchById: at least one of tournamentId or matchId is needed");
 		
 		let query: string = "SELECT * FROM matches WHERE ";
+		let matches;
 		if (tournamentId)
 		{
 			query += "tournament_id = ?";
-			return this.db.prepare(query).all(tournamentId);
+			matches = this.db.prepare(query).all(tournamentId);
 		}
-		if (matchId)
+		else if (matchId)
 		{
 			query += "id = ?";
-			return this.db.prepare(query).all(matchId);
+			matches = this.db.prepare(query).all(matchId);
 		}
-		return;
+
+		if (!matches) return;
+
+		return matches.map((match: any) => {
+			const playerA = this.getUserByAlias(match.alias_a);
+			const playerB = this.getUserByAlias(match.alias_b);
+
+			const getAvatar = (user: any) => {
+				if (!user) return '/avatars/defaults/Transcendaire.png';
+				if (user.avatar !== 'Transcendaire.png')
+					return `/avatars/users/${user.avatar}`;
+				else if (user.google_picture)
+				{
+					const googlePicture = this.getUserGooglePicture(user.id);
+					if (googlePicture)
+						return `/avatars/users/${googlePicture}`;
+				}
+				return '/avatars/defaults/Transcendaire.png';
+			};
+
+			return {
+				...match,
+				avatar_a: getAvatar(playerA),
+				avatar_b: getAvatar(playerB)
+			};
+		});
 	}
 
 	/**
@@ -961,8 +989,6 @@ export class DatabaseService {
 	 */
 	public addPlayerToTournament(alias: string, tournamentId: string, tournamentName: string): void
 	{
-		checkAliasValidity(alias);
-
 		const tournament = this.getTournament(tournamentId);
 		if (!tournament)
 			throw new DatabaseError(`Le tournoi ${tournamentName} n'existe pas`);
@@ -1201,12 +1227,35 @@ export class DatabaseService {
 	 */
 	public getPlayerMatchHistory(playerAlias: string, limit: number = 50): any[]
 	{
-		return this.db.prepare(`
+		const matches = this.db.prepare(`
 			SELECT * FROM match_history
 			WHERE player_alias = ?
 			ORDER BY created_at DESC
 			LIMIT ?
 		`).all(playerAlias, limit);
+
+		return matches.map((match: any) => {
+			const opponentAliases = match.opponent_info.split(', vs ').join(', ').split(', ');
+			const opponentAvatars = opponentAliases.map((alias: string) => {
+				const opponent = this.getUserByAlias(alias.trim());
+				if (!opponent) return '/avatars/defaults/Transcendaire.png';
+				
+				if (opponent.avatar !== 'Transcendaire.png')
+					return `/avatars/users/${opponent.avatar}`;
+				else if (opponent.google_picture)
+				{
+					const googlePicture = this.getUserGooglePicture(opponent.id);
+					if (googlePicture)
+						return `/avatars/users/${googlePicture}`;
+				}
+				return '/avatars/defaults/Transcendaire.png';
+			});
+
+			return {
+				...match,
+				opponent_avatars: opponentAvatars
+			};
+		});
 	}
 
 	/**

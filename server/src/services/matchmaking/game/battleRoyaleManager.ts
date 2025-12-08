@@ -409,14 +409,20 @@ export class BattleRoyaleManager
 	/**
 	 * @brief Handle game over triggered by disconnection
 	 */
-	private handleDisconnectGameOver(room: BattleRoyaleRoom, isSurrender: boolean): void
+	private handleDisconnectGameOver(
+		room: BattleRoyaleRoom, isSurrender: boolean
+	): void
 	{
 		const gameState = room.gameService.getGameState()
-		const winnerIndex = gameState.players.findIndex((p: Player) => !p.isEliminated())
+		const winnerIndex = gameState.players.findIndex(
+			(p: Player) => !p.isEliminated()
+		)
 		const winner = gameState.players[winnerIndex]
+
 		console.log(`[BR] Game Over! Winner: ${winner?.name ?? 'None'}`)
 		const winnerStr = `player${winnerIndex + 1}` as 'player1' | 'player2'
 		this.sendGameOverToAll(room, winnerStr, gameState, isSurrender)
+		this.recordResults(room, winnerIndex, gameState)
 	}
 
 	/**

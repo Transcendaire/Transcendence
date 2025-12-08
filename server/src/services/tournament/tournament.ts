@@ -1,5 +1,6 @@
 import { WebSocket } from 'ws';
 import { MatchmakingService } from '../matchmaking/matchmaking.js';
+import { TournamentMatchConfig } from '../matchmaking/core/types.js';
 import { getDatabase } from '../../db/databaseSingleton.js';
 import { Match, SingleEliminationBracket } from './brackets.js';
 import { errTournament, TournamentError } from "@app/shared/errors.js"
@@ -365,6 +366,18 @@ export class Tournament {
 		return this.players.size;
 	}
 
+	/**
+	 * @brief Get number of active players not eliminated
+	 */
+	public getActivePlayerCount(): number
+	{
+		let count = 0;
+		for (const player of this.players.values())
+			if (player.status !== 'eliminated')
+				count++;
+		return count;
+	}
+
 	public getStatus(): string
 	{
 		return this.status;
@@ -567,22 +580,28 @@ export class Tournament {
 		const isFinalMatch = this.currRound === this.maxRound - 1;
 		console.log(`[TOURNAMENT] Match is final: ${isFinalMatch} (round ${this.currRound + 1}/${this.maxRound})`);
 		
+		const tournamentMatchConfig: TournamentMatchConfig = {
+			tournamentId: this.id,
+			matchId: match.id,
+			isFinalMatch,
+			onComplete: (winnerId: string, score1: number, score2: number) =>
+			{
+				this.completeMatch(match, winnerId, score1, score2);
+			},
+			onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers(),
+			getTournamentInfo: () => ({
+				remainingPlayers: this.getActivePlayerCount(),
+				totalPlayers: this.players.size
+			})
+		};
+		
 		const gameId = gameRoomManager.createGame(
 			{ socket: player1.socket!, name: player1.alias, id: player1.id },
 			{ socket: player2.socket!, name: player2.alias, id: player2.id },
 			this.settings.powerUpsEnabled,
 			this.settings.fruitFrequency,
 			this.settings.lifeCount,
-			{
-				tournamentId: this.id,
-				matchId: match.id,
-				isFinalMatch,
-				onComplete: (winnerId: string, score1: number, score2: number) =>
-				{
-					this.completeMatch(match, winnerId, score1, score2);
-				},
-				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers()
-			}
+			tournamentMatchConfig
 		);
 		console.log(`[TOURNAMENT] Game ${gameId} started with powerUps: ${this.settings.powerUpsEnabled}`);
 
@@ -809,7 +828,11 @@ export class Tournament {
 					else
 						this.completeMatch(match, actualWinnerId, lives2, lives1)
 				},
-				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers()
+				onUpdate: () => this.broadcastMatchUpdatesToWaitingPlayers(),
+				getTournamentInfo: () => ({
+					remainingPlayers: this.getActivePlayerCount(),
+					totalPlayers: this.players.size
+				})
 			}
 		}
 

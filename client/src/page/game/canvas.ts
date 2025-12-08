@@ -40,16 +40,10 @@ export function render(): void
 	gameState.ctx.fillRect(0, 0, gameState.canvas.width, gameState.canvas.height);
 
 	if (gameState.tournamentCountdown)
-	{
-		renderTournamentCountdown();
-		return;
-	}
+		return renderTournamentCountdown();
 
 	if (gameState.isWaitingForTournamentMatch)
-	{
-		renderWaitingForMatch();
-		return;
-	}
+		return renderWaitingForMatch();
 
 	if (gameState.isBattleRoyale)
 	{
@@ -727,7 +721,7 @@ function renderWaitingForMatch(): void
  */
 function renderMatchCard(ctx: CanvasRenderingContext2D, canvas: HTMLCanvasElement, match: { player1Name: string; player2Name: string; lives1: number; lives2: number }, y: number, isHighlighted: boolean): void
 {
-	const nameColor = isHighlighted ? '#FFD700' : COLORS.SONPI16_BLUE;
+	const nameColor = isHighlighted ? COLORS.SONPI16_GOLD : COLORS.SONPI16_BLUE;
 	
 	ctx.fillStyle = nameColor;
 	ctx.font = '28px ' + FONTS.QUENCY_PIXEL;

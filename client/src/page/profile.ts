@@ -1,6 +1,7 @@
 import { getEl, show, hide } from "../app";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { registerPageInitializer, navigate } from "../router";
+import { sanitizeInput, escapeHtml, getStatusStyling } from "../utils/utils";
 
 async function initProfilePage(): Promise<void> {
     console.log('[PROFILE] Initializing profile page');
@@ -16,6 +17,10 @@ async function initProfilePage(): Promise<void> {
 
     getEl("backHome").addEventListener('click', () => navigate('home'));
     setupSearchPlayer();
+    setupProfileNavigation();
+
+    await connectWebSocketIfNeeded(ownerAlias);
+    setupFriendStatusCallback();
 
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias;
@@ -43,8 +48,7 @@ async function initProfilePage(): Promise<void> {
 
         return;
     }
-    updateProfileUI(profileData, isOwnProfile);
-    await connectWebSocketForStatus(ownerAlias);
+    updateProfileUI(profileData, isOwnProfile, targetAlias || ownerAlias, ownerAlias);
     if (!isOwnProfile && targetAlias)
         await setupFriendButton(targetAlias, ownerAlias);
 }
@@ -93,6 +97,7 @@ interface MatchHistoryEntry {
     player_alias: string;
     game_type: '1v1' | 'battle_royale';
     opponent_info: string;
+    opponent_avatars: string[];
     player_count: number;
     bot_count: number;
     score_for: number;
@@ -111,6 +116,8 @@ interface TournamentMatch {
     player_b_id: string;
     alias_a: string;
     alias_b: string;
+    avatar_a: string;
+    avatar_b: string;
     score_a: number;
     score_b: number;
     state: string;
@@ -296,7 +303,7 @@ function showToast(message: string, type: 'success' | 'error'): void {
     toast.id = 'toast';
     toast.className = `fixed top-4 right-4 px-6 py-4 rounded-xl shadow-2xl font-quency font-bold text-white z-50 
                        transform transition-all duration-300 ease-in-out
-                       ${type === 'success' ? 'bg-green-600' : 'bg-red-600'}`;
+                       ${type === 'success' ? 'bg-sonpi16-gold' : 'bg-sonpi16-blue'}`;
     toast.textContent = message;
     document.body.appendChild(toast);
 
@@ -355,24 +362,24 @@ async function removeFriend(alias: string): Promise<boolean> {
 }
 
 function updateFriendButton(btn: HTMLElement, status: FriendStatus): void {
-    btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
+    btn.className = 'absolute bottom-6 right-6 px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
     switch (status) {
         case 'none':
-            btn.innerText = 'Ajouter en ami';
-            btn.classList.add('bg-green-600', 'text-white');
-            break;
+            btn.innerText = 'Ajouter en ami'
+            btn.classList.add('bg-sonpi16-gold', 'text-white')
+            break
         case 'pending-sent':
-            btn.innerText = 'Demande envoyée ✗';
-            btn.classList.add('bg-yellow-500', 'text-white');
-            break;
+            btn.innerText = 'Demande envoyée ✗'
+            btn.classList.add('bg-sonpi16-orange', 'text-white')
+            break
         case 'pending-received':
-            btn.innerText = 'Accepter la demande';
-            btn.classList.add('bg-blue-600', 'text-white');
-            break;
+            btn.innerText = 'Accepter la demande'
+            btn.classList.add('bg-sonpi16-gold', 'text-white')
+            break
         case 'friends':
-            btn.innerText = 'Supprimer l\'ami';
-            btn.classList.add('bg-red-600', 'text-white');
-            break;
+            btn.innerText = 'Supprimer l\'ami'
+            btn.classList.add('bg-sonpi16-blue', 'text-white')
+            break
     }
 }
 
@@ -482,18 +489,18 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
     container.innerHTML = matches.map(match => {
         const isWin = match.result === 'win';
         const isBR = match.game_type === 'battle_royale';
-        const bgColor = isWin ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200';
+        const bgColor = isWin ? 'bg-sonpi16-gold bg-opacity-10 border-sonpi16-gold' : 'bg-sonpi16-blue bg-opacity-10 border-sonpi16-blue';
         const resultText = isWin ? 'Victoire' : 'Défaite';
-        const resultColor = isWin ? 'text-green-600' : 'text-red-600';
+        const resultColor = isWin ? 'text-sonpi16-gold' : 'text-sonpi16-blue';
         const totalPlayers = match.player_count + (match.bot_count || 0);
 
         let gameTypeLabel = '';
         if (isBR)
-            gameTypeLabel = `<span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Battle Royale (${totalPlayers})</span>`;
+            gameTypeLabel = `<span class="text-xs bg-purple-500 bg-opacity-20 text-purple-300 px-2 py-1 rounded">Battle Royale (${totalPlayers})</span>`;
         else if (match.tournament_id)
-            gameTypeLabel = '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Tournoi</span>';
+            gameTypeLabel = '<span class="text-xs bg-sonpi16-blue bg-opacity-20 text-blue-300 px-2 py-1 rounded">Tournoi</span>';
         else
-            gameTypeLabel = '<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Quickmatch</span>';
+            gameTypeLabel = '<span class="text-xs bg-gray-500 bg-opacity-20 text-gray-300 px-2 py-1 rounded">Quickmatch</span>';
 
         let scoreDisplay = '';
         if (isBR) {
@@ -507,24 +514,43 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
         }
 
         const botSuffix = (match.bot_count && match.bot_count > 0) ? ` et ${match.bot_count} Bot${match.bot_count > 1 ? 's' : ''}` : '';
+        
+        const opponentNames = match.opponent_info.split(', vs ').join(', ').split(', ');
+        const opponentAvatars = match.opponent_avatars || [];
+        
+        const opponentsHtml = opponentNames.map((name: string, index: number) => {
+            const avatar = opponentAvatars[index] || '/avatars/defaults/Transcendaire.png';
+            const isBot = name.includes('(Bot)');
+            return `
+                <div class="inline-flex items-center gap-2 bg-sonpi16-orange bg-opacity-10 rounded-lg px-2 py-1 ${!isBot ? 'cursor-pointer hover:bg-opacity-20 transition-all' : ''}" 
+                     ${!isBot ? `onclick="window.dispatchEvent(new CustomEvent('navigate-to-profile', { detail: '${escapeHtml(name.trim())}' }))"` : ''}>
+                    <img src="${avatar}" alt="${escapeHtml(name)}" 
+                         class="w-6 h-6 rounded-full object-cover"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                    <span class="text-sm font-quency text-white">${escapeHtml(name)}</span>
+                </div>
+            `;
+        }).join('');
 
         return `
             <div class="flex items-center justify-between p-4 rounded-lg border ${bgColor}">
                 <div class="flex items-center gap-4">
-                    <div class="w-10 h-10 ${isWin ? 'bg-green-500' : 'bg-red-500'} rounded-full flex items-center justify-center">
+                    <div class="w-10 h-10 ${isWin ? 'bg-sonpi16-gold' : 'bg-sonpi16-blue'} rounded-full flex items-center justify-center">
                         <span class="text-white font-bold">${isWin ? '✓' : '✗'}</span>
                     </div>
                     <div>
-                        <p class="font-quency font-bold text-sonpi16-black">vs ${match.opponent_info}${botSuffix}</p>
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            ${opponentsHtml}
+                        </div>
                         <div class="flex items-center gap-2">
                             ${gameTypeLabel}
-                            <span class="text-xs text-gray-500">${formatRelativeTime(match.created_at)}</span>
+                            <span class="text-xs text-gray-400">${formatRelativeTime(match.created_at)}</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-right">
                     <p class="font-bold ${resultColor}">${resultText}</p>
-                    <p class="text-sm text-gray-600">${scoreDisplay}</p>
+                    <p class="text-sm text-gray-300">${scoreDisplay}</p>
                 </div>
             </div>
         `;
@@ -541,15 +567,29 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
 
     container.innerHTML = results.map((result, index) => {
         const isChampion = result.position === 1;
-        const bgColor = isChampion ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200';
+        const bgColor = isChampion ? 'bg-sonpi16-gold bg-opacity-10 border-sonpi16-gold' : 'bg-gray-500 bg-opacity-10 border-gray-500';
         const matchesHtml = result.matches && result.matches.length > 0
             ? result.matches.map(m => {
                 const isWinnerA = m.score_a > m.score_b;
+                const avatarA = m.avatar_a || '/avatars/defaults/Transcendaire.png';
+                const avatarB = m.avatar_b || '/avatars/defaults/Transcendaire.png';
                 return `
-                    <div class="flex justify-between items-center py-2 px-3 bg-white rounded border">
-                        <span class="font-quency ${isWinnerA ? 'font-bold text-green-600' : 'text-gray-600'}">${m.alias_a}</span>
-                        <span class="text-sm font-bold">${m.score_a} - ${m.score_b}</span>
-                        <span class="font-quency ${!isWinnerA ? 'font-bold text-green-600' : 'text-gray-600'}">${m.alias_b}</span>
+                    <div class="flex justify-between items-center py-2 px-3 bg-sonpi16-orange bg-opacity-10 rounded border border-sonpi16-orange">
+                        <div class="flex items-center gap-2 cursor-pointer hover:bg-sonpi16-orange hover:bg-opacity-20 transition-all rounded px-2 py-1"
+                             onclick="window.dispatchEvent(new CustomEvent('navigate-to-profile', { detail: '${escapeHtml(m.alias_a)}' }))">
+                            <img src="${avatarA}" alt="${escapeHtml(m.alias_a)}" 
+                                 class="w-6 h-6 rounded-full object-cover"
+                                 onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                            <span class="font-quency ${isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${escapeHtml(m.alias_a)}</span>
+                        </div>
+                        <span class="text-sm font-bold text-white">${m.score_a} - ${m.score_b}</span>
+                        <div class="flex items-center gap-2 cursor-pointer hover:bg-sonpi16-orange hover:bg-opacity-20 transition-all rounded px-2 py-1"
+                             onclick="window.dispatchEvent(new CustomEvent('navigate-to-profile', { detail: '${escapeHtml(m.alias_b)}' }))">
+                            <span class="font-quency ${!isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${escapeHtml(m.alias_b)}</span>
+                            <img src="${avatarB}" alt="${escapeHtml(m.alias_b)}" 
+                                 class="w-6 h-6 rounded-full object-cover"
+                                 onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                        </div>
                     </div>
                 `;
             }).join('')
@@ -564,8 +604,8 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
                             <span class="text-white font-bold text-lg">${isChampion ? '🏆' : result.position}</span>
                         </div>
                         <div>
-                            <p class="font-quency font-bold text-sonpi16-black">${result.tournament_name}</p>
-                            <p class="text-sm text-gray-600">${result.matches_won}V - ${result.matches_lost}D</p>
+                            <p class="font-quency font-bold text-white">${result.tournament_name}</p>
+                            <p class="text-sm text-gray-400">${result.matches_won}V - ${result.matches_lost}D</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -578,8 +618,8 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
                         </svg>
                     </div>
                 </div>
-                <div id="tournament-matches-${index}" class="hidden border-t px-4 py-3 space-y-2 bg-gray-50">
-                    <p class="text-xs text-gray-500 font-bold mb-2">Matchs du tournoi:</p>
+                <div id="tournament-matches-${index}" class="hidden border-t border-gray-600 px-4 py-3 space-y-2 bg-sonpi16-black bg-opacity-50">
+                    <p class="text-xs text-gray-400 font-bold mb-2">Matchs du tournoi:</p>
                     ${matchesHtml}
                 </div>
             </div>
@@ -587,60 +627,84 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
     }).join('');
 }
 
-function updateProfileUI(data: ProfileData, isOwnProfile: boolean): void {
-    const usernameEl = getEl('username');
-    const userInitialEl = getEl('userInitial');
-    const joinDateEl = getEl('join-date');
-    const totalGamesEl = getEl('total-games');
-    const winsEl = getEl('wins');
-    const lossesEl = getEl('losses');
-    const winRateEl = getEl('win-rate');
-    const tournamentsPlayedEl = getEl('tournaments-played');
-    const tournamentsWonEl = getEl('tournaments-won');
-    const avatarImg = getEl('userAvatar') as HTMLImageElement;
+function updateProfileUI(data: ProfileData, isOwnProfile: boolean, targetAlias: string, ownerAlias: string): void
+{
+	const usernameEl = getEl('username')
+	const userInitialEl = getEl('userInitial')
+	const joinDateEl = getEl('join-date')
+	const totalGamesEl = getEl('total-games')
+	const winsEl = getEl('wins')
+	const lossesEl = getEl('losses')
+	const winRateEl = getEl('win-rate')
+	const tournamentsPlayedEl = getEl('tournaments-played')
+	const tournamentsWonEl = getEl('tournaments-won')
+	const avatarImg = getEl('userAvatar') as HTMLImageElement
 
-    usernameEl.innerText = data.alias;
-    userInitialEl.innerText = data.alias.charAt(0).toUpperCase();
-    joinDateEl.innerText = formatDate(data.createdAt);
+	usernameEl.innerText = data.alias
+	userInitialEl.innerText = data.alias.charAt(0).toUpperCase()
+	joinDateEl.innerText = formatDate(data.createdAt)
+	getPlayerStatus(targetAlias, ownerAlias).then(({ isFriend, status }) =>
+	{
+		const statusContainer = document.getElementById('player-status-container')
+		const aliasContainer = usernameEl.parentElement
+		const styling = getStatusStyling(status)
+		const statusEl = document.createElement('div')
 
-    totalGamesEl.innerText = data.stats.totalGames.toString();
-    winsEl.innerText = data.stats.wins.toString();
-    lossesEl.innerText = data.stats.losses.toString();
-    winRateEl.innerText = `${data.stats.winRate}%`;
-    tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString();
-    tournamentsWonEl.innerText = data.stats.tournamentsWon.toString();
+		if (statusContainer)
+			statusContainer.remove()
+		if (!isFriend)
+			return
+		statusEl.id = 'player-status-container'
+		statusEl.className = 'flex items-center gap-2 mt-2'
+		statusEl.innerHTML = `
+			<div class="w-3 h-3 rounded-full ${styling.color}"></div>
+			<span class="text-sm text-gray-400 font-quency">${styling.text}</span>
+		`
+		if (aliasContainer)
+			aliasContainer.appendChild(statusEl)
+	})
+	totalGamesEl.innerText = data.stats.totalGames.toString()
+	winsEl.innerText = data.stats.wins.toString()
+	lossesEl.innerText = data.stats.losses.toString()
+	winRateEl.innerText = `${data.stats.winRate}%`
+	tournamentsPlayedEl.innerText = data.stats.tournamentsPlayed.toString()
+	tournamentsWonEl.innerText = data.stats.tournamentsWon.toString()
+	avatarImg.onerror = () =>
+	{
+		console.warn('[PROFILE] Failed to load avatar (likely rate limited), using default')
+		avatarImg.src = '/avatars/defaults/Transcendaire.png'
+		avatarImg.onerror = null
+	}
+	avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png'
+	avatarImg.classList.remove('hidden')
+	userInitialEl.classList.add('hidden')
+	if (isOwnProfile)
+	{
+		const avatarOverlay = getEl('avatar-edit-overlay')
+		const editAliasBtn = getEl('editAliasBtn')
+		const hasCustomAvatar = !!data.avatar && !data.avatar.includes('/avatars/defaults/')
 
-    avatarImg.onerror = () => {
-        console.warn('[PROFILE] Failed to load avatar (likely rate limited), using default');
-        avatarImg.src = '/avatars/defaults/Transcendaire.png';
-        avatarImg.onerror = null;
-    };
-
-    avatarImg.src = data.avatar || '/avatars/defaults/Transcendaire.png';
-    avatarImg.classList.remove('hidden');
-    userInitialEl.classList.add('hidden');
-
-    if (isOwnProfile) {
-        const avatarOverlay = getEl('avatar-edit-overlay');
-        const editAliasBtn = getEl('editAliasBtn');
-        avatarOverlay.classList.remove('hidden');
-        editAliasBtn.classList.remove('hidden');
-        const hasCustomAvatar = !!data.avatar && !data.avatar.includes('/avatars/defaults/');
-        updateDeleteButtonVisibility(hasCustomAvatar);
-    }
-
-    renderMatchHistory(data.matchHistory);
-    renderTournamentResults(data.tournamentResults);
+		avatarOverlay.classList.remove('hidden')
+		editAliasBtn.classList.remove('hidden')
+		updateDeleteButtonVisibility(hasCustomAvatar)
+	}
+	renderMatchHistory(data.matchHistory)
+	renderTournamentResults(data.tournamentResults)
 }
 
 /**
- * @brief Connect to WebSocket to appear online to friends
- * @param alias Player's alias to register
+ * @brief Connect to WebSocket only if not already connected
  */
-async function connectWebSocketForStatus(alias: string): Promise<void>
+async function connectWebSocketIfNeeded(alias: string): Promise<void>
 {
 	if (!alias)
 		return
+	if (wsClient.isConnected())
+	{
+		console.log('[PROFILE] WebSocket already connected, reusing connection')
+		wsClient.registerPlayer(alias)
+		return
+	}
 	try
 	{
 		await wsClient.connect(getWebSocketUrl())
@@ -654,13 +718,69 @@ async function connectWebSocketForStatus(alias: string): Promise<void>
 }
 
 /**
+ * @brief Setup WebSocket callback for friend status updates
+ */
+function setupFriendStatusCallback(): void
+{
+	wsClient.onFriendStatusUpdate = (friend) =>
+	{
+		const statusContainer = document.getElementById('player-status-container')
+		const urlAlias = getAliasFromUrl()
+		const targetAlias = urlAlias || ''
+		const styling = getStatusStyling(friend.status)
+		const dot = statusContainer?.querySelector('div')
+		const text = statusContainer?.querySelector('span')
+
+		if (!statusContainer)
+			return
+		if (friend.alias !== targetAlias)
+			return
+		if (dot && text)
+		{
+			dot.className = `w-3 h-3 rounded-full ${styling.color}`
+			text.textContent = styling.text
+		}
+	}
+}
+
+/**
+ * @brief Get friend status for display via WebSocket
+ */
+/**
+ * @brief Get friend status for display via WebSocket
+ */
+async function getPlayerStatus(targetAlias: string, ownerAlias: string): Promise<{ isFriend: boolean; status: string }>
+{
+	if (targetAlias === ownerAlias)
+		return { isFriend: true, status: 'online' }
+	return new Promise((resolve) =>
+	{
+		wsClient.onFriendList = (friends) =>
+		{
+			const friend = friends.find((f) => f.alias === targetAlias)
+
+			if (!friend)
+			{
+				resolve({ isFriend: false, status: 'unknown' })
+				return
+			}
+			resolve({ isFriend: true, status: friend.status || 'offline' })
+		}
+		if (wsClient.isConnected())
+			wsClient.requestFriendList(ownerAlias)
+		else
+			resolve({ isFriend: false, status: 'unknown' })
+	})
+}
+
+/**
  * @brief Search for a player by alias and navigate to their profile
  */
 async function searchPlayer(): Promise<void>
 {
 	const input = getEl('search-player-input') as HTMLInputElement
 	const errorEl = getEl('search-player-error')
-	const searchAlias = input.value.trim()
+	const searchAlias = sanitizeInput(input.value)
 
 	hide(errorEl)
 	if (!searchAlias)
@@ -690,12 +810,29 @@ function setupSearchPlayer(): void {
     });
 }
 
+let profileNavigationSetup = false;
+
+function setupProfileNavigation(): void {
+    if (profileNavigationSetup) {
+        return;
+    }
+    profileNavigationSetup = true;
+    
+    window.addEventListener('navigate-to-profile', ((e: CustomEvent) => {
+        const alias = e.detail;
+        if (alias) {
+            navigate('profile', alias);
+        }
+    }) as EventListener);
+}
+
 async function updateAlias(newAlias: string) {
+    const sanitized = sanitizeInput(newAlias)
     const response = await fetch('/api/user/alias', {
         method: 'PUT',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newAlias })
+        body: JSON.stringify({ newAlias: sanitized })
     });
 
     const data = await response.json();
@@ -708,11 +845,13 @@ async function updateAlias(newAlias: string) {
     return { success: true, message: data.message, alias: newAlias };
 }
 async function updatePassword(currentPassword: string, newPassword: string) {
+    const sanitizedCurrent = sanitizeInput(currentPassword)
+    const sanitizedNew = sanitizeInput(newPassword)
     const response = await fetch('/api/user/password', {
         method: 'PUT',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({ currentPassword: sanitizedCurrent, newPassword: sanitizedNew })
     });
 
     const data = await response.json();

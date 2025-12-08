@@ -1,13 +1,15 @@
 import { checkAuthentication } from "./components/auth.js";
+import { updateLastPath } from "./app";
 
-export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
+export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends' | '404';
 
 const ROUTES: Record<Route, string> = {
     home: '/page/home.html',
     profile: '/page/profile.html',
     game: '/page/game.html',
     lobby: '/page/lobby.html',
-	friends: '/page/friends.html'
+	friends: '/page/friends.html',
+	'404': '/404.html'
 };
 
 type PageInitializer = () => void;
@@ -31,7 +33,7 @@ export async function render(route: Route)
 
 	if (!ROUTES[route]) {
 		console.error(`Route invalide: ${route}`);
-		window.location.href = '/404.html';
+		window.location.replace('/404');
 		return;
 	}
 
@@ -57,6 +59,8 @@ export async function render(route: Route)
     } else {
         console.warn(`[ROUTER] Aucun initializer trouvé pour "${route}"`);
     }
+    
+    updateLastPath(window.location.pathname);
 }
 
 export async function navigate(route: Route, params?:string)
@@ -66,7 +70,7 @@ export async function navigate(route: Route, params?:string)
 		const isAuthenticated = await checkAuthentication();
 		if (!isAuthenticated)
 		{
-			window.history.pushState({ route: 'home' }, '', '/home');
+			window.history.pushState({ route: 'home', path: '/home' }, '', '/home');
 			render('home');
 			alert('Veuillez vous reconnecter');
 			return;
@@ -80,7 +84,7 @@ export async function navigate(route: Route, params?:string)
         url += userParams;
         console.log(`url = ${url}`)
     }
-    window.history.pushState(route, '', url);
+    window.history.pushState({ route, path: url }, '', url);
     render(route);
 }
 

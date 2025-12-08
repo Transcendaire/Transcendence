@@ -1,3 +1,5 @@
+const { THEME_COLORS } = require('./src/theme/colors.ts');
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: [
@@ -7,11 +9,7 @@ module.exports = {
   ],
   theme: {
     extend: {
-      colors: {
-        'sonpi16-orange': '#ff6000',
-        'sonpi16-blue': '#0080ff',
-        'sonpi16-black': '#0d0600',
-      },
+      colors: THEME_COLORS,
       fontFamily: {
         quency: ['QuencyPixel-Regular', 'sans-serif'],
       },

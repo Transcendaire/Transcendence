@@ -4,6 +4,7 @@ import { GameRoomManager } from '../game/gameRoomManager.js'
 import { TournamentManagerService } from '../../tournament/tournamentManager.js'
 import { LobbySocketTracker } from './lobbySocketTracker.js'
 import { LobbyStartService } from './lobbyStartService.js'
+import { getDatabase } from '../../../db/databaseSingleton.js'
 import {
 	generatePlayerId, generateLobbyId, generateBotId,
 	createLobbyPlayer, getNextBotNumber
@@ -109,7 +110,21 @@ export class LobbyManager
 			return null
 		const playerId = this.socketTracker.getPlayerId(socket) || generatePlayerId()
 		const lobbyId = generateLobbyId()
-		const creatorPlayer = createLobbyPlayer(playerId, playerName, false, true)
+		
+		const db = getDatabase()
+		const user = db.getUserByAlias(playerName)
+		let avatar: string | undefined
+		if (user)
+		{
+			const avatarFilename = db.getUserAvatar(user.id)
+			const googlePicture = db.getUserGooglePicture(user.id)
+			if (googlePicture)
+				avatar = `/avatars/users/${googlePicture}`
+			else if (avatarFilename)
+				avatar = avatarFilename === 'Transcendaire.png' ? `/avatars/defaults/${avatarFilename}` : `/avatars/users/${avatarFilename}`
+		}
+		
+		const creatorPlayer = createLobbyPlayer(playerId, playerName, false, true, avatar)
 		const lobby: Lobby = {
 			id: lobbyId, creatorId: playerId, name: lobbyName,
 			type: lobbyType, settings, players: [creatorPlayer],
@@ -147,7 +162,21 @@ export class LobbyManager
 		if (lobby.players.length >= lobby.maxPlayers)
 			return "Lobby is full"
 		const playerId = this.socketTracker.getPlayerId(socket) || generatePlayerId()
-		const newPlayer = createLobbyPlayer(playerId, playerName, false, false)
+		
+		const db = getDatabase()
+		const user = db.getUserByAlias(playerName)
+		let avatar: string | undefined
+		if (user)
+		{
+			const avatarFilename = db.getUserAvatar(user.id)
+			const googlePicture = db.getUserGooglePicture(user.id)
+			if (googlePicture)
+				avatar = `/avatars/users/${googlePicture}`
+			else if (avatarFilename)
+				avatar = avatarFilename === 'Transcendaire.png' ? `/avatars/defaults/${avatarFilename}` : `/avatars/users/${avatarFilename}`
+		}
+		
+		const newPlayer = createLobbyPlayer(playerId, playerName, false, false, avatar)
 
 		lobby.players.push(newPlayer)
 		this.socketTracker.trackSocket(socket, lobbyId, playerId)

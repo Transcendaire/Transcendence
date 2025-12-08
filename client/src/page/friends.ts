@@ -1,9 +1,10 @@
-import { navigate, registerPageInitializer, render } from "../router";
+import { registerPageInitializer, navigate } from "../router";
 import { getEl, show, hide } from "../app";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { playerName } from "./home";
 import { getUserWithCookies } from "../components/auth";
 import type { FriendStatus, PlayerOnlineStatus } from "@shared/types";
+import { escapeHtml, sanitizeInput, getStatusStyling } from "../utils/utils";
 
 interface Friend {
     id: number;
@@ -20,6 +21,7 @@ interface FriendRequest {
     to_user_id?: string;
     to_alias?: string;
     created_at: number;
+    avatar?: string;
 }
 
 let currentFriends: Friend[] = [];
@@ -123,29 +125,17 @@ async function deleteFriend(alias: string)
 
 function getStatusColor(status: PlayerOnlineStatus): string
 {
-    switch (status) {
-        case 'in-game': return 'bg-orange-400';
-        case 'online': return 'bg-green-400';
-        default: return 'bg-gray-500';
-    }
+	return getStatusStyling(status).color
 }
 
 function getStatusText(status: PlayerOnlineStatus): string
 {
-    switch (status) {
-        case 'in-game': return 'En jeu';
-        case 'online': return 'En ligne';
-        default: return 'Hors ligne';
-    }
+	return getStatusStyling(status).text
 }
 
 function getStatusTextColor(status: PlayerOnlineStatus): string
 {
-    switch (status) {
-        case 'in-game': return 'text-orange-400';
-        case 'online': return 'text-green-400';
-        default: return 'text-gray-400';
-    }
+	return getStatusStyling(status).textColor
 }
 
 function renderFriends(friends: Friend[]): void {
@@ -169,14 +159,14 @@ function renderFriends(friends: Friend[]): void {
         return `
         <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
                     border-2 border-transparent hover:border-sonpi16-orange 
-                    transition-all duration-300" data-friend-alias="${friend.alias}">
-            <div class="flex items-center justify-between mb-3 cursor-pointer friend-profile-link" data-alias="${friend.alias}">
+                    transition-all duration-300" data-friend-alias="${escapeHtml(friend.alias)}">
+            <div class="flex items-center justify-between mb-3 cursor-pointer friend-profile-link" data-alias="${escapeHtml(friend.alias)}">
                 <div class="flex items-center gap-3">
-                    <img src="${avatarSrc}" alt="${friend.alias}" 
+                    <img src="${avatarSrc}" alt="${escapeHtml(friend.alias)}" 
                          class="w-12 h-12 rounded-full object-cover hover:scale-110 transition-transform"
                          onerror="this.src='/avatars/defaults/Transcendaire.png'" />
                     <div>
-                        <p class="text-sonpi16-orange font-quency font-bold text-lg hover:underline">${friend.alias}</p>
+                        <p class="text-sonpi16-orange font-quency font-bold text-lg hover:underline">${escapeHtml(friend.alias)}</p>
                         <div class="flex items-center gap-2">
                             <div class="w-2 h-2 rounded-full status-dot ${getStatusColor(friend.status)}"></div>
                             <span class="text-sm status-text ${getStatusTextColor(friend.status)} font-quency">
@@ -188,19 +178,19 @@ function renderFriends(friends: Friend[]): void {
             </div>
             
             <button 
-                data-alias="${friend.alias}"
-                class="remove-friend-btn w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded 
+                data-alias="${escapeHtml(friend.alias)}"
+                class="remove-friend-btn w-full bg-sonpi16-blue hover:bg-blue-600 text-white px-3 py-2 rounded 
                        font-quency text-sm transition-all hover:scale-105 active:scale-95">
                 Supprimer
             </button>
         </div>
     `}).join('');
 
-    container.querySelectorAll('.friend-profile-link').forEach(el => {
+    container.querySelectorAll('.friend-profile-link, .friend-avatar').forEach(el => {
         el.addEventListener('click', (e) => {
             const alias = (e.currentTarget as HTMLElement).dataset.alias;
             if (alias)
-                navigate(`profile?alias=${encodeURIComponent(alias)}`);
+                navigate('profile', alias);
         });
     });
 
@@ -240,13 +230,18 @@ function renderPendingRequests(requests: FriendRequest[]): void {
         return;
     }
 
-    container.innerHTML = requests.map(request => `
-        <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
-                    border-2 border-sonpi16-orange">
+    container.innerHTML = requests.map(request => {
+        const avatarSrc = request.avatar || '/avatars/defaults/Transcendaire.png'
+        return `
+        <div class="friend-request-item bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
+                    border-2 border-sonpi16-orange cursor-pointer"
+             data-alias="${escapeHtml(request.from_alias)}">
             <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">👤</span>
-                    <span class="text-sonpi16-orange font-quency font-bold">${request.from_alias}</span>
+                <div class="flex items-center gap-3">
+                    <img src="${avatarSrc}" alt="${escapeHtml(request.from_alias)}" 
+                         class="w-10 h-10 rounded-full object-cover"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                    <span class="text-sonpi16-orange font-quency font-bold">${escapeHtml(request.from_alias)}</span>
                 </div>
                 <span class="text-xs text-gray-400 font-quency">
                     ${formatTime(request.created_at)}
@@ -255,23 +250,36 @@ function renderPendingRequests(requests: FriendRequest[]): void {
             
             <div class="flex gap-2">
                 <button 
-                    data-alias="${request.from_alias}"
-                    class="accept-request-btn flex-1 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded 
+                    data-alias="${escapeHtml(request.from_alias)}"
+                    class="accept-request-btn flex-1 bg-sonpi16-gold hover:bg-yellow-600 text-white px-3 py-2 rounded 
                            font-quency text-sm transition-all hover:scale-105 active:scale-95">
                     ✓ Accepter
                 </button>
                 <button 
-                    data-alias="${request.from_alias}"
-                    class="reject-request-btn flex-1 bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded 
+                    data-alias="${escapeHtml(request.from_alias)}"
+                    class="reject-request-btn flex-1 bg-sonpi16-blue hover:bg-blue-600 text-white px-3 py-2 rounded 
                            font-quency text-sm transition-all hover:scale-105 active:scale-95">
                     ✗ Refuser
                 </button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
+
+    container.querySelectorAll('.friend-request-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'BUTTON' || target.closest('button')) {
+                return;
+            }
+            const alias = (e.currentTarget as HTMLElement).dataset.alias;
+            if (alias)
+                navigate('profile', alias);
+        });
+    });
 
     container.querySelectorAll('.accept-request-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const alias = (e.target as HTMLElement).dataset.alias;
             if (!alias)
 				return;
@@ -287,6 +295,7 @@ function renderPendingRequests(requests: FriendRequest[]): void {
 
     container.querySelectorAll('.reject-request-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const alias = (e.target as HTMLElement).dataset.alias;
             if (!alias)
 				return;
@@ -317,13 +326,18 @@ function renderSentRequests(requests: FriendRequest[]): void {
         return;
     }
 
-    container.innerHTML = requests.map(request => `
-        <div class="bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
-                    border-2 border-transparent hover:border-sonpi16-orange transition-all">
+    container.innerHTML = requests.map(request => {
+        const avatarSrc = request.avatar || '/avatars/defaults/Transcendaire.png'
+        return `
+        <div class="friend-request-item bg-sonpi16-orange bg-opacity-10 rounded-lg p-4 
+                    border-2 border-transparent hover:border-sonpi16-orange transition-all cursor-pointer"
+             data-alias="${escapeHtml(request.to_alias)}">
             <div class="flex items-center justify-between mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-2xl">📤</span>
-                    <span class="text-sonpi16-orange font-quency font-bold">${request.to_alias}</span>
+                <div class="flex items-center gap-3">
+                    <img src="${avatarSrc}" alt="${escapeHtml(request.to_alias)}" 
+                         class="w-10 h-10 rounded-full object-cover"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                    <span class="text-sonpi16-orange font-quency font-bold">${escapeHtml(request.to_alias)}</span>
                 </div>
                 <span class="text-xs text-gray-400 font-quency">
                     ${formatTime(request.created_at)}
@@ -331,17 +345,29 @@ function renderSentRequests(requests: FriendRequest[]): void {
             </div>
             
             <button 
-                data-alias="${request.to_alias}"
-                class="cancel-request-btn w-full bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded 
+                data-alias="${escapeHtml(request.to_alias)}"
+                class="cancel-request-btn w-full bg-sonpi16-blue hover:bg-blue-600 text-white px-3 py-2 rounded 
                        font-quency text-sm transition-all hover:scale-105 active:scale-95">
                 Annuler
             </button>
         </div>
-    `).join('');
+    `}).join('');
 
+    container.querySelectorAll('.friend-request-item').forEach(el => {
+        el.addEventListener('click', (e) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'BUTTON' || target.closest('button')) {
+                return;
+            }
+            const alias = (e.currentTarget as HTMLElement).dataset.alias;
+            if (alias)
+                navigate('profile', alias);
+        });
+    });
 
     container.querySelectorAll('.cancel-request-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
+            e.stopPropagation();
             const alias = (e.target as HTMLElement).dataset.alias;
             if (!alias)
 				return;
@@ -482,7 +508,7 @@ function setupAddFriend(): void
     const messageEl = getEl('addFriendMessage');
 
     const handleSend = async () => {
-        const alias = input.value.trim();
+        const alias = sanitizeInput(input.value)
         
         if (!alias) {
             showMessage(messageEl, 'Veuillez entrer un alias', 'error');

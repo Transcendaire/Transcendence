@@ -1,14 +1,15 @@
 import { checkAuthentication } from "./components/auth.js";
 import { updateLastPath } from "./app";
 
-export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends';
+export type Route = 'home' | 'profile' | 'game' | 'lobby' | 'friends' | '404';
 
 const ROUTES: Record<Route, string> = {
     home: '/page/home.html',
     profile: '/page/profile.html',
     game: '/page/game.html',
     lobby: '/page/lobby.html',
-	friends: '/page/friends.html'
+	friends: '/page/friends.html',
+	'404': '/404.html'
 };
 
 type PageInitializer = () => void;
@@ -32,7 +33,7 @@ export async function render(route: Route)
 
 	if (!ROUTES[route]) {
 		console.error(`Route invalide: ${route}`);
-		window.location.href = '/404.html';
+		window.location.replace('/404');
 		return;
 	}
 

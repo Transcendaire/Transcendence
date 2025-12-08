@@ -4,6 +4,8 @@ import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { playerName } from "./home";
 import { getUserWithCookies } from "../components/auth";
 import type { Lobby, LobbyPlayer, OnlinePlayer, PlayerOnlineStatus } from "@shared/types";
+import { sanitizeInput } from "../utils/sanitize";
+
 
 let currentLobbies: Lobby[] = [];
 let myPlayerId: string | null = null;
@@ -354,7 +356,7 @@ function initCreationModal(createLobbyModal: HTMLElement) {
     form?.addEventListener('submit', (e) => {
         e.preventDefault();
 
-        let name = tournamentName.value.trim();
+        let name = sanitizeInput(tournamentName.value)
 
         const gameType = getEl("gameType") as HTMLSelectElement;
         const gameMode = getEl("gameMode") as HTMLSelectElement;

@@ -7,6 +7,7 @@ import './page/profile';
 import './page/game/index';
 import './page/lobby';
 import './page/friends';
+import './page/404';
 
 let preventNavigation = false;
 let lastPath = '/';

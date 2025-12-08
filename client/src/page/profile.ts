@@ -1,6 +1,7 @@
 import { getEl, show, hide } from "../app";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { registerPageInitializer, navigate } from "../router";
+import { sanitizeInput, escapeHtml } from "../utils/sanitize";
 
 async function initProfilePage(): Promise<void> {
     console.log('[PROFILE] Initializing profile page');
@@ -16,6 +17,7 @@ async function initProfilePage(): Promise<void> {
 
     getEl("backHome").addEventListener('click', () => navigate('home'));
     setupSearchPlayer();
+    setupProfileNavigation();
 
     const urlAlias = getAliasFromUrl();
     const targetAlias = urlAlias;
@@ -93,6 +95,7 @@ interface MatchHistoryEntry {
     player_alias: string;
     game_type: '1v1' | 'battle_royale';
     opponent_info: string;
+    opponent_avatars: string[];
     player_count: number;
     bot_count: number;
     score_for: number;
@@ -111,6 +114,8 @@ interface TournamentMatch {
     player_b_id: string;
     alias_a: string;
     alias_b: string;
+    avatar_a: string;
+    avatar_b: string;
     score_a: number;
     score_b: number;
     state: string;
@@ -355,7 +360,7 @@ async function removeFriend(alias: string): Promise<boolean> {
 }
 
 function updateFriendButton(btn: HTMLElement, status: FriendStatus): void {
-    btn.className = 'px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
+    btn.className = 'absolute bottom-6 right-6 px-4 py-2 rounded-xl hover:scale-105 transition font-quency font-bold';
     switch (status) {
         case 'none':
             btn.innerText = 'Ajouter en ami'
@@ -482,18 +487,18 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
     container.innerHTML = matches.map(match => {
         const isWin = match.result === 'win';
         const isBR = match.game_type === 'battle_royale';
-        const bgColor = isWin ? 'bg-yellow-50 border-yellow-200' : 'bg-blue-50 border-blue-200';
+        const bgColor = isWin ? 'bg-sonpi16-gold bg-opacity-10 border-sonpi16-gold' : 'bg-sonpi16-blue bg-opacity-10 border-sonpi16-blue';
         const resultText = isWin ? 'Victoire' : 'Défaite';
         const resultColor = isWin ? 'text-sonpi16-gold' : 'text-sonpi16-blue';
         const totalPlayers = match.player_count + (match.bot_count || 0);
 
         let gameTypeLabel = '';
         if (isBR)
-            gameTypeLabel = `<span class="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Battle Royale (${totalPlayers})</span>`;
+            gameTypeLabel = `<span class="text-xs bg-purple-500 bg-opacity-20 text-purple-300 px-2 py-1 rounded">Battle Royale (${totalPlayers})</span>`;
         else if (match.tournament_id)
-            gameTypeLabel = '<span class="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">Tournoi</span>';
+            gameTypeLabel = '<span class="text-xs bg-sonpi16-blue bg-opacity-20 text-blue-300 px-2 py-1 rounded">Tournoi</span>';
         else
-            gameTypeLabel = '<span class="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">Quickmatch</span>';
+            gameTypeLabel = '<span class="text-xs bg-gray-500 bg-opacity-20 text-gray-300 px-2 py-1 rounded">Quickmatch</span>';
 
         let scoreDisplay = '';
         if (isBR) {
@@ -507,6 +512,23 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
         }
 
         const botSuffix = (match.bot_count && match.bot_count > 0) ? ` et ${match.bot_count} Bot${match.bot_count > 1 ? 's' : ''}` : '';
+        
+        const opponentNames = match.opponent_info.split(', vs ').join(', ').split(', ');
+        const opponentAvatars = match.opponent_avatars || [];
+        
+        const opponentsHtml = opponentNames.map((name: string, index: number) => {
+            const avatar = opponentAvatars[index] || '/avatars/defaults/Transcendaire.png';
+            const isBot = name.includes('(Bot)');
+            return `
+                <div class="inline-flex items-center gap-2 bg-sonpi16-orange bg-opacity-10 rounded-lg px-2 py-1 ${!isBot ? 'cursor-pointer hover:bg-opacity-20 transition-all' : ''}" 
+                     ${!isBot ? `onclick="window.dispatchEvent(new CustomEvent('navigate-to-profile', { detail: '${escapeHtml(name.trim())}' }))"` : ''}>
+                    <img src="${avatar}" alt="${escapeHtml(name)}" 
+                         class="w-6 h-6 rounded-full object-cover"
+                         onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                    <span class="text-sm font-quency text-white">${escapeHtml(name)}</span>
+                </div>
+            `;
+        }).join('');
 
         return `
             <div class="flex items-center justify-between p-4 rounded-lg border ${bgColor}">
@@ -515,16 +537,18 @@ function renderMatchHistory(matches: MatchHistoryEntry[]): void {
                         <span class="text-white font-bold">${isWin ? '✓' : '✗'}</span>
                     </div>
                     <div>
-                        <p class="font-quency font-bold text-sonpi16-black">${match.opponent_info}${botSuffix}</p>
+                        <div class="flex items-center gap-2 flex-wrap mb-1">
+                            ${opponentsHtml}
+                        </div>
                         <div class="flex items-center gap-2">
                             ${gameTypeLabel}
-                            <span class="text-xs text-gray-500">${formatRelativeTime(match.created_at)}</span>
+                            <span class="text-xs text-gray-400">${formatRelativeTime(match.created_at)}</span>
                         </div>
                     </div>
                 </div>
                 <div class="text-right">
                     <p class="font-bold ${resultColor}">${resultText}</p>
-                    <p class="text-sm text-gray-600">${scoreDisplay}</p>
+                    <p class="text-sm text-gray-300">${scoreDisplay}</p>
                 </div>
             </div>
         `;
@@ -541,15 +565,29 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
 
     container.innerHTML = results.map((result, index) => {
         const isChampion = result.position === 1;
-        const bgColor = isChampion ? 'bg-yellow-50 border-yellow-300' : 'bg-gray-50 border-gray-200';
+        const bgColor = isChampion ? 'bg-sonpi16-gold bg-opacity-10 border-sonpi16-gold' : 'bg-gray-500 bg-opacity-10 border-gray-500';
         const matchesHtml = result.matches && result.matches.length > 0
             ? result.matches.map(m => {
                 const isWinnerA = m.score_a > m.score_b;
+                const avatarA = m.avatar_a || '/avatars/defaults/Transcendaire.png';
+                const avatarB = m.avatar_b || '/avatars/defaults/Transcendaire.png';
                 return `
-                    <div class="flex justify-between items-center py-2 px-3 bg-white rounded border">
-                        <span class="font-quency ${isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${m.alias_a}</span>
-                        <span class="text-sm font-bold">${m.score_a} - ${m.score_b}</span>
-                        <span class="font-quency ${!isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${m.alias_b}</span>
+                    <div class="flex justify-between items-center py-2 px-3 bg-sonpi16-orange bg-opacity-10 rounded border border-sonpi16-orange">
+                        <div class="flex items-center gap-2 cursor-pointer hover:bg-sonpi16-orange hover:bg-opacity-20 transition-all rounded px-2 py-1"
+                             onclick="window.dispatchEvent(new CustomEvent('navigate-to-profile', { detail: '${escapeHtml(m.alias_a)}' }))">
+                            <img src="${avatarA}" alt="${escapeHtml(m.alias_a)}" 
+                                 class="w-6 h-6 rounded-full object-cover"
+                                 onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                            <span class="font-quency ${isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${escapeHtml(m.alias_a)}</span>
+                        </div>
+                        <span class="text-sm font-bold text-white">${m.score_a} - ${m.score_b}</span>
+                        <div class="flex items-center gap-2 cursor-pointer hover:bg-sonpi16-orange hover:bg-opacity-20 transition-all rounded px-2 py-1"
+                             onclick="window.dispatchEvent(new CustomEvent('navigate-to-profile', { detail: '${escapeHtml(m.alias_b)}' }))">
+                            <span class="font-quency ${!isWinnerA ? 'font-bold text-sonpi16-gold' : 'text-sonpi16-blue'}">${escapeHtml(m.alias_b)}</span>
+                            <img src="${avatarB}" alt="${escapeHtml(m.alias_b)}" 
+                                 class="w-6 h-6 rounded-full object-cover"
+                                 onerror="this.src='/avatars/defaults/Transcendaire.png'" />
+                        </div>
                     </div>
                 `;
             }).join('')
@@ -564,8 +602,8 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
                             <span class="text-white font-bold text-lg">${isChampion ? '🏆' : result.position}</span>
                         </div>
                         <div>
-                            <p class="font-quency font-bold text-sonpi16-black">${result.tournament_name}</p>
-                            <p class="text-sm text-gray-600">${result.matches_won}V - ${result.matches_lost}D</p>
+                            <p class="font-quency font-bold text-white">${result.tournament_name}</p>
+                            <p class="text-sm text-gray-400">${result.matches_won}V - ${result.matches_lost}D</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3">
@@ -578,8 +616,8 @@ function renderTournamentResults(results: TournamentResultEntry[]): void {
                         </svg>
                     </div>
                 </div>
-                <div id="tournament-matches-${index}" class="hidden border-t px-4 py-3 space-y-2 bg-gray-50">
-                    <p class="text-xs text-gray-500 font-bold mb-2">Matchs du tournoi:</p>
+                <div id="tournament-matches-${index}" class="hidden border-t border-gray-600 px-4 py-3 space-y-2 bg-sonpi16-black bg-opacity-50">
+                    <p class="text-xs text-gray-400 font-bold mb-2">Matchs du tournoi:</p>
                     ${matchesHtml}
                 </div>
             </div>
@@ -660,7 +698,7 @@ async function searchPlayer(): Promise<void>
 {
 	const input = getEl('search-player-input') as HTMLInputElement
 	const errorEl = getEl('search-player-error')
-	const searchAlias = input.value.trim()
+	const searchAlias = sanitizeInput(input.value)
 
 	hide(errorEl)
 	if (!searchAlias)
@@ -690,12 +728,22 @@ function setupSearchPlayer(): void {
     });
 }
 
+function setupProfileNavigation(): void {
+    window.addEventListener('navigate-to-profile', ((e: CustomEvent) => {
+        const alias = e.detail;
+        if (alias) {
+            navigate('profile', alias);
+        }
+    }) as EventListener);
+}
+
 async function updateAlias(newAlias: string) {
+    const sanitized = sanitizeInput(newAlias)
     const response = await fetch('/api/user/alias', {
         method: 'PUT',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newAlias })
+        body: JSON.stringify({ newAlias: sanitized })
     });
 
     const data = await response.json();
@@ -708,11 +756,13 @@ async function updateAlias(newAlias: string) {
     return { success: true, message: data.message, alias: newAlias };
 }
 async function updatePassword(currentPassword: string, newPassword: string) {
+    const sanitizedCurrent = sanitizeInput(currentPassword)
+    const sanitizedNew = sanitizeInput(newPassword)
     const response = await fetch('/api/user/password', {
         method: 'PUT',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPassword, newPassword })
+        body: JSON.stringify({ currentPassword: sanitizedCurrent, newPassword: sanitizedNew })
     });
 
     const data = await response.json();

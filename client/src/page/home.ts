@@ -3,6 +3,7 @@ import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
 import { initAuth, broadcastAuthEvent } from "../components/auth"
+import { sanitizeInput } from "../utils/sanitize"
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
@@ -75,8 +76,8 @@ function initLoginModal(loginModal: HTMLElement) {
 
     const connect = async () => {
         console.log('Connect button clicked\n')
-        const password = passwordInput.value;
-        const username = playerInput.value;
+        const password = sanitizeInput(passwordInput.value)
+        const username = sanitizeInput(playerInput.value)
 
         console.log(`username = ${username}`)
         console.log(`password = ${password}`)
@@ -128,12 +129,14 @@ async function initsigninModal(signinModal: HTMLElement) {
 
     setupGlobalModalEvents(signinModal, signinButton, cancelSigninButton);
 
+    getEl("googleSigninButton").addEventListener('click', triggerGoogleLogin);
+
     const subscribe = async () => {
 
-        const username = usernameInput.value.trim();
-        const alias = aliasInput.value.trim();
-        const password = passwordInput.value.trim();
-        const passwordValidation = confirmPasswordInput.value.trim();
+        const username = sanitizeInput(usernameInput.value)
+        const alias = sanitizeInput(aliasInput.value)
+        const password = sanitizeInput(passwordInput.value)
+        const passwordValidation = sanitizeInput(confirmPasswordInput.value)
 
 
         console.log('Form values:', { username, alias, password, passwordValidation });
@@ -158,7 +161,7 @@ async function initsigninModal(signinModal: HTMLElement) {
 				alert(data.error || 'Erreur lors de l\'inscription');
 				return ;
 			}
-			alert(data.message || 'Inscription réussie !');
+			
 			playerName = alias;
 			isLoggedIn = true;
 			hide(signinModal);

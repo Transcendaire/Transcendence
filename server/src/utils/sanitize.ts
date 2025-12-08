@@ -1,4 +1,4 @@
-import { sanitizeInput as sharedSanitizeInput, validateAlias as sharedValidateAlias, validateLobbyName as sharedValidateLobbyName } from '@app/shared/sanitize'
+import { sanitizeInput as sharedSanitizeInput, validateAlias as sharedValidateAlias, validateLobbyName as sharedValidateLobbyName } from '../../../shared/src/sanitize.js'
 
 export const sanitizeInput = sharedSanitizeInput
 export const validateAlias = sharedValidateAlias

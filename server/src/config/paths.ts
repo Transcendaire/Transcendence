@@ -1,18 +1,20 @@
 import path from 'path'
 import { fileURLToPath } from 'url'
 
-const pathToClient = '../../../client'
-const pathToUploads = '../../uploads'
-
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
+
+const isProduction = process.env.NODE_ENV === 'production' || __dirname.includes('/dist/')
+
+const basePath = isProduction ? '/app' : path.resolve(__dirname, '../..')
+const clientPath = isProduction ? '/usr/share/nginx/html' : path.resolve(__dirname, '../../../client')
 
 export const paths = {
 	__dirname, 
-	public: path.join(__dirname, `${pathToClient}/public`),
-	dist: path.join(__dirname, `${pathToClient}/dist`),
-	index: path.join(__dirname, `${pathToClient}/public/index.html`),
-	uploads: path.join(__dirname, `${pathToUploads}`),
-    avatars: path.join(__dirname, `${pathToUploads}/avatars`),
-    defaultAvatars: path.join(__dirname, `${pathToUploads}/avatars/defaults`),
-    usersAvatars: path.join(__dirname, `${pathToUploads}/avatars/users`)
+	public: path.join(clientPath, 'public'),
+	dist: path.join(clientPath, 'dist'),
+	index: path.join(clientPath, 'public/index.html'),
+	uploads: path.join(basePath, 'uploads'),
+	avatars: path.join(basePath, 'uploads/avatars'),
+	defaultAvatars: path.join(basePath, 'uploads/avatars/defaults'),
+	usersAvatars: path.join(basePath, 'uploads/avatars/users')
 }

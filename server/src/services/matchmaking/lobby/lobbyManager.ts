@@ -5,6 +5,7 @@ import { TournamentManagerService } from '../../tournament/tournamentManager.js'
 import { LobbySocketTracker } from './lobbySocketTracker.js'
 import { LobbyStartService } from './lobbyStartService.js'
 import { getDatabase } from '../../../db/databaseSingleton.js'
+import { DEFAULT_AVATAR_FILENAME } from '../../../utils/consts.js'
 import {
 	generatePlayerId, generateLobbyId, generateBotId,
 	createLobbyPlayer, getNextBotNumber
@@ -113,15 +114,15 @@ export class LobbyManager
 		
 		const db = getDatabase()
 		const user = db.getUserByAlias(playerName)
-		let avatar: string | undefined
+		let avatar = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
 		if (user)
 		{
 			const avatarFilename = db.getUserAvatar(user.id)
 			const googlePicture = db.getUserGooglePicture(user.id)
-			if (googlePicture)
+			if (avatarFilename && avatarFilename !== DEFAULT_AVATAR_FILENAME)
+				avatar = `/avatars/users/${avatarFilename}`
+			else if (googlePicture)
 				avatar = `/avatars/users/${googlePicture}`
-			else if (avatarFilename)
-				avatar = avatarFilename === 'Transcendaire.png' ? `/avatars/defaults/${avatarFilename}` : `/avatars/users/${avatarFilename}`
 		}
 		
 		const creatorPlayer = createLobbyPlayer(playerId, playerName, false, true, avatar)
@@ -165,15 +166,15 @@ export class LobbyManager
 		
 		const db = getDatabase()
 		const user = db.getUserByAlias(playerName)
-		let avatar: string | undefined
+		let avatar = `/avatars/defaults/${DEFAULT_AVATAR_FILENAME}`
 		if (user)
 		{
 			const avatarFilename = db.getUserAvatar(user.id)
 			const googlePicture = db.getUserGooglePicture(user.id)
-			if (googlePicture)
+			if (avatarFilename && avatarFilename !== DEFAULT_AVATAR_FILENAME)
+				avatar = `/avatars/users/${avatarFilename}`
+			else if (googlePicture)
 				avatar = `/avatars/users/${googlePicture}`
-			else if (avatarFilename)
-				avatar = avatarFilename === 'Transcendaire.png' ? `/avatars/defaults/${avatarFilename}` : `/avatars/users/${avatarFilename}`
 		}
 		
 		const newPlayer = createLobbyPlayer(playerId, playerName, false, false, avatar)

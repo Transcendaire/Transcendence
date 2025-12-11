@@ -12,7 +12,7 @@ export async function registerUserRoutes(server: FastifyInstance)
 		const authUser = (req as any).user;
 
 		if (!authUser || !authUser.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { currentPassword, newPassword } = req.body as any;
 
@@ -42,7 +42,7 @@ export async function registerUserRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 		
 		if (!user || !user.id)
-		return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+		return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { newAlias } = req.body as any;
 		validateNewAlias(newAlias, user.id, user.login);
@@ -62,7 +62,7 @@ export async function registerUserRoutes(server: FastifyInstance)
 		const connectedUser = (req as any).user;
 		
 		if (!connectedUser || !connectedUser.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 
 		const { alias } = req.params as { alias: string };

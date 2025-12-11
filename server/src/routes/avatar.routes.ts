@@ -16,7 +16,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user)
-			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ success: false, message: 'Veuillez vous connecter' });
 
 		console.log('[AVATAR] Starting upload for user:', user.id);
 
@@ -62,7 +62,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user)
-			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ success: false, message: 'Veuillez vous connecter' });
 
 		const avatar = db.getUserAvatar(user.id);
 		const googlePicture = db.getUserGooglePicture(user.id);
@@ -85,7 +85,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user)
-			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ success: false, message: 'Veuillez vous connecter' });
 
 		const oldAvatar = db.getUserAvatar(user.id);
 		
@@ -114,7 +114,7 @@ export async function registerAvatarRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user)
-			return res.code(401).send({ success: false, message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ success: false, message: 'Veuillez vous connecter' });
 
 		const googlePicture = db.getUserGooglePicture(user.id);
 		if (!googlePicture)

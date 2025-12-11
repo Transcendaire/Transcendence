@@ -72,7 +72,7 @@ export async function navigate(route: Route, params?:string)
 		{
 			window.history.pushState({ route: 'home', path: '/home' }, '', '/home');
 			render('home');
-			alert('Veuillez vous reconnecter');
+			alert('Veuillez vous connecter');
 			return;
 		}
 	}

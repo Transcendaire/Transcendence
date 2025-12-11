@@ -93,7 +93,14 @@ export class WebSocketClient
                         console.error('Erreur parsing message WebSocket:', error);
                     }
                 };
-                this.ws.onclose = () => {
+                this.ws.onclose = (event) => {
+
+					if (event.code === 1008)
+					{
+						this.onError?.('Vous devez être connecté pour accéder au jeu');
+        				this.intentionalDisconnect = true;
+        				return;
+					}
                     console.log('WebSocket fermé');
                     this.onDisconnected?.();
                     if (!this.intentionalDisconnect) {

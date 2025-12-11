@@ -12,7 +12,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const friends = db.getFriends(user.id);
 		return res.code(200).send({ friends });
@@ -22,7 +22,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' })
+			return res.code(401).send({ message: 'Veuillez vous connecter' })
 
 		try
 		{
@@ -48,7 +48,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' })
+			return res.code(401).send({ message: 'Veuillez vous connecter' })
 
 		try
 		{
@@ -73,7 +73,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 	server.get('/api/friends/status/:alias', async (req, res) => {
 		const user = (req as any).user
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' })
+			return res.code(401).send({ message: 'Veuillez vous connecter' })
 
 		const { alias } = req.params as any
 		if (!alias)
@@ -88,7 +88,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { alias } = req.body as any;
 
@@ -108,7 +108,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { alias } = req.body as any;
 
@@ -127,7 +127,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { alias } = req.body as any;
 
@@ -146,7 +146,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { alias } = req.params as any;
 
@@ -165,7 +165,7 @@ export async function registerFriendsRoutes(server: FastifyInstance)
 		const user = (req as any).user;
 
 		if (!user || !user.id)
-			return res.code(401).send({ message: 'Veuillez vous reconnecter' });
+			return res.code(401).send({ message: 'Veuillez vous connecter' });
 
 		const { alias } = req.params as any;
 

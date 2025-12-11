@@ -3,34 +3,40 @@ import { MatchmakingService } from '../services/matchmaking/matchmaking.js'
 
 const matchmaking = new MatchmakingService()
 
+/**
+ * @brief Register WebSocket routes with authentication
+ * @param server Fastify instance
+ */
 export async function registerWebSocketRoutes(server: FastifyInstance)
 {
-		server.get('/ws', { websocket: true }, (connection, req) => {
+	server.get('/ws', { websocket: true }, (connection, req) => {
+		const user = (req as any).user
+		const sessionId = req.cookies.session_id
 
-			const user = (req as any).user;
-        
-        	if (!user || !user.id)
-			{
-            	console.log('[WEBSOCKET] Unauthenticated connection attempt blocked');
-            	connection.socket.close(1008, 'Veuillez vous connecter');
-            	return;
-        	}
-        
-			const ws = connection.socket
+		if (!user || !user.id)
+		{
+			console.log('[WEBSOCKET] Unauthenticated connection attempt blocked')
+			connection.socket.close(1008, 'Veuillez vous connecter')
+			return
+		}
+		const ws = connection.socket
 
-			ws.on('message', (message) =>
+		matchmaking.registerAuthenticatedSocket(ws, user.id, sessionId)
+		ws.on('message', (message) =>
+		{
+			try
 			{
-				try {
-					const data = JSON.parse(message.toString());
-					matchmaking.handleMessage(ws, data);
-				} catch (error) {
-					console.error("Error on WebSocket message : ", error);
-				}
-			})
-
-			ws.on('close', () =>
+				const data = JSON.parse(message.toString())
+				matchmaking.handleMessage(ws, data)
+			}
+			catch (error)
 			{
-				matchmaking.removePlayer(ws);
-			})
+				console.error("Error on WebSocket message : ", error)
+			}
 		})
+		ws.on('close', () =>
+		{
+			matchmaking.removePlayer(ws)
+		})
+	})
 }

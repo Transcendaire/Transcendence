@@ -6,11 +6,12 @@ import { LobbyManager } from '../lobby/lobbyManager.js'
 import { TournamentManagerService } from '../../tournament/tournamentManager.js'
 import { FriendStatusService } from '../../friends/FriendStatusService.js'
 import { sendMessage } from '../../../utils/websocket.js'
+import { getDatabase } from '../../../db/databaseSingleton.js'
 
 /**
  * @brief Manages player WebSocket connections and session state
  * @details Handles registration, duplicate detection, force disconnect,
- *          player name updates, and restriction checks
+ *          player name updates, session validation, and restriction checks
  */
 export class PlayerConnectionManager
 {
@@ -138,11 +139,22 @@ export class PlayerConnectionManager
 	 */
 	public registerSocket(socket: WebSocket, message: WebSocketMessage): void
 	{
-		if (this.playerSockets.has(socket))
+		const existingPlayer = this.playerSockets.get(socket)
+
+		if (existingPlayer)
+		{
+			if ('playerName' in message && message.playerName
+				&& existingPlayer.name === 'Anonymous')
+			{
+				existingPlayer.name = message.playerName
+				this.playerNameToSocket.set(message.playerName, socket)
+				this.friendStatus.broadcastStatus(message.playerName, 'online')
+			}
 			return
+		}
 		const name = 'playerName' in message && message.playerName
 			? message.playerName : 'Anonymous'
-		const tempPlayer = {
+		const tempPlayer: Player = {
 			socket,
 			name,
 			id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
@@ -250,5 +262,57 @@ export class PlayerConnectionManager
 	{
 		this.playerSockets.set(socket, player)
 		this.playerNameToSocket.set(player.name, socket)
+	}
+
+	/**
+	 * @brief Register authenticated WebSocket with user credentials
+	 * @param socket WebSocket connection
+	 * @param userId User ID from authentication
+	 * @param sessionId Session ID from cookie
+	 */
+	public registerAuthenticatedSocket(
+		socket: WebSocket, userId: string, sessionId: string | undefined
+	): void
+	{
+		const tempPlayer: Player = {
+			socket,
+			name: 'Anonymous',
+			id: `temp-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+			userId
+		}
+
+		if (sessionId)
+			tempPlayer.sessionId = sessionId
+		this.playerSockets.set(socket, tempPlayer)
+		console.log(`[CONNECTION] Authenticated socket registered: ${userId}`)
+	}
+
+	/**
+	 * @brief Validate if session is still valid for a socket
+	 * @param socket WebSocket connection to validate
+	 * @returns True if session is valid, false otherwise
+	 */
+	public validateSession(socket: WebSocket): boolean
+	{
+		const player = this.playerSockets.get(socket)
+
+		if (!player || !player.sessionId)
+		{
+			console.log(`[SESSION] No session for socket, player: ${player?.name}`)
+			sendMessage(socket, { type: 'sessionExpired' })
+			socket.close(1008, 'Session expired')
+			return false
+		}
+		const db = getDatabase()
+		const user = db.getUserBySessionId(player.sessionId)
+
+		if (!user || user.id !== player.userId)
+		{
+			console.log(`[SESSION] Invalid session for user: ${player.userId}`)
+			sendMessage(socket, { type: 'sessionExpired' })
+			socket.close(1008, 'Session expired')
+			return false
+		}
+		return true
 	}
 }

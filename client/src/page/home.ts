@@ -2,11 +2,29 @@ import { registerPageInitializer, navigate } from "../router";
 import { wsClient, getWebSocketUrl } from "../components/WebSocketClient";
 import { getEl, show, hide, setupGlobalModalEvents } from "../app";
 import { initGoogle, triggerGoogleLogin } from "../components/googleAuth";
-import { initAuth, broadcastAuthEvent } from "../components/auth"
+import { initAuth, broadcastAuthEvent, getUserWithCookies } from "../components/auth"
 import { sanitizeInput } from "../utils/utils"
 
 export let isLoggedIn: boolean = false;
 export let playerName: string = "";
+
+/**
+ * @brief Check if user is still authenticated before critical actions
+ * @returns True if authenticated, false otherwise
+ */
+async function checkAuth(): Promise<boolean>
+{
+    const user = await getUserWithCookies();
+
+    if (!user)
+    {
+        alert('Votre session a expiré. Veuillez vous reconnecter.');
+        wsClient.disconnect();
+        window.location.href = '/home';
+        return false;
+    }
+    return true;
+}
 
 async function initHomePage() {
     const gameModeModal = getEl("gameModeModal")
@@ -211,21 +229,31 @@ function initFastGameModal(fastGameModal: HTMLElement, gameModeModal: HTMLElemen
     })
 
     const join1v1 = async () => {
-        try {
+        if (!await checkAuth())
+            return
+        try
+        {
             await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinGame(playerName))
             wsClient.joinGame(playerName)
-        } catch (error) {
+        }
+        catch (error)
+        {
             alert("Impossible de se connecter au serveur")
         }
     }
 
     const joinCustom = async () => {
-        try {
+        if (!await checkAuth())
+            return
+        try
+        {
             await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinCustomGame(playerName))
             wsClient.joinCustomGame(playerName)
-        } catch (error) {
+        }
+        catch (error)
+        {
             alert("Impossible de se connecter au serveur")
         }
     }
@@ -249,7 +277,10 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
     const maxScore = createToggleGroup(['maxScore3Button', 'maxScore5Button', 'maxScore7Button', 'maxScore11Button', 'maxScore21Button'], 1);
 
     getEl("launchAIGameButton").addEventListener('click', async () => {
-        try {
+        if (!await checkAuth())
+            return
+        try
+        {
             const selectedDifficulty = parseInt(difficulty());
             const selectedPowerUps = powerUps() === 'true';
             const selectedMaxScore = parseInt(maxScore());
@@ -257,7 +288,9 @@ function initAIGameModal(aiGameModal: HTMLElement, gameModeModal: HTMLElement): 
             await wsClient.connect(getWebSocketUrl())
             wsClient.setPendingAction(() => wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore))
             wsClient.joinAIGame(playerName, selectedDifficulty, selectedPowerUps, selectedMaxScore)
-        } catch (error) {
+        }
+        catch (error)
+        {
             alert("Impossible de se connecter au serveur")
         }
     })
@@ -422,7 +455,13 @@ function setupWebsocket(waitingModal: HTMLElement) {
     wsClient.onDisconnectedByOtherSession = () => {
         alert('Vous avez été déconnecté car une autre session a pris le relais.');
         wsClient.disconnect();
-        hide(waitingModal);
+        window.location.href = '/home';
+    };
+
+    wsClient.onSessionExpired = () => {
+        alert('Votre session a expiré. Veuillez vous reconnecter.');
+        wsClient.disconnect();
+        window.location.href = '/home';
     };
 }
 

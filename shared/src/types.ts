@@ -137,7 +137,7 @@ export type WebSocketMessage =
 | { type: "gameStart"; playerRole: 'player1' | 'player2'; isCustom?: boolean; player1Name: string; player2Name: string }
 | { type: "input"; data: GameInput }
 | { type: "gameState"; data: GameState }
-| { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; isBattleRoyale?: boolean; shouldDisconnect?: boolean; forfeit?: boolean }
+| { type: "gameOver"; winner: 'player1' | 'player2'; lives1: number; lives2: number; isTournament?: boolean; isBattleRoyale?: boolean; shouldDisconnect?: boolean; forfeit?: boolean; tournamentRemainingPlayers?: number; tournamentTotalPlayers?: number }
 | { type: "surrender" }
 | { type: "cancelQueue" }
 | { type: "ping"; pingValue?: number }
@@ -164,6 +164,7 @@ export type WebSocketMessage =
 | { type: "alreadyInGame"; playerName: string }
 | { type: "forceDisconnect"; playerName: string }
 | { type: "disconnectedByOtherSession" }
+| { type: "sessionExpired" }
 | { type: "requestFriendList"; playerName: string }
 | { type: "friendList"; friends: FriendStatus[] }
 | { type: "friendStatusUpdate"; friend: FriendStatus }

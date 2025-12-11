@@ -45,6 +45,7 @@ export class WebSocketClient
     public onAlreadyInLobby?: (playerName: string) => void;
     public onAlreadyInGame?: (playerName: string) => void;
     public onDisconnectedByOtherSession?: () => void;
+    public onSessionExpired?: () => void;
     public onFriendList?: (friends: FriendStatus[]) => void;
     public onFriendStatusUpdate?: (friend: FriendStatus) => void;
     public onOnlinePlayersList?: (players: OnlinePlayer[]) => void;
@@ -264,6 +265,11 @@ export class WebSocketClient
             case 'disconnectedByOtherSession':
                 console.log('[WEBSOCKET] Disconnected by other session');
                 this.onDisconnectedByOtherSession?.();
+                break;
+            
+            case 'sessionExpired':
+                console.log('[WEBSOCKET] Session expired');
+                this.onSessionExpired?.();
                 break;
             
             case 'friendList':

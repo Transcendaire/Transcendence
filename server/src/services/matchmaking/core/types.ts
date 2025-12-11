@@ -12,6 +12,8 @@ export interface Player
 	socket: WebSocket
 	name: string
 	id: string
+	userId?: string
+	sessionId?: string | undefined
 }
 
 /**

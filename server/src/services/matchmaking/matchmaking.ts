@@ -66,7 +66,8 @@ export class MatchmakingService
 		)
 		this.lobbyHandlers = new LobbyHandlers(
 			this.lobbyManager, this.playerSockets,
-			(name) => this.connectionManager.isPlayerNameInActiveGame(name)
+			(name) => this.connectionManager.isPlayerNameInActiveGame(name),
+			(socket) => this.connectionManager.validateSession(socket)
 		)
 		this.disconnectHandler = new DisconnectHandler(
 			this.playerSockets, this.playerNameToSocket,
@@ -88,6 +89,19 @@ export class MatchmakingService
 	public getGameRoomManager(): GameRoomManager
 	{
 		return this.gameRoomManager
+	}
+
+	/**
+	 * @brief Register authenticated WebSocket with user credentials
+	 * @param socket WebSocket connection
+	 * @param userId User ID from authentication
+	 * @param sessionId Session ID from cookie
+	 */
+	public registerAuthenticatedSocket(
+		socket: WebSocket, userId: string, sessionId: string | undefined
+	): void
+	{
+		this.connectionManager.registerAuthenticatedSocket(socket, userId, sessionId)
 	}
 
 	/**

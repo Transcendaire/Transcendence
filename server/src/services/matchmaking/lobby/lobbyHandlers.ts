@@ -5,23 +5,27 @@ import { sendMessage } from '../../../utils/websocket.js'
 
 /**
  * @brief Handles all lobby-related WebSocket message operations
- * @details Delegates to LobbyManager for actual lobby management
+ * @details Delegates to LobbyManager for actual lobby management,
+ *          validates session before critical actions
  */
 export class LobbyHandlers
 {
 	private lobbyManager: LobbyManager
 	private playerSockets: Map<WebSocket, Player>
 	private isPlayerNameInActiveGame: (playerName: string) => boolean
+	private validateSession: (socket: WebSocket) => boolean
 
 	constructor(
 		lobbyManager: LobbyManager,
 		playerSockets: Map<WebSocket, Player>,
-		isPlayerNameInActiveGame: (playerName: string) => boolean
+		isPlayerNameInActiveGame: (playerName: string) => boolean,
+		validateSession: (socket: WebSocket) => boolean
 	)
 	{
 		this.lobbyManager = lobbyManager
 		this.playerSockets = playerSockets
 		this.isPlayerNameInActiveGame = isPlayerNameInActiveGame
+		this.validateSession = validateSession
 	}
 
 	/**
@@ -136,11 +140,20 @@ export class LobbyHandlers
 	 */
 	public handleStartLobby(socket: WebSocket, lobbyId: string): void
 	{
+		if (!this.validateSession(socket))
+			return
 		const playerNames = this.lobbyManager.getPlayerNamesInLobby(lobbyId)
+
 		for (const name of playerNames)
+		{
 			if (this.isPlayerNameInActiveGame(name))
-				return sendMessage(socket, { type: 'lobbyError', message: `${name} est déjà en jeu` })
+			{
+				sendMessage(socket, { type: 'lobbyError', message: `${name} est déjà en jeu` })
+				return
+			}
+		}
 		const error = this.lobbyManager.startLobby(socket, lobbyId)
+
 		if (error)
 			sendMessage(socket, { type: 'lobbyError', message: error })
 	}

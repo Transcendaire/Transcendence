@@ -13,6 +13,24 @@ let currentOpenLobbyId: string | null = null;
 let currentOnlinePlayers: OnlinePlayer[] = [];
 let currentPlayerName: string = "";
 
+/**
+ * @brief Check if user is still authenticated before critical actions
+ * @returns True if authenticated, false otherwise (redirects to home)
+ */
+async function checkAuth(): Promise<boolean>
+{
+    const user = await getUserWithCookies();
+
+    if (!user)
+    {
+        alert('Votre session a expiré. Veuillez vous reconnecter.');
+        wsClient.disconnect();
+        window.location.href = '/home';
+        return false;
+    }
+    return true;
+}
+
 async function initLobby() {
     console.log('[LOBBY] Initialisation de la page lobby');
 
@@ -120,7 +138,13 @@ function setupWebSocketCallbacks(): void {
     wsClient.onDisconnectedByOtherSession = () => {
         alert('Vous avez été déconnecté car une autre session a pris le relais.');
         wsClient.disconnect();
-        navigate('home');
+        window.location.href = '/home';
+    };
+
+    wsClient.onSessionExpired = () => {
+        alert('Votre session a expiré. Veuillez vous reconnecter.');
+        wsClient.disconnect();
+        window.location.href = '/home';
     };
 
     wsClient.onOnlinePlayersList = (players: OnlinePlayer[]) => {
@@ -275,61 +299,63 @@ function renderLobbies(lobbies: Lobby[]): void {
     });
 }
 
-function joinLobby(lobbyId: string): void {
+async function joinLobby(lobbyId: string): Promise<void>
+{
     console.log('[LOBBY] Tentative de rejoindre le lobby:', lobbyId);
 
-    if (!currentPlayerName || currentPlayerName.trim() === '') {
-        alert('Veuillez vous connecter avant de rejoindre un lobby');
-        navigate('home');
-        return;
-    }
-
-    if (!wsClient.isConnected()) {
+    if (!await checkAuth())
+        return
+    if (!wsClient.isConnected())
+    {
         console.error('[LOBBY] WebSocket non connecté');
         alert('Connexion perdue, reconnexion en cours...');
         requestLobbyList();
         return;
     }
-
     const joinMessage = {
         type: 'joinLobby' as const,
         playerName: currentPlayerName,
         lobbyId: lobbyId
     };
+
     wsClient.setPendingAction(() => wsClient.sendMessage(joinMessage));
     wsClient.sendMessage(joinMessage);
 }
 
-function startLobby(lobbyId: string): void {
+async function startLobby(lobbyId: string): Promise<void>
+{
     console.log('[LOBBY] Tentative de lancer le lobby:', lobbyId);
 
-    if (!wsClient.isConnected()) {
+    if (!await checkAuth())
+        return
+    if (!wsClient.isConnected())
+    {
         console.error('[LOBBY] WebSocket non connecté');
         alert('Connexion perdue, reconnexion en cours...');
         requestLobbyList();
         return;
     }
-
     wsClient.sendMessage({
         type: 'startLobby',
         lobbyId: lobbyId
     });
 }
 
-function deleteLobby(lobbyId: string): void {
+async function deleteLobby(lobbyId: string): Promise<void>
+{
     console.log('[LOBBY] Tentative de supprimer le lobby:', lobbyId);
 
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce lobby ?')) {
-        return;
-    }
-
-    if (!wsClient.isConnected()) {
+    if (!confirm('Êtes-vous sûr de vouloir supprimer ce lobby ?'))
+        return
+    if (!await checkAuth())
+        return
+    if (!wsClient.isConnected())
+    {
         console.error('[LOBBY] WebSocket non connecté');
         alert('Connexion perdue, reconnexion en cours...');
         requestLobbyList();
         return;
     }
-
     wsClient.sendMessage({
         type: 'deleteLobby',
         lobbyId: lobbyId
@@ -353,9 +379,11 @@ function initCreationModal(createLobbyModal: HTMLElement) {
 
     setupGlobalModalEvents(createLobbyModal, createLobbyButton, cancelCreateButton);
 
-    form?.addEventListener('submit', (e) => {
+    form?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
+        if (!await checkAuth())
+            return
         let name = sanitizeInput(tournamentName.value)
 
         const gameType = getEl("gameType") as HTMLSelectElement;
@@ -368,35 +396,29 @@ function initCreationModal(createLobbyModal: HTMLElement) {
         const maxScoreSelect = getEl("maxScoreSelect") as HTMLSelectElement;
         const maxScore = parseInt(maxScoreSelect?.value || '5');
 
-        if (!name || name === '') name = `${gameType.value.charAt(0).toUpperCase() + gameType.value.slice(1)} de ${currentPlayerName}`;
-
-        if (name.length < 3) {
+        if (!name || name === '')
+            name = `${gameType.value.charAt(0).toUpperCase() + gameType.value.slice(1)} de ${currentPlayerName}`;
+        if (name.length < 3)
+        {
             alert('Le nom du lobby doit comporter au moins 3 caractères');
             return;
         }
-
-        if (!/^[a-zA-Z0-9À-ÿ_\-\s]+$/.test(name)) {
+        if (!/^[a-zA-Z0-9À-ÿ_\-\s]+$/.test(name))
+        {
             alert('Caractères invalides dans le nom du lobby');
             return;
         }
-
-        if (maxPlayers < 2 || maxPlayers > 16) {
+        if (maxPlayers < 2 || maxPlayers > 16)
+        {
             alert('Nombre de joueurs invalide (2-16)');
             return;
         }
-
-        if (!currentPlayerName || currentPlayerName.trim() === '') {
-            alert('Veuillez vous connecter avant de créer un lobby');
-            navigate('home');
-            return;
-        }
-
-        if (!wsClient.isConnected()) {
+        if (!wsClient.isConnected())
+        {
             alert('Connexion perdue, reconnexion en cours...');
             requestLobbyList();
             return;
         }
-        
         const type = gameType?.value || 'battleroyale';
         const lobbyType: 'tournament' | 'battleroyale' = 
             type.toLowerCase() === 'tournament' ? 'tournament' : 'battleroyale';

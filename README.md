@@ -6,7 +6,7 @@
 make run              # Build et lance l'application
 ```
 
-L'application sera accessible sur : **http://localhost**
+L'application sera accessible sur : **https://localhost**
 
 ### Autres commandes Docker
 
@@ -28,7 +28,7 @@ npm install           # Installe les dépendances client + serveur
 npm run dev           # Lance client + serveur en mode watch (se relance a chaque fois qu'un fichier est save)
 ```
 
-Serveur accessible sur : **http://localhost:8080**
+Serveur accessible sur : **https://localhost:8443**
 
 ### Commandes disponibles
 
